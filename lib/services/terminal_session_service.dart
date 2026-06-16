@@ -768,13 +768,16 @@ class TerminalSessionService extends ChangeNotifier {
   }
 
   static const shellHelperReloadCommand =
-      'printf "$helperReloadBeginMarker\\n"\n'
-      'if [ -f "\$TERMODE_USR/termode-shell-helpers.sh" ]; then\n'
-      '. "\$TERMODE_USR/termode-shell-helpers.sh"\n'
-      'printf "$helperReloadStatusMarker:0\\n"\n'
-      'else\n'
-      'printf "$helperReloadStatusMarker:1\\n"\n'
-      'fi\n'
+      'printf "$helperReloadBeginMarker\\n"; '
+      'if [ -f "\$TERMODE_USR/termode-shell-helpers.sh" ]; then '
+      'if . "\$TERMODE_USR/termode-shell-helpers.sh" >/dev/null 2>&1; then '
+      'printf "$helperReloadStatusMarker:0\\n"; '
+      'else '
+      'printf "$helperReloadStatusMarker:1\\n"; '
+      'fi; '
+      'else '
+      'printf "$helperReloadStatusMarker:1\\n"; '
+      'fi; '
       'printf "$helperReloadEndMarker\\n"\n';
 
   Future<bool> reloadShellHelpersForSession(
@@ -838,18 +841,12 @@ class TerminalSessionService extends ChangeNotifier {
       completer: completer,
       appendFailureOnFailure: appendFailureOnFailure,
     );
+    _startHelperReloadTimeout(sessionId, _pendingHelperReloads[sessionId]!);
   }
 
   void _clearHelperReloadState(String sessionId) {
     final state = _pendingHelperReloads.remove(sessionId);
     state?.timeout?.cancel();
-  }
-
-  String _normalizeForHelperReloadCompare(String text) {
-    return text
-        .replaceAll(RegExp(r'\x1B\[[0-9;?]*[ -/]*[@-~]'), '')
-        .replaceAll(RegExp("[\\s<>\"']+"), '')
-        .toLowerCase();
   }
 
   bool _isPromptOnlyLine(String line) {
@@ -932,28 +929,6 @@ class TerminalSessionService extends ChangeNotifier {
         lowered.contains('not found');
   }
 
-  bool _looksLikeHelperReloadOutput(String text) {
-    final compact = _normalizeForHelperReloadCompare(text);
-    if (compact.isEmpty) {
-      return true;
-    }
-    if (compact.length >= 6) {
-      final commandCompact = _normalizeForHelperReloadCompare(
-        shellHelperReloadCommand,
-      );
-      if (commandCompact.contains(compact)) {
-        return true;
-      }
-    }
-    return compact.contains('termode_helper_reload') ||
-        compact.contains('termodeusr') ||
-        compact.contains('termode_usr') ||
-        compact.contains('termodeshellhelpers.sh') ||
-        compact.contains('termode-shell-helpers.sh') ||
-        compact.contains('helperreload') ||
-        compact.contains('printf__termode');
-  }
-
   void _startHelperReloadTimeout(String sessionId, _HelperReloadState state) {
     state.timeout?.cancel();
     state.timeout = Timer(const Duration(seconds: 2), () {
@@ -991,38 +966,43 @@ class TerminalSessionService extends ChangeNotifier {
     }
 
     final normalizedText = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
-    final lines = normalizedText.split('\n');
-    if (lines.every(_isPromptOnlyLine)) {
-      return null;
-    }
 
     if (_isClearHelperReloadShellError(normalizedText)) {
-      _completeHelperReload(sessionId, false);
-      return null;
-    }
-
-    if (!_looksLikeHelperReloadOutput(normalizedText)) {
-      if (!state.sawInternalOutput) {
-        _clearHelperReloadState(sessionId);
-        return text;
-      }
+      state.statusCode = 1;
       _startHelperReloadTimeout(sessionId, state);
-      return null;
     }
 
     state.sawInternalOutput = true;
+    final previousLength = state.buffer.length;
     state.buffer.write(normalizedText);
     _startHelperReloadTimeout(sessionId, state);
 
     final buffered = state.buffer.toString();
     final statusMatch = RegExp(
-      '${RegExp.escape(helperReloadStatusMarker)}\\s*:?\\s*(\\d+)',
+      '(?:^|\\n)\\s*${RegExp.escape(helperReloadStatusMarker)}\\s*:?\\s*(\\d+)\\s*(?=\\n|\$)',
     ).firstMatch(buffered);
     if (statusMatch != null) {
       state.statusCode = int.tryParse(statusMatch.group(1) ?? '1') ?? 1;
     }
-    if (buffered.contains(helperReloadEndMarker)) {
+    final endMatch = RegExp(
+      '(?:^|\\n)\\s*${RegExp.escape(helperReloadEndMarker)}\\s*(?=\\n|\$)',
+    ).firstMatch(buffered);
+    if (endMatch != null) {
+      final afterEndIndex = endMatch.end;
+      var remainderStart = afterEndIndex - previousLength;
+      if (remainderStart < 0) {
+        remainderStart = 0;
+      }
+      if (remainderStart > normalizedText.length) {
+        remainderStart = normalizedText.length;
+      }
       _completeHelperReload(sessionId, state.statusCode == 0);
+      var remainder = normalizedText.substring(remainderStart);
+      remainder = remainder.replaceFirst(RegExp(r'^\n'), '');
+      if (remainder.isEmpty || remainder.split('\n').every(_isPromptOnlyLine)) {
+        return null;
+      }
+      return _stripCompleteHelperReloadMarkerLines(remainder);
     }
 
     return null;

@@ -2039,7 +2039,15 @@ void main() {
         expect(resClean.output, contains('Helper Script:      MISSING'));
         expect(resClean.output, contains('Installed Packages: 0'));
         expect(resClean.output, contains('Helper Function Count: 0'));
-        expect(resClean.output, contains('Helper Reload Command:'));
+        expect(
+          resClean.output,
+          contains('Helper Reload Command: reload-helpers'),
+        );
+        expect(resClean.output, contains('Internal Reload Path:'));
+        expect(
+          resClean.output,
+          isNot(contains(PackageManagerService.helperReloadCommand)),
+        );
         expect(resClean.output, contains('Current Shell May Need Reload: NO'));
         expect(resClean.output, contains('All registered files: Present'));
         expect(resClean.output, contains('Overall Status:     HEALTHY'));
@@ -2466,16 +2474,19 @@ void main() {
             rawCall.arguments['text'],
             TerminalSessionService.shellHelperReloadCommand,
           );
+          final reloadCommand = rawCall.arguments['text'] as String;
+          expect(reloadCommand.trimRight(), isNot(contains('\n')));
+          expect(reloadCommand, contains('; if [ -f '));
           expect(
-            rawCall.arguments['text'],
+            reloadCommand,
             contains(TerminalSessionService.helperReloadBeginMarker),
           );
           expect(
-            rawCall.arguments['text'],
+            reloadCommand,
             contains(TerminalSessionService.helperReloadStatusMarker),
           );
           expect(
-            rawCall.arguments['text'],
+            reloadCommand,
             contains(TerminalSessionService.helperReloadEndMarker),
           );
           final promptRefresh = methodCalls.lastWhere(
@@ -2573,6 +2584,11 @@ void main() {
           sessionService.addSession();
           await Future.delayed(Duration.zero);
           await sessionService.executeCommand('pkg install hello');
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            '${TerminalSessionService.helperReloadStatusMarker}:0\n'
+            '${TerminalSessionService.helperReloadEndMarker}\n',
+          );
 
           await sessionService.executeCommand('echo visible');
           sessionService.appendRealPtyOutput(
@@ -2619,7 +2635,8 @@ void main() {
 
           sessionService.appendRealPtyOutput(
             sessionService.activeSession.id,
-            'sh: .: cannot open helper file\n',
+            'sh: .: cannot open helper file\n'
+            '${TerminalSessionService.helperReloadEndMarker}\n',
           );
 
           final output = sessionService.activeSession.lines
@@ -2658,10 +2675,19 @@ void main() {
           sessionService.addSession();
           await Future.delayed(Duration.zero);
           await sessionService.executeCommand('pkg install hello');
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            '${TerminalSessionService.helperReloadStatusMarker}:0\n'
+            '${TerminalSessionService.helperReloadEndMarker}\n',
+          );
           await sessionService.executeCommand('pkg reinstall hello');
 
           sessionService.appendRealPtyOutput(
             sessionService.activeSession.id,
+            'termode:\$ if [ -f "\$TERMODE_USR/termode-shell-helpers.sh" ]; then\n'
+            '> . "\$TERMODE_USR/termode-shell-helpers.sh"\n'
+            '> else\n'
+            '> fi\n'
             '${TerminalSessionService.helperReloadBeginMarker}\n'
             '${TerminalSessionService.helperReloadStatusMarker}:0\n'
             '${TerminalSessionService.helperReloadEndMarker}\n',
@@ -2672,6 +2698,11 @@ void main() {
               .join('\n');
           expect(output, contains('Reinstalled package hello'));
           expect(output, isNot(contains('Helper reload failed')));
+          expect(output, isNot(contains('if [ -f')));
+          expect(output, isNot(contains('\n> . ')));
+          expect(output, isNot(contains('\n> else')));
+          expect(output, isNot(contains('\n> fi')));
+          expect(output, isNot(contains('termode-shell-helpers.sh')));
 
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
               .setMockMethodCallHandler(
@@ -2728,6 +2759,68 @@ void main() {
               null,
             );
       });
+
+      test(
+        'auto reload after pkg repair suppresses entire transaction',
+        () async {
+          final sessionService = TerminalSessionService();
+          sessionService.clearMemoryStateForTesting();
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                (MethodCall methodCall) async {
+                  if (methodCall.method == 'realPtyStart' ||
+                      methodCall.method == 'realPtySend' ||
+                      methodCall.method == 'realPtySendRaw') {
+                    return true;
+                  }
+                  return null;
+                },
+              );
+
+          sessionService.addSession();
+          await Future.delayed(Duration.zero);
+          await sessionService.executeCommand('pkg install hello');
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            '${TerminalSessionService.helperReloadStatusMarker}:0\n'
+            '${TerminalSessionService.helperReloadEndMarker}\n',
+          );
+
+          final paths = await bootstrapService.getPaths();
+          final helloFile = File('${paths['home']!}/../usr/bin/hello');
+          await helloFile.delete();
+
+          await sessionService.executeCommand('pkg repair');
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            'termode:\$ if [ -f "\$TERMODE_USR/termode-shell-helpers.sh" ]; then\n'
+            '> . "\$TERMODE_USR/termode-shell-helpers.sh"\n'
+            '> else\n'
+            '> fi\n'
+            '${TerminalSessionService.helperReloadStatusMarker}:0\n'
+            '${TerminalSessionService.helperReloadEndMarker}\n',
+          );
+
+          final output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, contains('=== Package Repair ==='));
+          expect(output, isNot(contains('Helper reload failed')));
+          expect(output, isNot(contains('if [ -f')));
+          expect(output, isNot(contains('\n> . ')));
+          expect(output, isNot(contains('\n> else')));
+          expect(output, isNot(contains('\n> fi')));
+          expect(output, isNot(contains('termode-shell-helpers.sh')));
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                null,
+              );
+        },
+      );
 
       test('split marker chunks are buffered and hidden', () async {
         final sessionService = TerminalSessionService();
@@ -2939,6 +3032,11 @@ void main() {
                     sessionService.appendRealPtyOutput(
                       sessionService.activeSession.id,
                       '${methodCall.arguments['text']}'
+                      'print\n'
+                      'termode:\$ if [ -f "\$TERMODE_USR/termode-shell-helpers.sh" ]; then\n'
+                      '> . "\$TERMODE_USR/termode-shell-helpers.sh"\n'
+                      '> else\n'
+                      '> fi\n'
                       '${TerminalSessionService.helperReloadBeginMarker}\n'
                       '${TerminalSessionService.helperReloadStatusMarker}:0\n'
                       '${TerminalSessionService.helperReloadEndMarker}\n',
@@ -2972,6 +3070,11 @@ void main() {
             .join('\n');
         expect(output, contains('reload-helpers'));
         expect(output, contains('Reloaded Termode shell helpers.'));
+        expect(output, isNot(contains('if [ -f')));
+        expect(output, isNot(contains('\n> . ')));
+        expect(output, isNot(contains('\n> else')));
+        expect(output, isNot(contains('\n> fi')));
+        expect(output, isNot(contains('print')));
         expect(output, isNot(contains('TERMODE_USR')));
         expect(output, isNot(contains('termode-shell-helpers.sh')));
         expect(
@@ -2993,6 +3096,67 @@ void main() {
               null,
             );
       });
+
+      test(
+        'manual reload-helpers prints success only after END marker',
+        () async {
+          final sessionService = TerminalSessionService();
+          sessionService.clearMemoryStateForTesting();
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                (MethodCall methodCall) async {
+                  if (methodCall.method == 'realPtyStart' ||
+                      methodCall.method == 'realPtySend' ||
+                      methodCall.method == 'realPtySendRaw') {
+                    return true;
+                  }
+                  return null;
+                },
+              );
+
+          sessionService.addSession();
+          await Future.delayed(Duration.zero);
+
+          final reloadFuture = sessionService.executeCommand('reload-helpers');
+          await Future.delayed(Duration.zero);
+
+          var output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, contains('reload-helpers'));
+          expect(output, isNot(contains('Reloaded Termode shell helpers.')));
+
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            '${TerminalSessionService.helperReloadStatusMarker}:0\n',
+          );
+          await Future.delayed(Duration.zero);
+          output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, isNot(contains('Reloaded Termode shell helpers.')));
+
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            '${TerminalSessionService.helperReloadEndMarker}\n',
+          );
+          await reloadFuture;
+
+          output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, contains('Reloaded Termode shell helpers.'));
+          expect(output, isNot(contains('Helper reload failed')));
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                null,
+              );
+        },
+      );
 
       test('reload-helpers in NORMAL mode prints guidance', () async {
         final sessionService = TerminalSessionService();
@@ -3106,7 +3270,9 @@ void main() {
           expect(output, contains('Reinstalled package hello'));
           sessionService.appendRealPtyOutput(
             sessionService.activeSession.id,
-            'USR/termode-shell-helpers.sh" ] && . "\$TERMODE_USR/termode-shell-helpers.sh" <\n',
+            'USR/termode-shell-helpers.sh" ] && . "\$TERMODE_USR/termode-shell-helpers.sh" <\n'
+            '${TerminalSessionService.helperReloadStatusMarker}:0\n'
+            '${TerminalSessionService.helperReloadEndMarker}\n',
           );
           output = sessionService.activeSession.lines
               .map((l) => l.text)
@@ -3145,7 +3311,9 @@ void main() {
           expect(output, contains('=== Package Repair ==='));
           sessionService.appendRealPtyOutput(
             sessionService.activeSession.id,
-            TerminalSessionService.shellHelperReloadCommand,
+            '${TerminalSessionService.shellHelperReloadCommand}'
+            '${TerminalSessionService.helperReloadStatusMarker}:0\n'
+            '${TerminalSessionService.helperReloadEndMarker}\n',
           );
           output = sessionService.activeSession.lines
               .map((l) => l.text)
@@ -3176,6 +3344,11 @@ void main() {
           expect(
             output,
             isNot(contains(TerminalSessionService.helperReloadEndMarker)),
+          );
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            '${TerminalSessionService.helperReloadStatusMarker}:0\n'
+            '${TerminalSessionService.helperReloadEndMarker}\n',
           );
 
           methodCalls.clear();

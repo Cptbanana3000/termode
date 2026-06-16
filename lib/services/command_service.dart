@@ -2248,7 +2248,8 @@ class CommandService {
             sb.writeln('Broken Packages:    ${doc['brokenPackageCount']}');
             sb.writeln('Missing File Count: ${doc['missingFileCount']}');
             sb.writeln('Helper Function Count: ${doc['helperFunctionCount']}');
-            sb.writeln('Helper Reload Command: ${doc['helperReloadCommand']}');
+            sb.writeln('Helper Reload Command: reload-helpers');
+            sb.writeln('Internal Reload Path: ${doc['helperPath']}');
             sb.writeln(
               'Current Shell May Need Reload: ${doc['mayNeedReload'] ? "YES" : "NO"}',
             );
