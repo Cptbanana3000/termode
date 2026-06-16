@@ -542,6 +542,9 @@ class PackageManagerService {
     if (decoded is! Map<String, dynamic>) {
       throw const FormatException('invalid index JSON');
     }
+    if (!decoded.containsKey('schemaVersion')) {
+      throw const FormatException('missing schemaVersion');
+    }
     if (decoded['schemaVersion'] != 1) {
       throw const FormatException('unsupported schema');
     }
@@ -960,7 +963,7 @@ class PackageManagerService {
           return {
             'success': true,
             'message':
-                'Remote update failed. Falling back to local package index.',
+                'Warning: Remote update failed. Falling back to local package index.',
             'count': localIndex.length,
             'source': 'local',
             'warning': e.toString(),
@@ -1069,7 +1072,7 @@ class PackageManagerService {
     final sb = StringBuffer();
     sb.writeln('=== Termode Package Sources ===');
     sb.writeln('Local Index Packages:  ${localIndex.length}');
-    sb.writeln('Remote Index Packages: $remoteCount');
+    sb.writeln('Cached Remote Packages: $remoteCount');
     sb.writeln('Active Source:         ${active.source}');
     sb.writeln('Remote Enabled:        ${config.remoteEnabled ? "YES" : "NO"}');
     sb.write('Fallback To Local:     ${config.fallbackToLocal ? "YES" : "NO"}');

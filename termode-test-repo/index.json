@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "name": "Termode Test Repo",
+  "updatedAt": "2026-06-17T00:00:00Z",
+  "packages": [
+    {
+      "name": "hello-remote",
+      "version": "1.0.0",
+      "type": "script",
+      "description": "Prints a hello message from the Termode test remote repository.",
+      "executable": "hello-remote",
+      "files": [
+        {
+          "path": "usr/bin/hello-remote",
+          "url": "packages/hello-remote.sh",
+          "sha256": "9cdba09c27a7197434bf73b03b79886a4e1e42d9ed93026913dd22173a53809f"
+        }
+      ]
+    },
+    {
+      "name": "quote-lite",
+      "version": "1.0.0",
+      "type": "script",
+      "description": "Prints a small POSIX-shell friendly quote.",
+      "executable": "quote-lite",
+      "files": [
+        {
+          "path": "usr/bin/quote-lite",
+          "url": "packages/quote-lite.sh",
+          "sha256": "5908e416ba90c99b7514cecce6ab273b6ffdbfbc6bbc841e4431961176a05894"
+        }
+      ]
+    },
+    {
+      "name": "device-note",
+      "version": "1.0.0",
+      "type": "script",
+      "description": "Prints a remote execution note and optional device uname details.",
+      "executable": "device-note",
+      "files": [
+        {
+          "path": "usr/bin/device-note",
+          "url": "packages/device-note.sh",
+          "sha256": "c3891c00b53ce8048c986362c02e23c6da48a4485c5319318f71fd82ebe078d8"
+        }
+      ]
+    }
+  ]
+}
