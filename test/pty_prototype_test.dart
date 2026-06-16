@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:termode/services/command_service.dart';
+import 'package:termode/services/package_manager_service.dart';
 import 'package:termode/services/terminal_session_service.dart';
 import 'package:termode/services/virtual_filesystem.dart';
 import 'package:termode/services/settings_service.dart';
@@ -1535,6 +1536,12 @@ void main() {
         expect(res.output, contains('pkg search'));
         expect(res.output, contains('pkg info'));
         expect(res.output, contains('pkg install'));
+        expect(res.output, contains('pkg reinstall'));
+        expect(res.output, contains('pkg upgrade'));
+        expect(res.output, contains('pkg repair'));
+        expect(res.output, contains('pkg clean'));
+        expect(res.output, contains('pkg files'));
+        expect(res.output, contains('pkg verify'));
         expect(res.output, contains('pkg remove'));
         expect(res.output, contains('pkg installed'));
         expect(res.output, contains('pkg doctor'));
@@ -1645,8 +1652,14 @@ void main() {
         expect(await metaFile.exists(), isTrue);
         final metaContent = await metaFile.readAsString();
         final data = jsonDecode(metaContent) as Map<String, dynamic>;
+        expect(data['schemaVersion'], PackageManagerService.schemaVersion);
         expect(data['packages'].containsKey('hello'), isTrue);
         final helloData = data['packages']['hello'] as Map<String, dynamic>;
+        expect(helloData['source'], 'local');
+        expect(helloData['managedBy'], PackageManagerService.managedBy);
+        expect(helloData['files'], contains('usr/bin/hello'));
+        expect(helloData['installedAt'], isNotNull);
+        expect(helloData['updatedAt'], isNotNull);
         expect(helloData['checksums'].containsKey('usr/bin/hello'), isTrue);
         expect(
           helloData['checksums']['usr/bin/hello'].length,
@@ -1760,12 +1773,14 @@ void main() {
         final resCorrupted = await commandService.execute('pkg doctor');
         expect(
           resCorrupted.isError,
-          isFalse,
-        ); // doctor handles parse error gracefully
+          isTrue,
+        ); // doctor handles parse error gracefully and marks unhealthy
         expect(
           resCorrupted.output,
           contains('Installed Packages: 0'),
         ); // treats as 0 installed
+        expect(resCorrupted.output, contains('Metadata Error:'));
+        expect(resCorrupted.output, contains('Repair Recommended: YES'));
 
         // Trying to install/remove with corrupt metadata returns error
         final resInstErr = await commandService.execute('pkg install hello');
@@ -1821,6 +1836,184 @@ void main() {
 
         // Cleanup
         await sensitiveFile.delete();
+      });
+
+      test(
+        'pkg reinstall installed package refreshes files and metadata',
+        () async {
+          final vfs = VirtualFileSystem();
+          final commandService = CommandService(vfs, 'session_pkg');
+
+          await commandService.execute('pkg install hello');
+          final paths = await bootstrapService.getPaths();
+          final helloFile = File('${paths['home']!}/../usr/bin/hello');
+          await helloFile.writeAsString('broken content');
+
+          final res = await commandService.execute('pkg reinstall hello');
+          expect(res.isError, isFalse);
+          expect(res.output, contains('Reinstalled package hello'));
+          expect(
+            res.output,
+            contains('Tip: Command is available now. Try: hello'),
+          );
+          expect(
+            await helloFile.readAsString(),
+            contains('Hello from Termode package manager!'),
+          );
+        },
+      );
+
+      test(
+        'pkg reinstall not-installed package behaves like install',
+        () async {
+          final vfs = VirtualFileSystem();
+          final commandService = CommandService(vfs, 'session_pkg');
+
+          final res = await commandService.execute('pkg reinstall hello');
+
+          expect(res.isError, isFalse);
+          expect(res.output, contains('Success: Installed package hello'));
+          expect(res.output, contains('Try: hello'));
+        },
+      );
+
+      test('pkg upgrade reports current packages as up to date', () async {
+        final vfs = VirtualFileSystem();
+        final commandService = CommandService(vfs, 'session_pkg');
+
+        await commandService.execute('pkg install hello');
+        final res = await commandService.execute('pkg upgrade');
+
+        expect(res.isError, isFalse);
+        expect(res.output, contains('All packages are up to date.'));
+      });
+
+      test(
+        'pkg upgrade reinstalls older installed version from local index',
+        () async {
+          final vfs = VirtualFileSystem();
+          final commandService = CommandService(vfs, 'session_pkg');
+
+          await commandService.execute('pkg install hello');
+          final paths = await bootstrapService.getPaths();
+          final usrDir = paths['usr']!;
+          final metaFile = File('$usrDir/termode-packages.json');
+          final data =
+              jsonDecode(await metaFile.readAsString()) as Map<String, dynamic>;
+          data['packages']['hello']['version'] = '0.9.0';
+          await metaFile.writeAsString(jsonEncode(data));
+
+          final res = await commandService.execute('pkg upgrade');
+
+          expect(res.isError, isFalse);
+          expect(res.output, contains('hello 0.9.0 -> 1.0.0'));
+          final updated =
+              jsonDecode(await metaFile.readAsString()) as Map<String, dynamic>;
+          expect(updated['packages']['hello']['version'], '1.0.0');
+        },
+      );
+
+      test(
+        'pkg repair restores missing script file and regenerates helpers',
+        () async {
+          final vfs = VirtualFileSystem();
+          final commandService = CommandService(vfs, 'session_pkg');
+
+          await commandService.execute('pkg install hello');
+          final paths = await bootstrapService.getPaths();
+          final helloFile = File('${paths['home']!}/../usr/bin/hello');
+          final helpersFile = File('${paths['usr']!}/termode-shell-helpers.sh');
+          await helloFile.delete();
+          await helpersFile.writeAsString('');
+
+          final verifyBefore = await commandService.execute('pkg verify hello');
+          expect(verifyBefore.isError, isTrue);
+          expect(verifyBefore.output, contains('Result: FAIL'));
+
+          final repair = await commandService.execute('pkg repair');
+          expect(repair.isError, isFalse);
+          expect(repair.output, contains('Fixed Files: usr/bin/hello'));
+          expect(repair.output, contains('Helper Regeneration: OK'));
+          expect(await helloFile.exists(), isTrue);
+          expect(await helpersFile.readAsString(), contains('hello() {'));
+        },
+      );
+
+      test(
+        'pkg clean removes controlled temp files but preserves unmanaged files',
+        () async {
+          final vfs = VirtualFileSystem();
+          final commandService = CommandService(vfs, 'session_pkg');
+
+          final paths = await bootstrapService.getPaths();
+          final usrDir = paths['usr']!;
+          final binDir = paths['bin']!;
+          final backup = File('$usrDir/termode-shell-helpers.sh.bak');
+          final unmanaged = File('$binDir/manual-user-script');
+          await backup.writeAsString('backup');
+          await unmanaged.writeAsString('do not delete');
+
+          final res = await commandService.execute('pkg clean');
+
+          expect(res.isError, isFalse);
+          expect(res.output, contains('termode-shell-helpers.sh.bak'));
+          expect(await backup.exists(), isFalse);
+          expect(await unmanaged.exists(), isTrue);
+        },
+      );
+
+      test('pkg files output shows managed file details', () async {
+        final vfs = VirtualFileSystem();
+        final commandService = CommandService(vfs, 'session_pkg');
+
+        await commandService.execute('pkg install hello');
+        final res = await commandService.execute('pkg files hello');
+
+        expect(res.isError, isFalse);
+        expect(res.output, contains('=== Package Files: hello ==='));
+        expect(res.output, contains('usr/bin/hello'));
+        expect(res.output, contains('checksum:'));
+        expect(res.output, contains('exists: YES'));
+        expect(res.output, contains('managed: YES'));
+      });
+
+      test('pkg verify passes and fails on missing file', () async {
+        final vfs = VirtualFileSystem();
+        final commandService = CommandService(vfs, 'session_pkg');
+
+        await commandService.execute('pkg install hello');
+        final pass = await commandService.execute('pkg verify hello');
+        expect(pass.isError, isFalse);
+        expect(pass.output, contains('Result: PASS'));
+
+        final paths = await bootstrapService.getPaths();
+        final helloFile = File('${paths['home']!}/../usr/bin/hello');
+        await helloFile.delete();
+
+        final fail = await commandService.execute('pkg verify hello');
+        expect(fail.isError, isTrue);
+        expect(fail.output, contains('Result: FAIL'));
+        expect(fail.output, contains('usr/bin/hello is missing'));
+      });
+
+      test('pkg doctor suggests repair when package is broken', () async {
+        final vfs = VirtualFileSystem();
+        final commandService = CommandService(vfs, 'session_pkg');
+
+        await commandService.execute('pkg install hello');
+        final paths = await bootstrapService.getPaths();
+        final helloFile = File('${paths['home']!}/../usr/bin/hello');
+        await helloFile.delete();
+
+        final res = await commandService.execute('pkg doctor');
+
+        expect(res.isError, isTrue);
+        expect(res.output, contains('Broken Packages:    1'));
+        expect(res.output, contains('Missing File Count: 1'));
+        expect(
+          res.output,
+          contains('Repair Recommended: YES (run pkg repair)'),
+        );
       });
     });
 
@@ -2161,6 +2354,118 @@ void main() {
         expect(source, isNot(contains(r'termode:\\w')));
         expect(source, contains(r'termode:\$ '));
       });
+
+      test(
+        'new package commands are host-intercepted and reload helpers when needed',
+        () async {
+          final sessionService = TerminalSessionService();
+          sessionService.clearMemoryStateForTesting();
+          final List<MethodCall> methodCalls = [];
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                (MethodCall methodCall) async {
+                  methodCalls.add(methodCall);
+                  if (methodCall.method == 'realPtyStart' ||
+                      methodCall.method == 'realPtySend' ||
+                      methodCall.method == 'realPtySendRaw') {
+                    return true;
+                  }
+                  return null;
+                },
+              );
+
+          sessionService.addSession();
+          await Future.delayed(Duration.zero);
+          await sessionService.executeCommand('pkg install hello');
+          methodCalls.clear();
+
+          await sessionService.executeCommand('pkg reinstall hello');
+          expect(
+            methodCalls.any(
+              (call) =>
+                  call.method == 'realPtySendRaw' &&
+                  call.arguments['text'] ==
+                      TerminalSessionService.shellHelperReloadCommand,
+            ),
+            isTrue,
+          );
+          var output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, contains('Reinstalled package hello'));
+
+          methodCalls.clear();
+          await sessionService.executeCommand('pkg upgrade');
+          output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, contains('All packages are up to date.'));
+          expect(
+            methodCalls.any((call) => call.method == 'realPtySendRaw'),
+            isFalse,
+          );
+
+          final paths = await bootstrapService.getPaths();
+          final helloFile = File('${paths['home']!}/../usr/bin/hello');
+          await helloFile.delete();
+
+          methodCalls.clear();
+          await sessionService.executeCommand('pkg repair');
+          expect(
+            methodCalls.any(
+              (call) =>
+                  call.method == 'realPtySendRaw' &&
+                  call.arguments['text'] ==
+                      TerminalSessionService.shellHelperReloadCommand,
+            ),
+            isTrue,
+          );
+          output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, contains('=== Package Repair ==='));
+
+          final backup = File('${paths['usr']!}/termode-shell-helpers.sh.bak');
+          await backup.writeAsString('backup');
+          methodCalls.clear();
+          await sessionService.executeCommand('pkg clean');
+          expect(
+            methodCalls.any(
+              (call) =>
+                  call.method == 'realPtySendRaw' &&
+                  call.arguments['text'] ==
+                      TerminalSessionService.shellHelperReloadCommand,
+            ),
+            isTrue,
+          );
+          output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, contains('=== Package Clean ==='));
+
+          methodCalls.clear();
+          await sessionService.executeCommand('pkg files hello');
+          await sessionService.executeCommand('pkg verify hello');
+          output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, contains('=== Package Files: hello ==='));
+          expect(output, contains('=== Package Verify: hello ==='));
+          expect(output, contains('Result: PASS'));
+          expect(
+            methodCalls.any((call) => call.method == 'realPtySendRaw'),
+            isFalse,
+          );
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                null,
+              );
+        },
+      );
 
       test(
         'Intercepted commands: mode, host-help, normal-mode, stop-shell',

@@ -1910,6 +1910,12 @@ class CommandService {
                   '  pkg search <term>        - Search packages in index\n'
                   '  pkg info <name>          - Show detailed information for a package\n'
                   '  pkg install <name>       - Install a package\n'
+                  '  pkg reinstall <name>     - Reinstall or install a package\n'
+                  '  pkg upgrade              - Upgrade installed packages from local index\n'
+                  '  pkg repair               - Repair missing package files and helpers\n'
+                  '  pkg clean                - Clean package manager temp files\n'
+                  '  pkg files <name>         - Show files managed by a package\n'
+                  '  pkg verify <name>        - Verify files, checksums, and helper\n'
                   '  pkg remove <name>        - Uninstall a package\n'
                   '  pkg installed            - List all installed packages\n'
                   '  pkg doctor               - Audit package installation health',
@@ -2012,18 +2018,91 @@ class CommandService {
             }
             final pkgName = args[1];
             final result = await pmService.installPackage(pkgName);
-            final isError = result.startsWith('Error:');
-            if (isError) {
-              return CommandResult(output: result, isError: true);
+            if (result.isError) {
+              return CommandResult(output: result.output, isError: true);
             }
-            final pkg = PackageManagerService.localIndex[pkgName];
-            final executable = pkg?['executable'] as String? ?? pkgName;
             return CommandResult(
               output:
-                  '$result\nTip: Command is available now. Try: $executable',
-              shouldReloadShellHelpers: true,
+                  '${result.output}\nTip: Command is available now. Try: ${result.executable ?? pkgName}',
+              shouldReloadShellHelpers: result.changedHelpers,
               helperReloadFailureMessage:
                   'Package installed, but helper reload failed. Run: reload-helpers',
+            );
+
+          case 'reinstall':
+            if (args.length < 2) {
+              return CommandResult(
+                output: 'Usage: pkg reinstall <package-name>',
+                isError: true,
+              );
+            }
+            final pkgName = args[1];
+            final result = await pmService.reinstallPackage(pkgName);
+            if (result.isError) {
+              return CommandResult(output: result.output, isError: true);
+            }
+            return CommandResult(
+              output:
+                  '${result.output}\nTip: Command is available now. Try: ${result.executable ?? pkgName}',
+              shouldReloadShellHelpers: result.changedHelpers,
+              helperReloadFailureMessage:
+                  'Package reinstalled, but helper reload failed. Run: reload-helpers',
+            );
+
+          case 'upgrade':
+            final result = await pmService.upgradePackages();
+            return CommandResult(
+              output: result.output,
+              isError: result.isError,
+              shouldReloadShellHelpers: result.changedHelpers,
+              helperReloadFailureMessage:
+                  'Packages upgraded, but helper reload failed. Run: reload-helpers',
+            );
+
+          case 'repair':
+            final result = await pmService.repairPackages();
+            return CommandResult(
+              output: result.output,
+              isError: result.isError,
+              shouldReloadShellHelpers: result.changedHelpers,
+              helperReloadFailureMessage:
+                  'Package repair completed, but helper reload failed. Run: reload-helpers',
+            );
+
+          case 'clean':
+            final result = await pmService.cleanPackages();
+            return CommandResult(
+              output: result.output,
+              isError: result.isError,
+              shouldReloadShellHelpers: result.changedHelpers,
+              helperReloadFailureMessage:
+                  'Package clean completed, but helper reload failed. Run: reload-helpers',
+            );
+
+          case 'files':
+            if (args.length < 2) {
+              return CommandResult(
+                output: 'Usage: pkg files <package-name>',
+                isError: true,
+              );
+            }
+            final result = await pmService.packageFiles(args[1]);
+            return CommandResult(
+              output: result.output,
+              isError: result.isError,
+            );
+
+          case 'verify':
+            if (args.length < 2) {
+              return CommandResult(
+                output: 'Usage: pkg verify <package-name>',
+                isError: true,
+              );
+            }
+            final result = await pmService.verifyPackage(args[1]);
+            return CommandResult(
+              output: result.output,
+              isError: result.isError,
             );
 
           case 'remove':
@@ -2037,16 +2116,15 @@ class CommandService {
             final pkg = PackageManagerService.localIndex[pkgName];
             final executable = pkg?['executable'] as String? ?? pkgName;
             final result = await pmService.removePackage(pkgName);
-            final isError = result.startsWith('Error:');
-            if (isError) {
-              return CommandResult(output: result, isError: true);
+            if (result.isError) {
+              return CommandResult(output: result.output, isError: true);
             }
             return CommandResult(
               output:
-                  '$result\n'
+                  '${result.output}\n'
                   'Tip: Helper reload removes "$executable" from the current shell. '
                   'If it still appears cached, run: reload-helpers',
-              shouldReloadShellHelpers: true,
+              shouldReloadShellHelpers: result.changedHelpers,
               helperReloadFailureMessage:
                   'Package removed, but helper reload failed. Run: reload-helpers',
             );
@@ -2079,11 +2157,16 @@ class CommandService {
               'Helper Script:      ${doc['helperExists'] ? "EXISTS" : "MISSING"} (${doc['helperPath']})',
             );
             sb.writeln('Installed Packages: ${doc['installedCount']}');
+            sb.writeln('Broken Packages:    ${doc['brokenPackageCount']}');
+            sb.writeln('Missing File Count: ${doc['missingFileCount']}');
             sb.writeln('Helper Function Count: ${doc['helperFunctionCount']}');
             sb.writeln('Helper Reload Command: ${doc['helperReloadCommand']}');
             sb.writeln(
               'Current Shell May Need Reload: ${doc['mayNeedReload'] ? "YES" : "NO"}',
             );
+            if (doc['metadataError'] != null) {
+              sb.writeln('Metadata Error:     ${doc['metadataError']}');
+            }
 
             final missing = doc['missingFiles'] as List<dynamic>;
             if (missing.isNotEmpty) {
@@ -2100,10 +2183,14 @@ class CommandService {
             );
 
             bool isHealthy =
+                doc['repairRecommended'] != true &&
                 missing.isEmpty &&
                 (!doc['metadataExists'] ||
                     doc['installedCount'] == 0 ||
                     doc['helperExists']);
+            sb.writeln(
+              'Repair Recommended: ${doc['repairRecommended'] ? "YES (run pkg repair)" : "NO"}',
+            );
             sb.write(
               'Overall Status:     ${isHealthy ? "HEALTHY" : "UNHEALTHY"}',
             );
@@ -2113,7 +2200,7 @@ class CommandService {
             return CommandResult(
               output:
                   'Unknown subcommand: $subcommand\n'
-                  'Usage: pkg <help|update|list|search|info|install|remove|installed|doctor>',
+                  'Usage: pkg <help|update|list|search|info|install|reinstall|upgrade|repair|clean|files|verify|remove|installed|doctor>',
               isError: true,
             );
         }
@@ -2231,6 +2318,7 @@ class CommandService {
         sb.write(
           'Package Notes:\n'
           '  - pkg is handled by Termode host interception.\n'
+          '  - Use pkg reinstall, pkg verify, and pkg repair to recover packages.\n'
           '  - Installed packages run inside the shell through helper functions.\n'
           '  - If a newly installed package does not work, run reload-helpers.',
         );
