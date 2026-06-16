@@ -1908,9 +1908,9 @@ class CommandService {
                   '  pkg update               - Update local package index\n'
                   '  pkg repo [cmd]           - Configure remote package repository\n'
                   '  pkg sources              - Show local/remote source summary\n'
-                  '  pkg list                 - List all packages in index with status\n'
+                  '  pkg list [--long]        - List packages in index with status\n'
                   '  pkg search <term>        - Search packages in index\n'
-                  '  pkg info <name>          - Show detailed information for a package\n'
+                  '  pkg info <name> [--verbose] - Show package information\n'
                   '  pkg install <name>       - Install a package\n'
                   '  pkg reinstall <name>     - Reinstall or install a package\n'
                   '  pkg upgrade              - Upgrade installed packages from local index\n'
@@ -1965,11 +1965,14 @@ class CommandService {
               case 'disable':
                 result = await pmService.repoDisable();
                 break;
+              case 'test':
+                result = await pmService.repoTest();
+                break;
               default:
                 return CommandResult(
                   output:
                       'Unknown repo command: $repoCommand\n'
-                      'Usage: pkg repo <status|set|clear|enable|disable>',
+                      'Usage: pkg repo <status|set|clear|enable|disable|test>',
                   isError: true,
                 );
             }
@@ -2001,18 +2004,28 @@ class CommandService {
           case 'list':
             final installed = await _getInstalledPackages(pUsrDir);
             final available = await pmService.availablePackages();
+            final longMode = args.contains('--long');
             final sb = StringBuffer();
-            sb.writeln('=== Termode Package Repository ===');
+            sb.writeln(
+              longMode ? '=== Packages (Long) ===' : '=== Packages ===',
+            );
             for (final entry in available.entries) {
               final name = entry.key;
               final pkg = entry.value;
               final status = installed.containsKey(name)
-                  ? 'Installed'
-                  : 'Not Installed';
+                  ? 'installed'
+                  : 'available';
               final source = pkg['source']?.toString() ?? 'local';
-              sb.writeln(
-                '$name [${pkg['version']}] ($source) - ${pkg['description']} (Status: $status)',
-              );
+              if (longMode) {
+                sb.writeln(
+                  '$name [${pkg['version']}] ($source) - ${pkg['description']} (Status: $status)',
+                );
+              } else {
+                final paddedName = name.padRight(14);
+                final version = pkg['version'].toString().padRight(6);
+                final paddedSource = source.padRight(6);
+                sb.writeln('$paddedName $version $paddedSource $status');
+              }
             }
             return CommandResult(output: sb.toString().trimRight());
 
@@ -2057,6 +2070,7 @@ class CommandService {
               );
             }
             final pkgName = args[1];
+            final verbose = args.contains('--verbose');
             final available = await pmService.availablePackages();
             final pkg =
                 available[pkgName] ?? PackageManagerService.localIndex[pkgName];
@@ -2068,29 +2082,43 @@ class CommandService {
             }
             final installed = await _getInstalledPackages(pUsrDir);
             final isInst = installed.containsKey(pkgName);
+            final source = pkg['source']?.toString() ?? 'local';
             final sb = StringBuffer();
             sb.writeln('Package:     ${pkg['name']}');
             sb.writeln('Version:     ${pkg['version']}');
-            sb.writeln('Type:        ${pkg['type']}');
-            sb.writeln('Source:      ${pkg['source'] ?? "local"}');
-            if (pkg['repoUrl'] != null) {
-              sb.writeln('Repo URL:    ${pkg['repoUrl']}');
-            }
+            sb.writeln('Source:      $source');
             sb.writeln(
               'Status:      ${isInst ? "Installed" : "Not Installed"}',
             );
             sb.writeln('Description: ${pkg['description']}');
-            sb.writeln('Files:');
-            if (pkg['files'] is Map) {
-              final filesMap = pkg['files'] as Map<String, dynamic>;
-              for (final f in filesMap.keys) {
-                sb.writeln('  - $f');
+            sb.writeln('Executable:  ${pkg['executable'] ?? pkgName}');
+            if (source == 'remote') {
+              sb.writeln('Repo:        configured');
+              sb.writeln('Checksum:    available');
+            }
+            if (verbose) {
+              sb.writeln('Type:        ${pkg['type']}');
+              if (pkg['repoUrl'] != null) {
+                sb.writeln('Repo URL:    ${pkg['repoUrl']}');
               }
-            } else {
-              final files = pkg['files'] as List<dynamic>? ?? [];
-              for (final f in files) {
-                final file = Map<dynamic, dynamic>.from(f as Map);
-                sb.writeln('  - ${file['path']} (${file['sha256']})');
+              sb.writeln('Files:');
+              if (pkg['files'] is Map) {
+                final filesMap = pkg['files'] as Map<String, dynamic>;
+                for (final f in filesMap.keys) {
+                  sb.writeln('  - $f');
+                }
+              } else {
+                final files = pkg['files'] as List<dynamic>? ?? [];
+                for (final f in files) {
+                  final file = Map<dynamic, dynamic>.from(f as Map);
+                  sb.writeln('  - ${file['path']}');
+                  if (file['url'] != null) {
+                    sb.writeln('    URL: ${file['url']}');
+                  }
+                  if (file['sha256'] != null) {
+                    sb.writeln('    SHA-256: ${file['sha256']}');
+                  }
+                }
               }
             }
             return CommandResult(output: sb.toString().trimRight());
@@ -2199,8 +2227,6 @@ class CommandService {
               );
             }
             final pkgName = args[1];
-            final pkg = PackageManagerService.localIndex[pkgName];
-            final executable = pkg?['executable'] as String? ?? pkgName;
             final result = await pmService.removePackage(pkgName);
             if (result.isError) {
               return CommandResult(output: result.output, isError: true);
@@ -2208,8 +2234,7 @@ class CommandService {
             return CommandResult(
               output:
                   '${result.output}\n'
-                  'Tip: Helper reload removes "$executable" from the current shell. '
-                  'If it still appears cached, run: reload-helpers',
+                  'Tip: If the command still appears, run reload-helpers.',
               shouldReloadShellHelpers: result.changedHelpers,
               helperReloadFailureMessage:
                   'Package removed, but helper reload failed. Run: reload-helpers',
@@ -2234,62 +2259,80 @@ class CommandService {
 
           case 'doctor':
             final doc = await pmService.checkDoctor();
+            final verbose = args.contains('--verbose');
             final sb = StringBuffer();
-            sb.writeln('=== Termode Package Manager Doctor ===');
-            sb.writeln(
-              'Metadata File:      ${doc['metadataExists'] ? "EXISTS" : "MISSING"} (${doc['metadataPath']})',
-            );
-            sb.writeln('Bin Directory:      ${doc['binPath']}');
-            sb.writeln(
-              'Helper Script:      ${doc['helperExists'] ? "EXISTS" : "MISSING"} (${doc['helperPath']})',
-            );
-            sb.writeln('Installed Packages: ${doc['installedCount']}');
-            sb.writeln('Remote Installed:   ${doc['remoteInstalledCount']}');
-            sb.writeln('Broken Packages:    ${doc['brokenPackageCount']}');
-            sb.writeln('Missing File Count: ${doc['missingFileCount']}');
-            sb.writeln('Helper Function Count: ${doc['helperFunctionCount']}');
-            sb.writeln('Helper Reload Command: reload-helpers');
-            sb.writeln('Internal Reload Path: ${doc['helperPath']}');
-            sb.writeln(
-              'Current Shell May Need Reload: ${doc['mayNeedReload'] ? "YES" : "NO"}',
-            );
-            if (doc['metadataError'] != null) {
-              sb.writeln('Metadata Error:     ${doc['metadataError']}');
-            }
             final repo = Map<String, dynamic>.from(doc['repoConfig'] as Map);
-            sb.writeln(
-              'Remote Repo Enabled: ${repo['remoteEnabled'] == true ? "YES" : "NO"}',
-            );
-            sb.writeln(
-              'Remote Index Cache: ${doc['remoteIndexCached'] == true ? "EXISTS" : "MISSING"}',
-            );
-
             final missing = doc['missingFiles'] as List<dynamic>;
-            if (missing.isNotEmpty) {
-              sb.writeln('Missing Package Files:');
-              for (final f in missing) {
-                sb.writeln('  - [MISSING] $f');
-              }
-            } else {
-              sb.writeln('All registered files: Present');
-            }
-
-            sb.writeln(
-              'Helper Functions:   ${doc['helpersGenerated'] ? "OK" : "NOT GENERATED"}',
-            );
-
             bool isHealthy =
                 doc['repairRecommended'] != true &&
                 missing.isEmpty &&
                 (!doc['metadataExists'] ||
                     doc['installedCount'] == 0 ||
                     doc['helperExists']);
-            sb.writeln(
-              'Repair Recommended: ${doc['repairRecommended'] ? "YES (run pkg repair)" : "NO"}',
-            );
-            sb.write(
-              'Overall Status:     ${isHealthy ? "HEALTHY" : "UNHEALTHY"}',
-            );
+            final helpersOk =
+                doc['helpersGenerated'] == true || doc['installedCount'] == 0;
+            if (!verbose) {
+              sb.writeln('=== Package Doctor ===');
+              sb.writeln('Status: ${isHealthy ? "HEALTHY" : "UNHEALTHY"}');
+              sb.writeln('Installed: ${doc['installedCount']}');
+              sb.writeln('Remote installed: ${doc['remoteInstalledCount']}');
+              sb.writeln('Broken: ${doc['brokenPackageCount']}');
+              sb.writeln('Missing files: ${doc['missingFileCount']}');
+              sb.writeln('Helpers: ${helpersOk ? "OK" : "NOT GENERATED"}');
+              sb.writeln(
+                'Remote repo: ${repo['remoteEnabled'] == true ? "enabled" : "disabled"}',
+              );
+              sb.write(
+                'Remote cache: ${doc['remoteIndexCached'] == true ? "present" : "missing"}',
+              );
+            } else {
+              sb.writeln('=== Package Doctor (Verbose) ===');
+              sb.writeln(
+                'Metadata File:      ${doc['metadataExists'] ? "EXISTS" : "MISSING"} (${doc['metadataPath']})',
+              );
+              sb.writeln('Bin Directory:      ${doc['binPath']}');
+              sb.writeln(
+                'Helper Script:      ${doc['helperExists'] ? "EXISTS" : "MISSING"} (${doc['helperPath']})',
+              );
+              sb.writeln('Installed Packages: ${doc['installedCount']}');
+              sb.writeln('Remote Installed:   ${doc['remoteInstalledCount']}');
+              sb.writeln('Broken Packages:    ${doc['brokenPackageCount']}');
+              sb.writeln('Missing File Count: ${doc['missingFileCount']}');
+              sb.writeln(
+                'Helper Function Count: ${doc['helperFunctionCount']}',
+              );
+              sb.writeln('Helper Reload Command: reload-helpers');
+              sb.writeln('Internal Reload Path: ${doc['helperPath']}');
+              sb.writeln(
+                'Current Shell May Need Reload: ${doc['mayNeedReload'] ? "YES" : "NO"}',
+              );
+              if (doc['metadataError'] != null) {
+                sb.writeln('Metadata Error:     ${doc['metadataError']}');
+              }
+              sb.writeln(
+                'Remote Repo Enabled: ${repo['remoteEnabled'] == true ? "YES" : "NO"}',
+              );
+              sb.writeln(
+                'Remote Index Cache: ${doc['remoteIndexCached'] == true ? "EXISTS" : "MISSING"}',
+              );
+              if (missing.isNotEmpty) {
+                sb.writeln('Missing Package Files:');
+                for (final f in missing) {
+                  sb.writeln('  - [MISSING] $f');
+                }
+              } else {
+                sb.writeln('All registered files: Present');
+              }
+              sb.writeln(
+                'Helper Functions:   ${doc['helpersGenerated'] ? "OK" : "NOT GENERATED"}',
+              );
+              sb.writeln(
+                'Repair Recommended: ${doc['repairRecommended'] ? "YES (run pkg repair)" : "NO"}',
+              );
+              sb.write(
+                'Overall Status:     ${isHealthy ? "HEALTHY" : "UNHEALTHY"}',
+              );
+            }
             return CommandResult(output: sb.toString(), isError: !isHealthy);
 
           default:

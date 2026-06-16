@@ -399,7 +399,7 @@ class PackageManagerService {
       return 'invalid URL';
     }
     if (uri.scheme != 'http' && uri.scheme != 'https') {
-      return 'unsupported URL scheme: ${uri.scheme}';
+      return 'unsupported URL scheme';
     }
     if (uri.host.isEmpty) {
       return 'invalid URL';
@@ -421,7 +421,7 @@ class PackageManagerService {
         const Duration(seconds: 15),
       );
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('HTTP ${response.statusCode}');
+        throw HttpException('HTTP ${response.statusCode}');
       }
       final bytes = <int>[];
       await for (final chunk in response.timeout(const Duration(seconds: 15))) {
@@ -431,6 +431,45 @@ class PackageManagerService {
     } finally {
       client.close(force: true);
     }
+  }
+
+  String _friendlyRemoteError(Object error) {
+    final text = error.toString();
+    final lower = text.toLowerCase();
+    final httpMatch = RegExp(
+      r'http\s+(\d{3})',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (httpMatch != null) {
+      return 'Error: Repo returned HTTP ${httpMatch.group(1)}.\nCheck the URL or run: pkg repo status';
+    }
+    if (lower.contains('timeout') || lower.contains('timed out')) {
+      return 'Error: Repo request timed out.\nCheck your connection or URL.';
+    }
+    if (lower.contains('format') ||
+        lower.contains('json') ||
+        lower.contains('unexpected character')) {
+      return 'Error: Repo index is not valid JSON.';
+    }
+    if (lower.contains('unsupported schema')) {
+      return 'Error: Unsupported repo schema.';
+    }
+    if (lower.contains('missing schemaversion')) {
+      return 'Error: Repo index missing schemaVersion.';
+    }
+    if (lower.contains('missing checksum')) {
+      return 'Error: Remote package missing checksum.';
+    }
+    if (lower.contains('unsafe package path')) {
+      return 'Error: Remote package path is unsafe.\nOnly usr/bin scripts are allowed.';
+    }
+    if (lower.contains('only script packages')) {
+      return 'Error: Remote package type is unsupported.\nOnly script packages are allowed.';
+    }
+    if (lower.contains('unsupported url scheme')) {
+      return 'Error: Unsupported package file URL scheme.\nUse http or https.';
+    }
+    return 'Error: Remote repo check failed.\nRun: pkg repo status';
   }
 
   String _normalizePath(String path) {
@@ -798,14 +837,18 @@ class PackageManagerService {
         final sha256 = fileMeta['sha256']?.toString() ?? '';
         final url = fileMeta['url']?.toString() ?? '';
         if (!_isSafeManagedRelPath(relPath)) {
-          return failInstall('Error: unsafe package path');
+          return failInstall(
+            'Error: Remote package path is unsafe.\nOnly usr/bin scripts are allowed.',
+          );
         }
         if (sha256.isEmpty) {
-          return failInstall('Remote package missing checksum.');
+          return failInstall('Error: Remote package missing checksum.');
         }
         final file = _resolveManagedFile(paths['files']!, relPath);
         if (file == null) {
-          return failInstall('Error: unsafe package path');
+          return failInstall(
+            'Error: Remote package path is unsafe.\nOnly usr/bin scripts are allowed.',
+          );
         }
         if (await file.exists()) {
           final alreadyManaged = packages.values.any((value) {
@@ -815,19 +858,23 @@ class PackageManagerService {
           });
           if (!alreadyManaged) {
             return failInstall(
-              'Error: refusing to overwrite unmanaged file: $relPath',
+              'Error: Unmanaged file already exists: $relPath\nInstall cancelled.',
             );
           }
         }
 
         final fileUri = _resolvePackageFileUri(repoUrl, url);
         if (!_isHttpUrl(fileUri.toString())) {
-          return failInstall('Error: unsupported URL scheme');
+          return failInstall(
+            'Error: Unsupported package file URL scheme.\nUse http or https.',
+          );
         }
         final bytes = await _fetchBytes(fileUri);
         final actualSha = _calculateSha256(bytes);
         if (actualSha.toLowerCase() != sha256.toLowerCase()) {
-          return failInstall('Error: checksum mismatch');
+          return failInstall(
+            'Error: Checksum mismatch for $pkgName.\nInstall cancelled.',
+          );
         }
 
         await file.parent.create(recursive: true);
@@ -966,12 +1013,12 @@ class PackageManagerService {
                 'Warning: Remote update failed. Falling back to local package index.',
             'count': localIndex.length,
             'source': 'local',
-            'warning': e.toString(),
+            'warning': _friendlyRemoteError(e),
           };
         }
         return {
           'success': false,
-          'message': 'Error: remote update failed: $e',
+          'message': _friendlyRemoteError(e),
           'count': 0,
         };
       }
@@ -1014,11 +1061,10 @@ class PackageManagerService {
     final trimmed = url.trim();
     final error = _validateRepoUrl(trimmed);
     if (error != null) {
-      return PackageOperationResult(
-        output:
-            'Error: $error. Only http/https repository URLs are supported; https is recommended.',
-        isError: true,
-      );
+      final output = error == 'unsupported URL scheme'
+          ? 'Error: Unsupported repo URL scheme. Use http or https.'
+          : 'Error: Invalid repo URL. Run: pkg repo set <url>';
+      return PackageOperationResult(output: output, isError: true);
     }
     final config = await _readRepoConfig();
     await _writeRepoConfig(config.copyWith(repoUrl: trimmed));
@@ -1070,13 +1116,47 @@ class PackageManagerService {
     final cached = await _readCachedRemoteIndexData();
     final remoteCount = (cached?['packages'] as List<dynamic>?)?.length ?? 0;
     final sb = StringBuffer();
-    sb.writeln('=== Termode Package Sources ===');
-    sb.writeln('Local Index Packages:  ${localIndex.length}');
-    sb.writeln('Cached Remote Packages: $remoteCount');
-    sb.writeln('Active Source:         ${active.source}');
-    sb.writeln('Remote Enabled:        ${config.remoteEnabled ? "YES" : "NO"}');
-    sb.write('Fallback To Local:     ${config.fallbackToLocal ? "YES" : "NO"}');
+    sb.writeln('Local packages: ${localIndex.length}');
+    sb.writeln('Remote cached: $remoteCount');
+    sb.writeln('Active source: ${active.source}');
+    sb.writeln('Remote enabled: ${config.remoteEnabled ? "yes" : "no"}');
+    sb.write('Fallback: ${config.fallbackToLocal ? "yes" : "no"}');
     return PackageOperationResult(output: sb.toString());
+  }
+
+  Future<PackageOperationResult> repoTest() async {
+    final config = await _readRepoConfig();
+    if (config.repoUrl.isEmpty) {
+      return const PackageOperationResult(
+        output: 'No repo URL configured. Run: pkg repo set <url>',
+        isError: true,
+      );
+    }
+    if (!config.remoteEnabled) {
+      return const PackageOperationResult(
+        output: 'Remote repo is disabled. Run: pkg repo enable',
+        isError: true,
+      );
+    }
+    try {
+      final bytes = await _fetchBytes(Uri.parse(config.repoUrl));
+      final index = await _validateRemoteIndex(
+        utf8.decode(bytes),
+        config.repoUrl,
+      );
+      final packages = index['packages'] as List<dynamic>;
+      return PackageOperationResult(
+        output:
+            'Repo reachable.\n'
+            'Packages: ${packages.length}\n'
+            'Schema: OK',
+      );
+    } catch (e) {
+      return PackageOperationResult(
+        output: _friendlyRemoteError(e),
+        isError: true,
+      );
+    }
   }
 
   Future<PackageOperationResult> cleanCache() async {

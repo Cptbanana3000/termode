@@ -1652,7 +1652,14 @@ void main() {
 
         final invalid = await commandService.execute('pkg repo set ftp://bad');
         expect(invalid.isError, isTrue);
-        expect(invalid.output, contains('unsupported URL scheme'));
+        expect(invalid.output, contains('Unsupported repo URL scheme'));
+
+        final testMissingUrl = await commandService.execute('pkg repo test');
+        expect(testMissingUrl.isError, isTrue);
+        expect(
+          testMissingUrl.output,
+          contains('No repo URL configured. Run: pkg repo set <url>'),
+        );
 
         final enableMissing = await commandService.execute('pkg repo enable');
         expect(enableMissing.isError, isTrue);
@@ -1671,6 +1678,13 @@ void main() {
         final disable = await commandService.execute('pkg repo disable');
         expect(disable.isError, isFalse);
         expect(disable.output, contains('disabled'));
+
+        final testDisabled = await commandService.execute('pkg repo test');
+        expect(testDisabled.isError, isTrue);
+        expect(
+          testDisabled.output,
+          contains('Remote repo is disabled. Run: pkg repo enable'),
+        );
 
         final clear = await commandService.execute('pkg repo clear');
         expect(clear.isError, isFalse);
@@ -1732,11 +1746,21 @@ void main() {
         );
 
         final sources = await commandService.execute('pkg sources');
-        expect(sources.output, contains('Cached Remote Packages: 1'));
-        expect(sources.output, contains('Active Source:         remote'));
+        expect(sources.output, contains('Remote cached: 1'));
+        expect(sources.output, contains('Active source: remote'));
+        expect(sources.output, contains('Remote enabled: yes'));
+
+        final repoTest = await commandService.execute('pkg repo test');
+        expect(repoTest.isError, isFalse);
+        expect(repoTest.output, contains('Repo reachable.'));
+        expect(repoTest.output, contains('Packages: 1'));
+        expect(repoTest.output, contains('Schema: OK'));
 
         final list = await commandService.execute('pkg list');
-        expect(list.output, contains('hello-remote [1.0.0] (remote)'));
+        expect(list.output, contains('hello-remote'));
+        expect(list.output, contains('remote'));
+        expect(list.output, contains('available'));
+        expect(list.output, isNot(contains('Remote hello package')));
       });
 
       test(
@@ -1780,19 +1804,33 @@ void main() {
           expect(status.output, contains('Cached Remote Count: 3'));
 
           final sources = await commandService.execute('pkg sources');
-          expect(sources.output, contains('Local Index Packages:  3'));
-          expect(sources.output, contains('Cached Remote Packages: 3'));
-          expect(sources.output, contains('Active Source:         remote'));
-          expect(sources.output, contains('Remote Enabled:        YES'));
+          expect(sources.output, contains('Local packages: 3'));
+          expect(sources.output, contains('Remote cached: 3'));
+          expect(sources.output, contains('Active source: remote'));
+          expect(sources.output, contains('Remote enabled: yes'));
 
           final list = await commandService.execute('pkg list');
-          expect(list.output, contains('hello-remote [1.0.0] (remote)'));
-          expect(list.output, contains('quote-lite [1.0.0] (remote)'));
-          expect(list.output, contains('device-note [1.0.0] (remote)'));
+          expect(list.output, contains('=== Packages ==='));
+          expect(list.output, contains('hello-remote'));
+          expect(list.output, contains('quote-lite'));
+          expect(list.output, contains('device-note'));
+          expect(list.output, contains('remote'));
+          expect(list.output, contains('available'));
+          expect(list.output, isNot(contains('Prints a hello message')));
 
           final info = await commandService.execute('pkg info hello-remote');
           expect(info.output, contains('Source:      remote'));
-          expect(info.output, contains('usr/bin/hello-remote'));
+          expect(info.output, contains('Repo:        configured'));
+          expect(info.output, contains('Checksum:    available'));
+          expect(info.output, isNot(contains('https://repo.test')));
+          expect(info.output, isNot(contains('9cdba09c')));
+
+          final verboseInfo = await commandService.execute(
+            'pkg info hello-remote --verbose',
+          );
+          expect(verboseInfo.output, contains('Repo URL:'));
+          expect(verboseInfo.output, contains('usr/bin/hello-remote'));
+          expect(verboseInfo.output, contains('SHA-256: 9cdba09c'));
 
           final install = await commandService.execute(
             'pkg install hello-remote',
@@ -1841,6 +1879,11 @@ void main() {
             remove.output,
             contains('Success: Removed package hello-remote'),
           );
+          expect(
+            remove.output,
+            contains('Tip: If the command still appears, run reload-helpers.'),
+          );
+          expect(remove.output, isNot(contains('Helper reload removes')));
           expect(await installedFile.exists(), isFalse);
 
           final installedAfterRemove = await commandService.execute(
@@ -1871,7 +1914,7 @@ void main() {
         expect(
           update.output,
           contains(
-            'Remote update failed. Falling back to local package index.',
+            'Warning: Remote update failed. Falling back to local package index.',
           ),
         );
         expect(
@@ -1927,10 +1970,43 @@ void main() {
           );
 
           final list = await commandService.execute('pkg list');
-          expect(list.output, contains('hello [1.0.0] (local)'));
+          expect(list.output, contains('hello'));
+          expect(list.output, contains('local'));
           final sources = await commandService.execute('pkg sources');
-          expect(sources.output, contains('Active Source:         local'));
+          expect(sources.output, contains('Active source: local'));
         }
+      });
+
+      test('pkg repo test invalid JSON and HTTP failure', () async {
+        final commandService = CommandService(
+          VirtualFileSystem(),
+          'session_pkg',
+        );
+        PackageManagerService.httpBytesFetcherForTesting = (_) async {
+          return utf8.encode('{bad_json');
+        };
+        await commandService.execute(
+          'pkg repo set https://repo.test/index.json',
+        );
+        await commandService.execute('pkg repo enable');
+
+        final invalidJson = await commandService.execute('pkg repo test');
+        expect(invalidJson.isError, isTrue);
+        expect(
+          invalidJson.output,
+          contains('Error: Repo index is not valid JSON.'),
+        );
+
+        PackageManagerService.httpBytesFetcherForTesting = (_) async {
+          throw Exception('HTTP 404');
+        };
+        final http404 = await commandService.execute('pkg repo test');
+        expect(http404.isError, isTrue);
+        expect(http404.output, contains('Error: Repo returned HTTP 404.'));
+        expect(
+          http404.output,
+          contains('Check the URL or run: pkg repo status'),
+        );
       });
 
       test(
@@ -1993,7 +2069,14 @@ void main() {
 
           final info = await commandService.execute('pkg info hello-remote');
           expect(info.output, contains('Source:      remote'));
-          expect(info.output, contains('Repo URL:'));
+          expect(info.output, contains('Repo:        configured'));
+          expect(info.output, isNot(contains('Repo URL:')));
+
+          final verboseInfo = await commandService.execute(
+            'pkg info hello-remote --verbose',
+          );
+          expect(verboseInfo.output, contains('Repo URL:'));
+          expect(verboseInfo.output, contains('SHA-256:'));
 
           final verify = await commandService.execute(
             'pkg verify hello-remote',
@@ -2050,7 +2133,11 @@ void main() {
           'pkg install hello-remote',
         );
         expect(mismatch.isError, isTrue);
-        expect(mismatch.output, contains('checksum mismatch'));
+        expect(
+          mismatch.output,
+          contains('Error: Checksum mismatch for hello-remote.'),
+        );
+        expect(mismatch.output, contains('Install cancelled.'));
 
         final unsafeIndex = {
           'schemaVersion': 1,
@@ -2102,11 +2189,20 @@ void main() {
 
         final res = await commandService.execute('pkg list');
         expect(res.isError, isFalse);
-        expect(res.output, contains('=== Termode Package Repository ==='));
-        expect(res.output, contains('hello [1.0.0]'));
-        expect(res.output, contains('cowsay-lite [1.0.0]'));
-        expect(res.output, contains('sysinfo-lite [1.0.0]'));
-        expect(res.output, contains('(Status: Not Installed)'));
+        expect(res.output, contains('=== Packages ==='));
+        expect(res.output, contains('hello'));
+        expect(res.output, contains('cowsay-lite'));
+        expect(res.output, contains('sysinfo-lite'));
+        expect(res.output, contains('local'));
+        expect(res.output, contains('available'));
+        expect(res.output, isNot(contains('Prints a hello message')));
+
+        final long = await commandService.execute('pkg list --long');
+        expect(long.isError, isFalse);
+        expect(long.output, contains('=== Packages (Long) ==='));
+        expect(long.output, contains('hello [1.0.0] (local)'));
+        expect(long.output, contains('Prints a hello message'));
+        expect(long.output, contains('(Status: available)'));
       });
 
       test('pkg search output', () async {
@@ -2134,7 +2230,7 @@ void main() {
         expect(res.isError, isFalse);
         expect(res.output, contains('Package:     hello'));
         expect(res.output, contains('Version:     1.0.0'));
-        expect(res.output, contains('Type:        script'));
+        expect(res.output, contains('Source:      local'));
         expect(res.output, contains('Status:      Not Installed'));
         expect(
           res.output,
@@ -2142,8 +2238,15 @@ void main() {
             'Description: Prints a hello message from Termode package manager.',
           ),
         );
-        expect(res.output, contains('Files:'));
-        expect(res.output, contains('- usr/bin/hello'));
+        expect(res.output, contains('Executable:  hello'));
+        expect(res.output, isNot(contains('Files:')));
+
+        final verbose = await commandService.execute(
+          'pkg info hello --verbose',
+        );
+        expect(verbose.output, contains('Type:        script'));
+        expect(verbose.output, contains('Files:'));
+        expect(verbose.output, contains('- usr/bin/hello'));
 
         final resError = await commandService.execute('pkg info non_existent');
         expect(resError.isError, isTrue);
@@ -2277,38 +2380,78 @@ void main() {
         // Check doctor on clean environment
         final resClean = await commandService.execute('pkg doctor');
         expect(resClean.isError, isFalse);
-        expect(resClean.output, contains('Metadata File:      MISSING'));
-        expect(resClean.output, contains('Helper Script:      MISSING'));
-        expect(resClean.output, contains('Installed Packages: 0'));
-        expect(resClean.output, contains('Helper Function Count: 0'));
+        expect(resClean.output, contains('=== Package Doctor ==='));
+        expect(resClean.output, contains('Status: HEALTHY'));
+        expect(resClean.output, contains('Installed: 0'));
+        expect(resClean.output, contains('Remote installed: 0'));
+        expect(resClean.output, contains('Broken: 0'));
+        expect(resClean.output, contains('Missing files: 0'));
+        expect(resClean.output, contains('Helpers: OK'));
+        expect(resClean.output, contains('Remote repo: disabled'));
+        expect(resClean.output, contains('Remote cache: missing'));
+        expect(resClean.output, isNot(contains('Metadata File:')));
+
+        final resCleanVerbose = await commandService.execute(
+          'pkg doctor --verbose',
+        );
+        expect(resCleanVerbose.output, contains('Metadata File:      MISSING'));
+        expect(resCleanVerbose.output, contains('Helper Script:      MISSING'));
+        expect(resCleanVerbose.output, contains('Installed Packages: 0'));
+        expect(resCleanVerbose.output, contains('Helper Function Count: 0'));
         expect(
-          resClean.output,
+          resCleanVerbose.output,
           contains('Helper Reload Command: reload-helpers'),
         );
-        expect(resClean.output, contains('Internal Reload Path:'));
+        expect(resCleanVerbose.output, contains('Internal Reload Path:'));
         expect(
-          resClean.output,
+          resCleanVerbose.output,
           isNot(contains(PackageManagerService.helperReloadCommand)),
         );
-        expect(resClean.output, contains('Current Shell May Need Reload: NO'));
-        expect(resClean.output, contains('All registered files: Present'));
-        expect(resClean.output, contains('Overall Status:     HEALTHY'));
+        expect(
+          resCleanVerbose.output,
+          contains('Current Shell May Need Reload: NO'),
+        );
+        expect(
+          resCleanVerbose.output,
+          contains('All registered files: Present'),
+        );
+        expect(resCleanVerbose.output, contains('Overall Status:     HEALTHY'));
 
         // Install hello
         await commandService.execute('pkg install hello');
 
         final resInstalled = await commandService.execute('pkg doctor');
         expect(resInstalled.isError, isFalse);
-        expect(resInstalled.output, contains('Metadata File:      EXISTS'));
-        expect(resInstalled.output, contains('Helper Script:      EXISTS'));
-        expect(resInstalled.output, contains('Installed Packages: 1'));
-        expect(resInstalled.output, contains('Helper Function Count: 1'));
+        expect(resInstalled.output, contains('Status: HEALTHY'));
+        expect(resInstalled.output, contains('Installed: 1'));
+        expect(resInstalled.output, contains('Helpers: OK'));
+        expect(resInstalled.output, isNot(contains('Metadata File:')));
+
+        final resInstalledVerbose = await commandService.execute(
+          'pkg doctor --verbose',
+        );
         expect(
-          resInstalled.output,
+          resInstalledVerbose.output,
+          contains('Metadata File:      EXISTS'),
+        );
+        expect(
+          resInstalledVerbose.output,
+          contains('Helper Script:      EXISTS'),
+        );
+        expect(resInstalledVerbose.output, contains('Installed Packages: 1'));
+        expect(
+          resInstalledVerbose.output,
+          contains('Helper Function Count: 1'),
+        );
+        expect(
+          resInstalledVerbose.output,
           contains('Current Shell May Need Reload: YES'),
         );
-        expect(resInstalled.output, contains('Helper Functions:   OK'));
-        expect(resInstalled.output, contains('Overall Status:     HEALTHY'));
+        expect(resInstalledVerbose.output, contains('Helper Functions:   OK'));
+        expect(
+          resInstalledVerbose.output,
+          contains('Overall Status:     HEALTHY'),
+        );
 
         // Corrupt metadata
         final paths = await bootstrapService.getPaths();
@@ -2323,10 +2466,15 @@ void main() {
         ); // doctor handles parse error gracefully and marks unhealthy
         expect(
           resCorrupted.output,
-          contains('Installed Packages: 0'),
+          contains('Installed: 0'),
         ); // treats as 0 installed
-        expect(resCorrupted.output, contains('Metadata Error:'));
-        expect(resCorrupted.output, contains('Repair Recommended: YES'));
+        expect(resCorrupted.output, contains('Status: UNHEALTHY'));
+
+        final resCorruptedVerbose = await commandService.execute(
+          'pkg doctor --verbose',
+        );
+        expect(resCorruptedVerbose.output, contains('Metadata Error:'));
+        expect(resCorruptedVerbose.output, contains('Repair Recommended: YES'));
 
         // Trying to install/remove with corrupt metadata returns error
         final resInstErr = await commandService.execute('pkg install hello');
@@ -2554,10 +2702,15 @@ void main() {
         final res = await commandService.execute('pkg doctor');
 
         expect(res.isError, isTrue);
-        expect(res.output, contains('Broken Packages:    1'));
-        expect(res.output, contains('Missing File Count: 1'));
+        expect(res.output, contains('Status: UNHEALTHY'));
+        expect(res.output, contains('Broken: 1'));
+        expect(res.output, contains('Missing files: 1'));
+
+        final verbose = await commandService.execute('pkg doctor --verbose');
+        expect(verbose.output, contains('Broken Packages:    1'));
+        expect(verbose.output, contains('Missing File Count: 1'));
         expect(
-          res.output,
+          verbose.output,
           contains('Repair Recommended: YES (run pkg repair)'),
         );
       });
@@ -3244,7 +3397,7 @@ void main() {
           expect(output, contains('Success: Removed package hello'));
           expect(
             output,
-            contains('If it still appears cached, run: reload-helpers'),
+            contains('Tip: If the command still appears, run reload-helpers.'),
           );
 
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -3647,7 +3800,7 @@ void main() {
         expect(output, contains('pkg repo status'));
         expect(output, contains('Termode Package Repository Config'));
         expect(output, contains('pkg sources'));
-        expect(output, contains('Termode Package Sources'));
+        expect(output, contains('Local packages:'));
         expect(
           methodCalls.every((call) => call.method == 'realPtySend'),
           isTrue,
