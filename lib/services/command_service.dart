@@ -1906,6 +1906,8 @@ class CommandService {
                   'Commands:\n'
                   '  pkg help                 - Show this help message\n'
                   '  pkg update               - Update local package index\n'
+                  '  pkg repo [cmd]           - Configure remote package repository\n'
+                  '  pkg sources              - Show local/remote source summary\n'
                   '  pkg list                 - List all packages in index with status\n'
                   '  pkg search <term>        - Search packages in index\n'
                   '  pkg info <name>          - Show detailed information for a package\n'
@@ -1914,6 +1916,7 @@ class CommandService {
                   '  pkg upgrade              - Upgrade installed packages from local index\n'
                   '  pkg repair               - Repair missing package files and helpers\n'
                   '  pkg clean                - Clean package manager temp files\n'
+                  '  pkg cache clean          - Clean cached remote package index\n'
                   '  pkg files <name>         - Show files managed by a package\n'
                   '  pkg verify <name>        - Verify files, checksums, and helper\n'
                   '  pkg remove <name>        - Uninstall a package\n'
@@ -1923,6 +1926,9 @@ class CommandService {
 
           case 'update':
             final res = await pmService.updateIndex();
+            if (res['success'] != true) {
+              return CommandResult(output: res['message'], isError: true);
+            }
             return CommandResult(
               output:
                   'Updating package index...\n'
@@ -1930,18 +1936,82 @@ class CommandService {
                   'Success: Index updated (${res['count']} packages available).',
             );
 
+          case 'repo':
+            if (args.length == 1 || args[1].toLowerCase() == 'status') {
+              final result = await pmService.repoStatus();
+              return CommandResult(
+                output: result.output,
+                isError: result.isError,
+              );
+            }
+            final repoCommand = args[1].toLowerCase();
+            PackageOperationResult result;
+            switch (repoCommand) {
+              case 'set':
+                if (args.length < 3) {
+                  return CommandResult(
+                    output: 'Usage: pkg repo set <url>',
+                    isError: true,
+                  );
+                }
+                result = await pmService.repoSet(args[2]);
+                break;
+              case 'clear':
+                result = await pmService.repoClear();
+                break;
+              case 'enable':
+                result = await pmService.repoEnable();
+                break;
+              case 'disable':
+                result = await pmService.repoDisable();
+                break;
+              default:
+                return CommandResult(
+                  output:
+                      'Unknown repo command: $repoCommand\n'
+                      'Usage: pkg repo <status|set|clear|enable|disable>',
+                  isError: true,
+                );
+            }
+            return CommandResult(
+              output: result.output,
+              isError: result.isError,
+            );
+
+          case 'sources':
+            final result = await pmService.sources();
+            return CommandResult(
+              output: result.output,
+              isError: result.isError,
+            );
+
+          case 'cache':
+            if (args.length >= 2 && args[1].toLowerCase() == 'clean') {
+              final result = await pmService.cleanCache();
+              return CommandResult(
+                output: result.output,
+                isError: result.isError,
+              );
+            }
+            return CommandResult(
+              output: 'Usage: pkg cache clean',
+              isError: true,
+            );
+
           case 'list':
             final installed = await _getInstalledPackages(pUsrDir);
+            final available = await pmService.availablePackages();
             final sb = StringBuffer();
             sb.writeln('=== Termode Package Repository ===');
-            for (final entry in PackageManagerService.localIndex.entries) {
+            for (final entry in available.entries) {
               final name = entry.key;
               final pkg = entry.value;
               final status = installed.containsKey(name)
                   ? 'Installed'
                   : 'Not Installed';
+              final source = pkg['source']?.toString() ?? 'local';
               sb.writeln(
-                '$name [${pkg['version']}] - ${pkg['description']} (Status: $status)',
+                '$name [${pkg['version']}] ($source) - ${pkg['description']} (Status: $status)',
               );
             }
             return CommandResult(output: sb.toString().trimRight());
@@ -1955,10 +2025,11 @@ class CommandService {
             }
             final query = args[1].toLowerCase();
             final installed = await _getInstalledPackages(pUsrDir);
+            final available = await pmService.availablePackages();
             final sb = StringBuffer();
             sb.writeln('=== Search Results for "$query" ===');
             int count = 0;
-            for (final entry in PackageManagerService.localIndex.entries) {
+            for (final entry in available.entries) {
               final name = entry.key;
               final pkg = entry.value;
               final desc = (pkg['description'] as String).toLowerCase();
@@ -1967,8 +2038,9 @@ class CommandService {
                 final status = installed.containsKey(name)
                     ? 'Installed'
                     : 'Not Installed';
+                final source = pkg['source']?.toString() ?? 'local';
                 sb.writeln(
-                  '$name [${pkg['version']}] - ${pkg['description']} (Status: $status)',
+                  '$name [${pkg['version']}] ($source) - ${pkg['description']} (Status: $status)',
                 );
               }
             }
@@ -1985,7 +2057,9 @@ class CommandService {
               );
             }
             final pkgName = args[1];
-            final pkg = PackageManagerService.localIndex[pkgName];
+            final available = await pmService.availablePackages();
+            final pkg =
+                available[pkgName] ?? PackageManagerService.localIndex[pkgName];
             if (pkg == null) {
               return CommandResult(
                 output: 'pkg info: Package "$pkgName" not found in index.',
@@ -1998,14 +2072,26 @@ class CommandService {
             sb.writeln('Package:     ${pkg['name']}');
             sb.writeln('Version:     ${pkg['version']}');
             sb.writeln('Type:        ${pkg['type']}');
+            sb.writeln('Source:      ${pkg['source'] ?? "local"}');
+            if (pkg['repoUrl'] != null) {
+              sb.writeln('Repo URL:    ${pkg['repoUrl']}');
+            }
             sb.writeln(
               'Status:      ${isInst ? "Installed" : "Not Installed"}',
             );
             sb.writeln('Description: ${pkg['description']}');
             sb.writeln('Files:');
-            final filesMap = pkg['files'] as Map<String, dynamic>;
-            for (final f in filesMap.keys) {
-              sb.writeln('  - $f');
+            if (pkg['files'] is Map) {
+              final filesMap = pkg['files'] as Map<String, dynamic>;
+              for (final f in filesMap.keys) {
+                sb.writeln('  - $f');
+              }
+            } else {
+              final files = pkg['files'] as List<dynamic>? ?? [];
+              for (final f in files) {
+                final file = Map<dynamic, dynamic>.from(f as Map);
+                sb.writeln('  - ${file['path']} (${file['sha256']})');
+              }
             }
             return CommandResult(output: sb.toString().trimRight());
 
@@ -2139,8 +2225,9 @@ class CommandService {
             for (final entry in installed.entries) {
               final name = entry.key;
               final data = entry.value as Map<String, dynamic>;
+              final source = data['source']?.toString() ?? 'local';
               sb.writeln(
-                '$name [${data['version']}] - Installed at: ${data['installedAt']}',
+                '$name [${data['version']}] ($source) - Installed at: ${data['installedAt']}',
               );
             }
             return CommandResult(output: sb.toString().trimRight());
@@ -2157,6 +2244,7 @@ class CommandService {
               'Helper Script:      ${doc['helperExists'] ? "EXISTS" : "MISSING"} (${doc['helperPath']})',
             );
             sb.writeln('Installed Packages: ${doc['installedCount']}');
+            sb.writeln('Remote Installed:   ${doc['remoteInstalledCount']}');
             sb.writeln('Broken Packages:    ${doc['brokenPackageCount']}');
             sb.writeln('Missing File Count: ${doc['missingFileCount']}');
             sb.writeln('Helper Function Count: ${doc['helperFunctionCount']}');
@@ -2167,6 +2255,13 @@ class CommandService {
             if (doc['metadataError'] != null) {
               sb.writeln('Metadata Error:     ${doc['metadataError']}');
             }
+            final repo = Map<String, dynamic>.from(doc['repoConfig'] as Map);
+            sb.writeln(
+              'Remote Repo Enabled: ${repo['remoteEnabled'] == true ? "YES" : "NO"}',
+            );
+            sb.writeln(
+              'Remote Index Cache: ${doc['remoteIndexCached'] == true ? "EXISTS" : "MISSING"}',
+            );
 
             final missing = doc['missingFiles'] as List<dynamic>;
             if (missing.isNotEmpty) {
@@ -2200,7 +2295,7 @@ class CommandService {
             return CommandResult(
               output:
                   'Unknown subcommand: $subcommand\n'
-                  'Usage: pkg <help|update|list|search|info|install|reinstall|upgrade|repair|clean|files|verify|remove|installed|doctor>',
+                  'Usage: pkg <help|update|repo|sources|cache|list|search|info|install|reinstall|upgrade|repair|clean|files|verify|remove|installed|doctor>',
               isError: true,
             );
         }

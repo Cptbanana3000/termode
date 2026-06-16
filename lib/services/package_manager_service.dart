@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'runtime_bootstrap_service.dart';
+
+typedef PackageHttpBytesFetcher = Future<List<int>> Function(Uri uri);
 
 class PackageOperationResult {
   final String output;
@@ -31,6 +34,82 @@ class _MetadataReadResult {
   });
 }
 
+class _RepoConfig {
+  final String repoUrl;
+  final String? lastUpdatedAt;
+  final String lastUpdateSource;
+  final bool remoteEnabled;
+  final bool fallbackToLocal;
+
+  const _RepoConfig({
+    required this.repoUrl,
+    required this.lastUpdatedAt,
+    required this.lastUpdateSource,
+    required this.remoteEnabled,
+    required this.fallbackToLocal,
+  });
+
+  factory _RepoConfig.defaults() {
+    return const _RepoConfig(
+      repoUrl: '',
+      lastUpdatedAt: null,
+      lastUpdateSource: 'local',
+      remoteEnabled: false,
+      fallbackToLocal: true,
+    );
+  }
+
+  factory _RepoConfig.fromJson(Map<String, dynamic> json) {
+    return _RepoConfig(
+      repoUrl: json['repoUrl']?.toString() ?? '',
+      lastUpdatedAt: json['lastUpdatedAt']?.toString(),
+      lastUpdateSource: json['lastUpdateSource']?.toString() == 'remote'
+          ? 'remote'
+          : 'local',
+      remoteEnabled: json['remoteEnabled'] == true,
+      fallbackToLocal: json['fallbackToLocal'] != false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'repoUrl': repoUrl,
+      'lastUpdatedAt': lastUpdatedAt,
+      'lastUpdateSource': lastUpdateSource,
+      'remoteEnabled': remoteEnabled,
+      'fallbackToLocal': fallbackToLocal,
+    };
+  }
+
+  _RepoConfig copyWith({
+    String? repoUrl,
+    String? lastUpdatedAt,
+    String? lastUpdateSource,
+    bool? remoteEnabled,
+    bool? fallbackToLocal,
+  }) {
+    return _RepoConfig(
+      repoUrl: repoUrl ?? this.repoUrl,
+      lastUpdatedAt: lastUpdatedAt ?? this.lastUpdatedAt,
+      lastUpdateSource: lastUpdateSource ?? this.lastUpdateSource,
+      remoteEnabled: remoteEnabled ?? this.remoteEnabled,
+      fallbackToLocal: fallbackToLocal ?? this.fallbackToLocal,
+    );
+  }
+}
+
+class _PackageIndex {
+  final Map<String, Map<String, dynamic>> packages;
+  final String source;
+  final String? repoUrl;
+
+  const _PackageIndex({
+    required this.packages,
+    required this.source,
+    this.repoUrl,
+  });
+}
+
 class PackageManagerService {
   static final PackageManagerService _instance =
       PackageManagerService._internal();
@@ -41,6 +120,7 @@ class PackageManagerService {
   static const String managedBy = 'TermodePackageManager';
   static const String helperReloadCommand =
       '[ -f "\$TERMODE_USR/termode-shell-helpers.sh" ] && . "\$TERMODE_USR/termode-shell-helpers.sh"';
+  static PackageHttpBytesFetcher? httpBytesFetcherForTesting;
 
   static const Map<String, Map<String, dynamic>> localIndex = {
     'hello': {
@@ -110,6 +190,161 @@ class PackageManagerService {
     return hash.toRadixString(16).padLeft(8, '0');
   }
 
+  String _calculateSha256(List<int> input) {
+    final bytes = List<int>.from(input);
+    final bitLength = bytes.length * 8;
+    bytes.add(0x80);
+    while ((bytes.length % 64) != 56) {
+      bytes.add(0);
+    }
+    for (var shift = 56; shift >= 0; shift -= 8) {
+      bytes.add((bitLength >> shift) & 0xff);
+    }
+
+    final k = <int>[
+      0x428a2f98,
+      0x71374491,
+      0xb5c0fbcf,
+      0xe9b5dba5,
+      0x3956c25b,
+      0x59f111f1,
+      0x923f82a4,
+      0xab1c5ed5,
+      0xd807aa98,
+      0x12835b01,
+      0x243185be,
+      0x550c7dc3,
+      0x72be5d74,
+      0x80deb1fe,
+      0x9bdc06a7,
+      0xc19bf174,
+      0xe49b69c1,
+      0xefbe4786,
+      0x0fc19dc6,
+      0x240ca1cc,
+      0x2de92c6f,
+      0x4a7484aa,
+      0x5cb0a9dc,
+      0x76f988da,
+      0x983e5152,
+      0xa831c66d,
+      0xb00327c8,
+      0xbf597fc7,
+      0xc6e00bf3,
+      0xd5a79147,
+      0x06ca6351,
+      0x14292967,
+      0x27b70a85,
+      0x2e1b2138,
+      0x4d2c6dfc,
+      0x53380d13,
+      0x650a7354,
+      0x766a0abb,
+      0x81c2c92e,
+      0x92722c85,
+      0xa2bfe8a1,
+      0xa81a664b,
+      0xc24b8b70,
+      0xc76c51a3,
+      0xd192e819,
+      0xd6990624,
+      0xf40e3585,
+      0x106aa070,
+      0x19a4c116,
+      0x1e376c08,
+      0x2748774c,
+      0x34b0bcb5,
+      0x391c0cb3,
+      0x4ed8aa4a,
+      0x5b9cca4f,
+      0x682e6ff3,
+      0x748f82ee,
+      0x78a5636f,
+      0x84c87814,
+      0x8cc70208,
+      0x90befffa,
+      0xa4506ceb,
+      0xbef9a3f7,
+      0xc67178f2,
+    ];
+    var h0 = 0x6a09e667;
+    var h1 = 0xbb67ae85;
+    var h2 = 0x3c6ef372;
+    var h3 = 0xa54ff53a;
+    var h4 = 0x510e527f;
+    var h5 = 0x9b05688c;
+    var h6 = 0x1f83d9ab;
+    var h7 = 0x5be0cd19;
+
+    int rotr(int value, int shift) {
+      return ((value >> shift) | (value << (32 - shift))) & 0xffffffff;
+    }
+
+    for (var offset = 0; offset < bytes.length; offset += 64) {
+      final w = List<int>.filled(64, 0);
+      for (var i = 0; i < 16; i++) {
+        final j = offset + i * 4;
+        w[i] =
+            ((bytes[j] << 24) |
+                (bytes[j + 1] << 16) |
+                (bytes[j + 2] << 8) |
+                bytes[j + 3]) &
+            0xffffffff;
+      }
+      for (var i = 16; i < 64; i++) {
+        final s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >> 3);
+        final s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >> 10);
+        w[i] = (w[i - 16] + s0 + w[i - 7] + s1) & 0xffffffff;
+      }
+
+      var a = h0;
+      var b = h1;
+      var c = h2;
+      var d = h3;
+      var e = h4;
+      var f = h5;
+      var g = h6;
+      var h = h7;
+
+      for (var i = 0; i < 64; i++) {
+        final s1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+        final ch = (e & f) ^ ((~e) & g);
+        final temp1 = (h + s1 + ch + k[i] + w[i]) & 0xffffffff;
+        final s0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+        final maj = (a & b) ^ (a & c) ^ (b & c);
+        final temp2 = (s0 + maj) & 0xffffffff;
+        h = g;
+        g = f;
+        f = e;
+        e = (d + temp1) & 0xffffffff;
+        d = c;
+        c = b;
+        b = a;
+        a = (temp1 + temp2) & 0xffffffff;
+      }
+
+      h0 = (h0 + a) & 0xffffffff;
+      h1 = (h1 + b) & 0xffffffff;
+      h2 = (h2 + c) & 0xffffffff;
+      h3 = (h3 + d) & 0xffffffff;
+      h4 = (h4 + e) & 0xffffffff;
+      h5 = (h5 + f) & 0xffffffff;
+      h6 = (h6 + g) & 0xffffffff;
+      h7 = (h7 + h) & 0xffffffff;
+    }
+
+    return [
+      h0,
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      h7,
+    ].map((part) => part.toRadixString(16).padLeft(8, '0')).join();
+  }
+
   Map<String, dynamic> _emptyMetadata() {
     return {'schemaVersion': schemaVersion, 'packages': <String, dynamic>{}};
   }
@@ -121,6 +356,82 @@ class PackageManagerService {
   }
 
   File _metadataFile(String usrDir) => File('$usrDir/termode-packages.json');
+  File _repoConfigFile(String usrDir) => File('$usrDir/termode-repo.json');
+  File _remoteIndexFile(String usrDir) =>
+      File('$usrDir/termode-remote-index.json');
+
+  Future<_RepoConfig> _readRepoConfig() async {
+    final paths = await _paths();
+    final file = _repoConfigFile(paths['usr']!);
+    if (!await file.exists()) {
+      return _RepoConfig.defaults();
+    }
+    try {
+      final data =
+          jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+      return _RepoConfig.fromJson(data);
+    } catch (_) {
+      return _RepoConfig.defaults();
+    }
+  }
+
+  Future<void> _writeRepoConfig(_RepoConfig config) async {
+    final paths = await _paths();
+    await _repoConfigFile(
+      paths['usr']!,
+    ).writeAsString(jsonEncode(config.toJson()));
+  }
+
+  bool _isHttpUrl(String value) {
+    final uri = Uri.tryParse(value);
+    return uri != null &&
+        uri.hasScheme &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
+  }
+
+  String? _validateRepoUrl(String value) {
+    if (value.trim().isEmpty) {
+      return 'repo URL missing';
+    }
+    final uri = Uri.tryParse(value);
+    if (uri == null || !uri.hasScheme) {
+      return 'invalid URL';
+    }
+    if (uri.scheme != 'http' && uri.scheme != 'https') {
+      return 'unsupported URL scheme: ${uri.scheme}';
+    }
+    if (uri.host.isEmpty) {
+      return 'invalid URL';
+    }
+    return null;
+  }
+
+  Future<List<int>> _fetchBytes(Uri uri) async {
+    if (httpBytesFetcherForTesting != null) {
+      return httpBytesFetcherForTesting!(uri);
+    }
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 10);
+    try {
+      final request = await client
+          .getUrl(uri)
+          .timeout(const Duration(seconds: 10));
+      final response = await request.close().timeout(
+        const Duration(seconds: 15),
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+      final bytes = <int>[];
+      await for (final chunk in response.timeout(const Duration(seconds: 15))) {
+        bytes.addAll(chunk);
+      }
+      return bytes;
+    } finally {
+      client.close(force: true);
+    }
+  }
 
   String _normalizePath(String path) {
     final parts = path.replaceAll('\\', '/').split('/');
@@ -173,6 +484,114 @@ class PackageManagerService {
       return target;
     }
     return null;
+  }
+
+  Future<Map<String, dynamic>?> _readCachedRemoteIndexData() async {
+    final paths = await _paths();
+    final file = _remoteIndexFile(paths['usr']!);
+    if (!await file.exists()) {
+      return null;
+    }
+    try {
+      return jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Map<String, Map<String, dynamic>> _packagesFromRemoteIndex(
+    Map<String, dynamic> data,
+    String repoUrl,
+  ) {
+    final packages = <String, Map<String, dynamic>>{};
+    final list = data['packages'] as List<dynamic>? ?? [];
+    for (final item in list) {
+      if (item is Map) {
+        final pkg = Map<String, dynamic>.from(item);
+        final name = pkg['name']?.toString();
+        if (name != null && name.isNotEmpty) {
+          pkg['source'] = 'remote';
+          pkg['repoUrl'] = repoUrl;
+          packages[name] = pkg;
+        }
+      }
+    }
+    return packages;
+  }
+
+  Future<_PackageIndex> _activePackageIndex() async {
+    final config = await _readRepoConfig();
+    if (config.lastUpdateSource == 'remote' && config.repoUrl.isNotEmpty) {
+      final cached = await _readCachedRemoteIndexData();
+      if (cached != null) {
+        return _PackageIndex(
+          packages: _packagesFromRemoteIndex(cached, config.repoUrl),
+          source: 'remote',
+          repoUrl: config.repoUrl,
+        );
+      }
+    }
+    return _PackageIndex(packages: localIndex, source: 'local');
+  }
+
+  Future<Map<String, dynamic>> _validateRemoteIndex(
+    String content,
+    String repoUrl,
+  ) async {
+    final decoded = jsonDecode(content);
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('invalid index JSON');
+    }
+    if (decoded['schemaVersion'] != 1) {
+      throw const FormatException('unsupported schema');
+    }
+    final packages = decoded['packages'];
+    if (packages is! List) {
+      throw const FormatException('invalid index JSON');
+    }
+
+    for (final item in packages) {
+      if (item is! Map) {
+        throw const FormatException('invalid package entry');
+      }
+      final pkg = Map<String, dynamic>.from(item);
+      final name = pkg['name']?.toString() ?? '';
+      final executable = pkg['executable']?.toString() ?? '';
+      if (!_isSafePackageName(name) || !_isSafePackageName(executable)) {
+        throw const FormatException('invalid package name');
+      }
+      if (pkg['type']?.toString() != 'script') {
+        throw const FormatException('only script packages are supported');
+      }
+      final files = pkg['files'];
+      if (files is! List || files.isEmpty) {
+        throw const FormatException('invalid package files');
+      }
+      for (final f in files) {
+        if (f is! Map) {
+          throw const FormatException('invalid package file');
+        }
+        final file = Map<String, dynamic>.from(f);
+        final path = file['path']?.toString() ?? '';
+        final url = file['url']?.toString() ?? '';
+        final sha256 = file['sha256']?.toString() ?? '';
+        if (!_isSafeManagedRelPath(path)) {
+          throw const FormatException('unsafe package path');
+        }
+        if (sha256.isEmpty) {
+          throw const FormatException('Remote package missing checksum.');
+        }
+        if (!RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(sha256)) {
+          throw const FormatException('invalid checksum');
+        }
+        final resolved = Uri.parse(repoUrl).resolve(url);
+        if (!_isHttpUrl(resolved.toString())) {
+          throw const FormatException('unsupported URL scheme');
+        }
+      }
+    }
+
+    return decoded;
   }
 
   Future<_MetadataReadResult> _readMetadata({bool missingOk = true}) async {
@@ -328,6 +747,132 @@ class PackageManagerService {
     );
   }
 
+  Uri _resolvePackageFileUri(String repoUrl, String fileUrl) {
+    return Uri.parse(repoUrl).resolve(fileUrl);
+  }
+
+  Future<PackageOperationResult> _installRemotePackageIntoMetadata(
+    String pkgName,
+    Map<String, dynamic> data,
+    Map<String, dynamic> pkg, {
+    String? installedAt,
+    required String successVerb,
+  }) async {
+    if (!_isSafePackageName(pkgName)) {
+      return const PackageOperationResult(
+        output: 'Error: invalid package name',
+        isError: true,
+      );
+    }
+    final repoUrl = pkg['repoUrl']?.toString() ?? '';
+    if (!_isHttpUrl(repoUrl)) {
+      return const PackageOperationResult(
+        output: 'Error: invalid remote repository URL',
+        isError: true,
+      );
+    }
+    final files = pkg['files'] as List<dynamic>? ?? [];
+    final paths = await _paths();
+    final packages = data['packages'] as Map;
+    final writtenFiles = <File>[];
+    final installedFiles = <String>[];
+    final checksums = <String, String>{};
+    final fileUrls = <String, String>{};
+
+    Future<PackageOperationResult> failInstall(String output) async {
+      for (final file in writtenFiles) {
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+      return PackageOperationResult(output: output, isError: true);
+    }
+
+    try {
+      for (final item in files) {
+        final fileMeta = Map<String, dynamic>.from(item as Map);
+        final relPath = fileMeta['path']?.toString() ?? '';
+        final sha256 = fileMeta['sha256']?.toString() ?? '';
+        final url = fileMeta['url']?.toString() ?? '';
+        if (!_isSafeManagedRelPath(relPath)) {
+          return failInstall('Error: unsafe package path');
+        }
+        if (sha256.isEmpty) {
+          return failInstall('Remote package missing checksum.');
+        }
+        final file = _resolveManagedFile(paths['files']!, relPath);
+        if (file == null) {
+          return failInstall('Error: unsafe package path');
+        }
+        if (await file.exists()) {
+          final alreadyManaged = packages.values.any((value) {
+            final info = Map<dynamic, dynamic>.from(value as Map);
+            final managedFiles = info['files'] as List? ?? [];
+            return managedFiles.map((f) => f.toString()).contains(relPath);
+          });
+          if (!alreadyManaged) {
+            return failInstall(
+              'Error: refusing to overwrite unmanaged file: $relPath',
+            );
+          }
+        }
+
+        final fileUri = _resolvePackageFileUri(repoUrl, url);
+        if (!_isHttpUrl(fileUri.toString())) {
+          return failInstall('Error: unsupported URL scheme');
+        }
+        final bytes = await _fetchBytes(fileUri);
+        final actualSha = _calculateSha256(bytes);
+        if (actualSha.toLowerCase() != sha256.toLowerCase()) {
+          return failInstall('Error: checksum mismatch');
+        }
+
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes(bytes);
+        writtenFiles.add(file);
+        if (!Platform.isWindows) {
+          try {
+            await Process.run('chmod', ['+x', file.path]);
+          } catch (e) {
+            debugPrint('Chmod failed: $e');
+          }
+        }
+        installedFiles.add(relPath);
+        checksums[relPath] = sha256.toLowerCase();
+        fileUrls[relPath] = fileUri.toString();
+      }
+
+      final now = DateTime.now().toIso8601String();
+      packages[pkgName] = {
+        'name': pkg['name'] ?? pkgName,
+        'version': pkg['version'],
+        'type': pkg['type'],
+        'description': pkg['description'],
+        'executable': pkg['executable'],
+        'installedAt': installedAt ?? now,
+        'updatedAt': now,
+        'source': 'remote',
+        'repoUrl': repoUrl,
+        'files': installedFiles,
+        'checksums': checksums,
+        'sha256': checksums,
+        'fileUrls': fileUrls,
+        'packageUrl': repoUrl,
+        'managedBy': managedBy,
+      };
+
+      await _writeMetadata(data);
+      await updateShellHelpers();
+      return PackageOperationResult(
+        output: '$successVerb package $pkgName',
+        changedHelpers: true,
+        executable: pkg['executable'] as String? ?? pkgName,
+      );
+    } catch (e) {
+      return failInstall('Error: package file download failed: $e');
+    }
+  }
+
   Future<void> _deleteManagedFiles(
     String filesDir,
     Map<dynamic, dynamic> pkgInfo,
@@ -375,11 +920,183 @@ class PackageManagerService {
   }
 
   Future<Map<String, dynamic>> updateIndex() async {
+    final config = await _readRepoConfig();
+    if (config.remoteEnabled) {
+      if (config.repoUrl.isEmpty) {
+        return {
+          'success': false,
+          'message': 'Error: repo URL missing',
+          'count': 0,
+        };
+      }
+      try {
+        final uri = Uri.parse(config.repoUrl);
+        final bytes = await _fetchBytes(uri);
+        final content = utf8.decode(bytes);
+        final index = await _validateRemoteIndex(content, config.repoUrl);
+        final paths = await _paths();
+        await _remoteIndexFile(paths['usr']!).writeAsString(jsonEncode(index));
+        await _writeRepoConfig(
+          config.copyWith(
+            lastUpdatedAt: DateTime.now().toIso8601String(),
+            lastUpdateSource: 'remote',
+          ),
+        );
+        final packages = index['packages'] as List<dynamic>;
+        return {
+          'success': true,
+          'message': 'Fetched remote Termode package index.',
+          'count': packages.length,
+          'source': 'remote',
+        };
+      } catch (e) {
+        if (config.fallbackToLocal) {
+          await _writeRepoConfig(
+            config.copyWith(
+              lastUpdatedAt: DateTime.now().toIso8601String(),
+              lastUpdateSource: 'local',
+            ),
+          );
+          return {
+            'success': true,
+            'message':
+                'Remote update failed. Falling back to local package index.',
+            'count': localIndex.length,
+            'source': 'local',
+            'warning': e.toString(),
+          };
+        }
+        return {
+          'success': false,
+          'message': 'Error: remote update failed: $e',
+          'count': 0,
+        };
+      }
+    }
+
+    await _writeRepoConfig(
+      config.copyWith(
+        lastUpdatedAt: DateTime.now().toIso8601String(),
+        lastUpdateSource: 'local',
+      ),
+    );
     return {
       'success': true,
       'message': 'Loaded local Termode package index.',
       'count': localIndex.length,
+      'source': 'local',
     };
+  }
+
+  Future<PackageOperationResult> repoStatus() async {
+    final config = await _readRepoConfig();
+    final active = await _activePackageIndex();
+    final cachedRemote = await _readCachedRemoteIndexData();
+    final remoteCount = (cachedRemote?['packages'] as List<dynamic>?)?.length;
+    final sb = StringBuffer();
+    sb.writeln('=== Termode Package Repository Config ===');
+    sb.writeln('Remote Enabled:     ${config.remoteEnabled ? "YES" : "NO"}');
+    sb.writeln(
+      'Repo URL:           ${config.repoUrl.isEmpty ? "(none)" : config.repoUrl}',
+    );
+    sb.writeln('Fallback To Local:  ${config.fallbackToLocal ? "YES" : "NO"}');
+    sb.writeln('Last Updated:       ${config.lastUpdatedAt ?? "Never"}');
+    sb.writeln('Active Index Source: ${active.source}');
+    sb.writeln('Package Count:      ${active.packages.length}');
+    sb.write('Cached Remote Count: ${remoteCount ?? 0}');
+    return PackageOperationResult(output: sb.toString());
+  }
+
+  Future<PackageOperationResult> repoSet(String url) async {
+    final trimmed = url.trim();
+    final error = _validateRepoUrl(trimmed);
+    if (error != null) {
+      return PackageOperationResult(
+        output:
+            'Error: $error. Only http/https repository URLs are supported; https is recommended.',
+        isError: true,
+      );
+    }
+    final config = await _readRepoConfig();
+    await _writeRepoConfig(config.copyWith(repoUrl: trimmed));
+    return const PackageOperationResult(
+      output: 'Repository URL saved. Run pkg update.',
+    );
+  }
+
+  Future<PackageOperationResult> repoClear() async {
+    final config = await _readRepoConfig();
+    await _writeRepoConfig(
+      config.copyWith(
+        repoUrl: '',
+        remoteEnabled: false,
+        lastUpdateSource: 'local',
+      ),
+    );
+    return const PackageOperationResult(
+      output: 'Repository URL cleared. Remote disabled. Using local index.',
+    );
+  }
+
+  Future<PackageOperationResult> repoEnable() async {
+    final config = await _readRepoConfig();
+    if (config.repoUrl.isEmpty) {
+      return const PackageOperationResult(
+        output: 'Error: repo URL missing. Run pkg repo set <url> first.',
+        isError: true,
+      );
+    }
+    await _writeRepoConfig(config.copyWith(remoteEnabled: true));
+    return const PackageOperationResult(
+      output: 'Remote package repository enabled. Run pkg update.',
+    );
+  }
+
+  Future<PackageOperationResult> repoDisable() async {
+    final config = await _readRepoConfig();
+    await _writeRepoConfig(config.copyWith(remoteEnabled: false));
+    return const PackageOperationResult(
+      output:
+          'Remote package repository disabled. pkg update will use local index.',
+    );
+  }
+
+  Future<PackageOperationResult> sources() async {
+    final config = await _readRepoConfig();
+    final active = await _activePackageIndex();
+    final cached = await _readCachedRemoteIndexData();
+    final remoteCount = (cached?['packages'] as List<dynamic>?)?.length ?? 0;
+    final sb = StringBuffer();
+    sb.writeln('=== Termode Package Sources ===');
+    sb.writeln('Local Index Packages:  ${localIndex.length}');
+    sb.writeln('Remote Index Packages: $remoteCount');
+    sb.writeln('Active Source:         ${active.source}');
+    sb.writeln('Remote Enabled:        ${config.remoteEnabled ? "YES" : "NO"}');
+    sb.write('Fallback To Local:     ${config.fallbackToLocal ? "YES" : "NO"}');
+    return PackageOperationResult(output: sb.toString());
+  }
+
+  Future<PackageOperationResult> cleanCache() async {
+    final paths = await _paths();
+    final file = _remoteIndexFile(paths['usr']!);
+    var cleaned = false;
+    if (await file.exists()) {
+      await file.delete();
+      cleaned = true;
+    }
+    return PackageOperationResult(
+      output: cleaned
+          ? 'Cleaned cached remote package index.'
+          : 'No cached remote package index to clean.',
+    );
+  }
+
+  Future<Map<String, Map<String, dynamic>>> availablePackages() async {
+    return (await _activePackageIndex()).packages;
+  }
+
+  Future<String> activeIndexSource() async {
+    return (await _activePackageIndex()).source;
   }
 
   Future<PackageOperationResult> installPackage(String pkgName) async {
@@ -398,10 +1115,26 @@ class PackageManagerService {
           isError: true,
         );
       }
-      return _installPackageIntoMetadata(
-        pkgName,
-        meta.data,
-        successVerb: 'Success: Installed',
+      final active = await _activePackageIndex();
+      final remotePkg = active.packages[pkgName];
+      if (remotePkg != null && remotePkg['source'] == 'remote') {
+        return _installRemotePackageIntoMetadata(
+          pkgName,
+          meta.data,
+          remotePkg,
+          successVerb: 'Success: Installed',
+        );
+      }
+      if (localIndex.containsKey(pkgName)) {
+        return _installPackageIntoMetadata(
+          pkgName,
+          meta.data,
+          successVerb: 'Success: Installed',
+        );
+      }
+      return PackageOperationResult(
+        output: 'Error: package not found: $pkgName',
+        isError: true,
       );
     } catch (e) {
       return PackageOperationResult(
@@ -468,6 +1201,17 @@ class PackageManagerService {
         final pkgInfo = Map<dynamic, dynamic>.from(existing as Map);
         await _deleteManagedFiles(paths['files']!, pkgInfo);
         packages.remove(pkgName);
+        final active = await _activePackageIndex();
+        final remotePkg = active.packages[pkgName];
+        if (remotePkg != null && remotePkg['source'] == 'remote') {
+          return _installRemotePackageIntoMetadata(
+            pkgName,
+            meta.data,
+            remotePkg,
+            installedAt: pkgInfo['installedAt'] as String?,
+            successVerb: 'Reinstalled',
+          );
+        }
         return _installPackageIntoMetadata(
           pkgName,
           meta.data,
@@ -475,11 +1219,7 @@ class PackageManagerService {
           successVerb: 'Reinstalled',
         );
       }
-      return _installPackageIntoMetadata(
-        pkgName,
-        meta.data,
-        successVerb: 'Success: Installed',
-      );
+      return installPackage(pkgName);
     } catch (e) {
       return PackageOperationResult(
         output: 'Error: reinstall failed: $e',
@@ -506,6 +1246,10 @@ class PackageManagerService {
       for (final entry in packages.entries.toList()) {
         final pkgName = entry.key.toString();
         final installed = Map<dynamic, dynamic>.from(entry.value as Map);
+        if (installed['source'] == 'remote') {
+          skipped.add(pkgName);
+          continue;
+        }
         final local = localIndex[pkgName];
         if (local == null) {
           skipped.add(pkgName);
@@ -570,6 +1314,10 @@ class PackageManagerService {
 
       for (final entry in packages.entries.toList()) {
         final pkgName = entry.key.toString();
+        final installed = Map<dynamic, dynamic>.from(entry.value as Map);
+        if (installed['source'] == 'remote') {
+          continue;
+        }
         final local = localIndex[pkgName];
         if (local == null) {
           packages.remove(pkgName);
@@ -577,7 +1325,6 @@ class PackageManagerService {
           continue;
         }
 
-        final installed = Map<dynamic, dynamic>.from(entry.value as Map);
         final filesMap = local['files'] as Map;
         final installedFiles = <String>[];
         final checksums = <String, String>{};
@@ -719,8 +1466,15 @@ class PackageManagerService {
     final checksums = Map<dynamic, dynamic>.from(
       pkgInfo['checksums'] as Map? ?? {},
     );
+    final fileUrls = Map<dynamic, dynamic>.from(
+      pkgInfo['fileUrls'] as Map? ?? {},
+    );
     final sb = StringBuffer();
     sb.writeln('=== Package Files: $pkgName ===');
+    sb.writeln('Source: ${pkgInfo['source'] ?? "local"}');
+    if (pkgInfo['repoUrl'] != null) {
+      sb.writeln('Repo URL: ${pkgInfo['repoUrl']}');
+    }
     for (final fileObj in files) {
       final relPath = fileObj.toString();
       final file = _resolveManagedFile(paths['files']!, relPath);
@@ -728,6 +1482,9 @@ class PackageManagerService {
       final executable = exists ? _isExecutableMode(await file.stat()) : false;
       sb.writeln(relPath);
       sb.writeln('  checksum: ${checksums[relPath] ?? "missing"}');
+      if (fileUrls[relPath] != null) {
+        sb.writeln('  file URL: ${fileUrls[relPath]}');
+      }
       sb.writeln('  exists: ${exists ? "YES" : "NO"}');
       sb.writeln('  managed: ${file != null ? "YES" : "NO"}');
       sb.writeln('  chmod executable: ${executable ? "YES" : "NO"}');
@@ -760,6 +1517,7 @@ class PackageManagerService {
     final checksums = Map<dynamic, dynamic>.from(
       pkgInfo['checksums'] as Map? ?? {},
     );
+    final source = pkgInfo['source']?.toString() ?? 'local';
     final executable = pkgInfo['executable'] as String? ?? pkgName;
     final issues = <String>[];
 
@@ -775,7 +1533,9 @@ class PackageManagerService {
         continue;
       }
       final expected = checksums[relPath]?.toString();
-      final actual = _calculateFnv1a(await file.readAsString());
+      final actual = source == 'remote'
+          ? _calculateSha256(await file.readAsBytes())
+          : _calculateFnv1a(await file.readAsString());
       if (expected == null || expected != actual) {
         issues.add('$relPath checksum mismatch');
       }
@@ -787,6 +1547,10 @@ class PackageManagerService {
 
     final sb = StringBuffer();
     sb.writeln('=== Package Verify: $pkgName ===');
+    sb.writeln('Source: $source');
+    if (pkgInfo['repoUrl'] != null) {
+      sb.writeln('Repo URL: ${pkgInfo['repoUrl']}');
+    }
     if (issues.isEmpty) {
       sb.write('Result: PASS');
       return PackageOperationResult(output: sb.toString());
@@ -813,6 +1577,7 @@ class PackageManagerService {
 
     int installedCount = 0;
     int brokenPackageCount = 0;
+    int remoteInstalledCount = 0;
     final List<String> missingFiles = [];
     bool hasHelpers = await helpersFile.exists();
     bool hasMeta = await pkgsMetaFile.exists();
@@ -829,6 +1594,10 @@ class PackageManagerService {
       for (final pkgEntry in packages.entries) {
         bool packageBroken = false;
         final pkg = Map<dynamic, dynamic>.from(pkgEntry.value as Map);
+        final source = pkg['source']?.toString() ?? 'local';
+        if (source == 'remote') {
+          remoteInstalledCount++;
+        }
         final files = pkg['files'] as List? ?? [];
         for (final f in files) {
           final relPath = f.toString();
@@ -838,7 +1607,8 @@ class PackageManagerService {
             packageBroken = true;
           }
         }
-        if (!localIndex.containsKey(pkgEntry.key.toString())) {
+        if (source != 'remote' &&
+            !localIndex.containsKey(pkgEntry.key.toString())) {
           packageBroken = true;
         }
         if (packageBroken) {
@@ -869,6 +1639,7 @@ class PackageManagerService {
       'binPath': binDir,
       'helperPath': helpersFile.path,
       'installedCount': installedCount,
+      'remoteInstalledCount': remoteInstalledCount,
       'brokenPackageCount': brokenPackageCount,
       'missingFileCount': missingFiles.length,
       'helperExists': hasHelpers,
@@ -880,6 +1651,8 @@ class PackageManagerService {
       'helperReloadCommand': helperReloadCommand,
       'mayNeedReload': hasHelpers,
       'repairRecommended': repairRecommended,
+      'repoConfig': (await _readRepoConfig()).toJson(),
+      'remoteIndexCached': await _readCachedRemoteIndexData() != null,
     };
   }
 
