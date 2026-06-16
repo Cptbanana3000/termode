@@ -19,6 +19,12 @@ class TerminalSessionService extends ChangeNotifier {
   int _activeSessionIndex = 0;
   int _sessionCounter = 0;
   PersistenceService _persistenceService = PersistenceService();
+  final Map<String, List<String>> _pendingSilentPtyInputs = {};
+  final Map<String, StringBuffer> _pendingSilentPtyEchoBuffers = {};
+  final Map<String, int> _pendingSilentPtyEchoChunks = {};
+
+  static const String _helperReloadFailureMessage =
+      'Helper reload failed. Run: reload-helpers';
 
   List<TerminalSession> get sessions => List.unmodifiable(_sessions);
   int get activeSessionIndex => _activeSessionIndex;
@@ -236,7 +242,10 @@ class TerminalSessionService extends ChangeNotifier {
         if (!result.isError &&
             result.shouldReloadShellHelpers &&
             activeSession.isPtyInteractionActive) {
-          final reloaded = await reloadShellHelpersForSession(activeSession.id);
+          final reloaded = await reloadShellHelpersForSession(
+            activeSession.id,
+            silent: true,
+          );
           if (reloaded) {
             final message = result.helperReloadSuccessMessage;
             if (message != null && message.isNotEmpty) {
@@ -270,6 +279,7 @@ class TerminalSessionService extends ChangeNotifier {
       // Not a host command, forward directly to PTY
       final channel = const MethodChannel('com.termode/native_shell');
       try {
+        _clearSilentPtyInputs(activeSession.id);
         await channel.invokeMethod('realPtySend', {
           'sessionId': activeSession.id,
           'text': command,
@@ -467,6 +477,9 @@ class TerminalSessionService extends ChangeNotifier {
     _sessions.clear();
     _createNewSession();
     _activeSessionIndex = 0;
+    _pendingSilentPtyInputs.clear();
+    _pendingSilentPtyEchoBuffers.clear();
+    _pendingSilentPtyEchoChunks.clear();
     notifyListeners();
   }
 
@@ -581,18 +594,30 @@ class TerminalSessionService extends ChangeNotifier {
       session.isShellActive = true;
     }
 
+    String sanitized = sanitizePtyOutput(text);
+
+    if (isRealPty) {
+      final filtered = _filterSilentPtyOutput(sessionId, sanitized);
+      if (filtered == null) {
+        notifyListeners();
+        return;
+      }
+      if (filtered == _helperReloadFailureMessage) {
+        _appendHelperReloadFailure(session);
+        notifyListeners();
+        return;
+      }
+      sanitized = filtered;
+    }
+
     if (SettingsService().enableAnsiRenderer) {
       try {
-        final sanitized = sanitizePtyOutput(text);
         final parser = AnsiParser(session.ansiBuffer);
         parser.write(sanitized);
       } catch (e, stackTrace) {
         debugPrint('ANSI parsing error in _processPtyOutput: $e\n$stackTrace');
       }
     }
-
-    // 1. Sanitize control characters based on settings
-    String sanitized = sanitizePtyOutput(text);
 
     // 2. Normalize CRLF and standalone CR to LF
     sanitized = sanitized.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
@@ -697,6 +722,7 @@ class TerminalSessionService extends ChangeNotifier {
   Future<void> sendRawRealPtyInput(String text) async {
     final channel = const MethodChannel('com.termode/native_shell');
     try {
+      _clearSilentPtyInputs(activeSession.id);
       await channel.invokeMethod('realPtySendRaw', {
         'sessionId': activeSession.id,
         'text': text,
@@ -715,7 +741,10 @@ class TerminalSessionService extends ChangeNotifier {
   static const shellHelperReloadCommand =
       '[ -f "\$TERMODE_USR/termode-shell-helpers.sh" ] && . "\$TERMODE_USR/termode-shell-helpers.sh"\n';
 
-  Future<bool> reloadShellHelpersForSession(String sessionId) async {
+  Future<bool> reloadShellHelpersForSession(
+    String sessionId, {
+    bool silent = false,
+  }) async {
     final sessionIndex = _sessions.indexWhere((s) => s.id == sessionId);
     if (sessionIndex == -1) {
       return false;
@@ -727,15 +756,142 @@ class TerminalSessionService extends ChangeNotifier {
 
     final channel = const MethodChannel('com.termode/native_shell');
     try {
+      if (silent) {
+        _queueSilentPtyInput(sessionId, shellHelperReloadCommand);
+      }
       final bool? success = await channel.invokeMethod('realPtySendRaw', {
         'sessionId': sessionId,
         'text': shellHelperReloadCommand,
       });
-      return success ?? true;
+      final reloaded = success ?? true;
+      if (!reloaded) {
+        _clearSilentPtyInputs(sessionId);
+      }
+      return reloaded;
     } catch (e) {
+      _clearSilentPtyInputs(sessionId);
       debugPrint('Error reloading shell helpers: $e');
       return false;
     }
+  }
+
+  void _queueSilentPtyInput(String sessionId, String command) {
+    final normalized = command.trim();
+    final pending = _pendingSilentPtyInputs.putIfAbsent(
+      sessionId,
+      () => <String>[],
+    );
+    if (!pending.contains(normalized)) {
+      pending.add(normalized);
+    }
+    _pendingSilentPtyEchoBuffers[sessionId] = StringBuffer();
+    _pendingSilentPtyEchoChunks[sessionId] = 0;
+  }
+
+  void _clearSilentPtyInputs(String sessionId) {
+    _pendingSilentPtyInputs.remove(sessionId);
+    _pendingSilentPtyEchoBuffers.remove(sessionId);
+    _pendingSilentPtyEchoChunks.remove(sessionId);
+  }
+
+  String _normalizeForSilentEchoCompare(String text) {
+    return text
+        .replaceAll(RegExp(r'\x1B\[[0-9;?]*[ -/]*[@-~]'), '')
+        .replaceAll(RegExp(r'[\s<>]+'), '');
+  }
+
+  bool _isPromptOnlyLine(String line) {
+    final trimmed = line
+        .replaceAll(RegExp(r'\x1B\[[0-9;?]*[ -/]*[@-~]'), '')
+        .trim();
+    if (trimmed.isEmpty) {
+      return true;
+    }
+    return RegExp(r'^[^\n]*[$#]\s*$').hasMatch(trimmed);
+  }
+
+  bool _isSilentEchoFragment(String line, String command) {
+    final lineNorm = _normalizeForSilentEchoCompare(line);
+    if (lineNorm.length < 6) {
+      return false;
+    }
+    final commandNorm = _normalizeForSilentEchoCompare(command);
+    return lineNorm.contains(commandNorm) || commandNorm.contains(lineNorm);
+  }
+
+  String? _filterSilentPtyOutput(String sessionId, String text) {
+    final pending = _pendingSilentPtyInputs[sessionId];
+    if (pending == null || pending.isEmpty) {
+      return text;
+    }
+
+    final command = pending.first;
+    final normalizedText = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    final lines = normalizedText.split('\n');
+    final kept = <String>[];
+    var sawEcho = false;
+    var sawPromptOnly = false;
+
+    for (final line in lines) {
+      if (_isSilentEchoFragment(line, command)) {
+        sawEcho = true;
+        continue;
+      }
+      if (_isPromptOnlyLine(line)) {
+        sawPromptOnly = true;
+        continue;
+      }
+      kept.add(line);
+    }
+
+    if (kept.isNotEmpty) {
+      _clearSilentPtyInputs(sessionId);
+      return _helperReloadFailureMessage;
+    }
+
+    if (sawEcho) {
+      final buffer = _pendingSilentPtyEchoBuffers.putIfAbsent(
+        sessionId,
+        () => StringBuffer(),
+      );
+      buffer.write(_normalizeForSilentEchoCompare(normalizedText));
+      final chunks = (_pendingSilentPtyEchoChunks[sessionId] ?? 0) + 1;
+      _pendingSilentPtyEchoChunks[sessionId] = chunks;
+
+      final commandNorm = _normalizeForSilentEchoCompare(command);
+      if (buffer.toString().contains(commandNorm) || chunks >= 3) {
+        pending.removeAt(0);
+        if (pending.isEmpty) {
+          _clearSilentPtyInputs(sessionId);
+        }
+      }
+      return null;
+    }
+
+    if (sawPromptOnly) {
+      pending.removeAt(0);
+      if (pending.isEmpty) {
+        _clearSilentPtyInputs(sessionId);
+      }
+      return null;
+    }
+
+    return text;
+  }
+
+  void _appendHelperReloadFailure(TerminalSession session) {
+    if (SettingsService().enableAnsiRenderer) {
+      try {
+        final parser = AnsiParser(session.ansiBuffer);
+        parser.write('\u001B[31m$_helperReloadFailureMessage\u001B[0m\n');
+      } catch (e) {
+        debugPrint('ANSI parsing error: $e');
+      }
+    }
+    session.lines.add(
+      TerminalLine(text: _helperReloadFailureMessage, type: LineType.error),
+    );
+    session.isLastLinePty = false;
   }
 
   Future<void> sendRealPtyCtrlC() async {

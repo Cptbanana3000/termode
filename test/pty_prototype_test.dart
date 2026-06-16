@@ -2190,6 +2190,138 @@ void main() {
       );
 
       test(
+        'internal helper reload command echo is hidden after package install',
+        () async {
+          final sessionService = TerminalSessionService();
+          sessionService.clearMemoryStateForTesting();
+          final List<MethodCall> methodCalls = [];
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                (MethodCall methodCall) async {
+                  methodCalls.add(methodCall);
+                  if (methodCall.method == 'realPtyStart' ||
+                      methodCall.method == 'realPtySend' ||
+                      methodCall.method == 'realPtySendRaw') {
+                    return true;
+                  }
+                  return null;
+                },
+              );
+
+          sessionService.addSession();
+          await Future.delayed(Duration.zero);
+          methodCalls.clear();
+
+          await sessionService.executeCommand('pkg install hello');
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            TerminalSessionService.shellHelperReloadCommand,
+          );
+
+          final output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, contains('Success: Installed package hello'));
+          expect(output, contains('Tip: Command is available now. Try: hello'));
+          expect(output, isNot(contains('TERMODE_USR')));
+          expect(output, isNot(contains('termode-shell-helpers.sh')));
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                null,
+              );
+        },
+      );
+
+      test(
+        'normal user command output is not hidden after silent reload',
+        () async {
+          final sessionService = TerminalSessionService();
+          sessionService.clearMemoryStateForTesting();
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                (MethodCall methodCall) async {
+                  if (methodCall.method == 'realPtyStart' ||
+                      methodCall.method == 'realPtySend' ||
+                      methodCall.method == 'realPtySendRaw') {
+                    return true;
+                  }
+                  return null;
+                },
+              );
+
+          sessionService.addSession();
+          await Future.delayed(Duration.zero);
+          await sessionService.executeCommand('pkg install hello');
+
+          await sessionService.executeCommand('echo visible');
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            'echo visible\nvisible\n',
+          );
+
+          final output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, contains('echo visible'));
+          expect(output, contains('visible'));
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                null,
+              );
+        },
+      );
+
+      test(
+        'silent helper reload errors are shown as clean fallback warning',
+        () async {
+          final sessionService = TerminalSessionService();
+          sessionService.clearMemoryStateForTesting();
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                (MethodCall methodCall) async {
+                  if (methodCall.method == 'realPtyStart' ||
+                      methodCall.method == 'realPtySend' ||
+                      methodCall.method == 'realPtySendRaw') {
+                    return true;
+                  }
+                  return null;
+                },
+              );
+
+          sessionService.addSession();
+          await Future.delayed(Duration.zero);
+          await sessionService.executeCommand('pkg install hello');
+
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            'sh: .: cannot open helper file\n',
+          );
+
+          final output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, contains('Helper reload failed. Run: reload-helpers'));
+          expect(output, isNot(contains('cannot open helper file')));
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                null,
+              );
+        },
+      );
+
+      test(
         'pkg remove triggers helper reload when REAL PTY mode is active',
         () async {
           final sessionService = TerminalSessionService();
@@ -2276,7 +2408,16 @@ void main() {
         final output = sessionService.activeSession.lines
             .map((l) => l.text)
             .join('\n');
+        expect(output, contains('reload-helpers'));
         expect(output, contains('Reloaded Termode shell helpers.'));
+        sessionService.appendRealPtyOutput(
+          sessionService.activeSession.id,
+          TerminalSessionService.shellHelperReloadCommand,
+        );
+        final outputAfterEcho = sessionService.activeSession.lines
+            .map((l) => l.text)
+            .join('\n');
+        expect(outputAfterEcho, contains('TERMODE_USR'));
 
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(
@@ -2395,6 +2536,14 @@ void main() {
               .map((l) => l.text)
               .join('\n');
           expect(output, contains('Reinstalled package hello'));
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            'USR/termode-shell-helpers.sh" ] && . "\$TERMODE_USR/termode-shell-helpers.sh" <\n',
+          );
+          output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, isNot(contains('USR/termode-shell-helpers.sh')));
 
           methodCalls.clear();
           await sessionService.executeCommand('pkg upgrade');
@@ -2426,6 +2575,14 @@ void main() {
               .map((l) => l.text)
               .join('\n');
           expect(output, contains('=== Package Repair ==='));
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            TerminalSessionService.shellHelperReloadCommand,
+          );
+          output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, isNot(contains('termode-shell-helpers.sh')));
 
           final backup = File('${paths['usr']!}/termode-shell-helpers.sh.bak');
           await backup.writeAsString('backup');
