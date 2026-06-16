@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +11,17 @@ import 'persistence_service.dart';
 import 'settings_service.dart';
 import 'ansi_parser.dart';
 
+class _HelperReloadState {
+  final StringBuffer buffer = StringBuffer();
+  final Completer<bool>? completer;
+  final bool appendFailureOnFailure;
+  Timer? timeout;
+  bool sawInternalOutput = false;
+  bool completed = false;
+
+  _HelperReloadState({this.completer, required this.appendFailureOnFailure});
+}
+
 class TerminalSessionService extends ChangeNotifier {
   static final TerminalSessionService _instance =
       TerminalSessionService._internal();
@@ -19,12 +31,15 @@ class TerminalSessionService extends ChangeNotifier {
   int _activeSessionIndex = 0;
   int _sessionCounter = 0;
   PersistenceService _persistenceService = PersistenceService();
-  final Map<String, List<String>> _pendingSilentPtyInputs = {};
-  final Map<String, StringBuffer> _pendingSilentPtyEchoBuffers = {};
-  final Map<String, int> _pendingSilentPtyEchoChunks = {};
+  final Map<String, _HelperReloadState> _pendingHelperReloads = {};
 
   static const String _helperReloadFailureMessage =
       'Helper reload failed. Run: reload-helpers';
+  static const String helperReloadBeginMarker =
+      '__TERMODE_HELPER_RELOAD_BEGIN__';
+  static const String helperReloadStatusMarker =
+      '__TERMODE_HELPER_RELOAD_STATUS__';
+  static const String helperReloadEndMarker = '__TERMODE_HELPER_RELOAD_END__';
 
   List<TerminalSession> get sessions => List.unmodifiable(_sessions);
   int get activeSessionIndex => _activeSessionIndex;
@@ -279,7 +294,7 @@ class TerminalSessionService extends ChangeNotifier {
       // Not a host command, forward directly to PTY
       final channel = const MethodChannel('com.termode/native_shell');
       try {
-        _clearSilentPtyInputs(activeSession.id);
+        _clearHelperReloadState(activeSession.id);
         await channel.invokeMethod('realPtySend', {
           'sessionId': activeSession.id,
           'text': command,
@@ -477,9 +492,10 @@ class TerminalSessionService extends ChangeNotifier {
     _sessions.clear();
     _createNewSession();
     _activeSessionIndex = 0;
-    _pendingSilentPtyInputs.clear();
-    _pendingSilentPtyEchoBuffers.clear();
-    _pendingSilentPtyEchoChunks.clear();
+    for (final state in _pendingHelperReloads.values) {
+      state.timeout?.cancel();
+    }
+    _pendingHelperReloads.clear();
     notifyListeners();
   }
 
@@ -597,7 +613,7 @@ class TerminalSessionService extends ChangeNotifier {
     String sanitized = sanitizePtyOutput(text);
 
     if (isRealPty) {
-      final filtered = _filterSilentPtyOutput(sessionId, sanitized);
+      final filtered = _filterHelperReloadOutput(sessionId, sanitized);
       if (filtered == null) {
         notifyListeners();
         return;
@@ -722,7 +738,7 @@ class TerminalSessionService extends ChangeNotifier {
   Future<void> sendRawRealPtyInput(String text) async {
     final channel = const MethodChannel('com.termode/native_shell');
     try {
-      _clearSilentPtyInputs(activeSession.id);
+      _clearHelperReloadState(activeSession.id);
       await channel.invokeMethod('realPtySendRaw', {
         'sessionId': activeSession.id,
         'text': text,
@@ -739,11 +755,20 @@ class TerminalSessionService extends ChangeNotifier {
   }
 
   static const shellHelperReloadCommand =
-      '[ -f "\$TERMODE_USR/termode-shell-helpers.sh" ] && . "\$TERMODE_USR/termode-shell-helpers.sh"\n';
+      'printf "$helperReloadBeginMarker\\n"\n'
+      'if [ -f "\$TERMODE_USR/termode-shell-helpers.sh" ]; then\n'
+      '. "\$TERMODE_USR/termode-shell-helpers.sh"\n'
+      'printf "$helperReloadStatusMarker:0\\n"\n'
+      'else\n'
+      'printf "$helperReloadStatusMarker:1\\n"\n'
+      'fi\n'
+      'printf "$helperReloadEndMarker\\n"\n';
 
   Future<bool> reloadShellHelpersForSession(
     String sessionId, {
     bool silent = false,
+    bool waitForCompletion = false,
+    Duration completionTimeout = const Duration(seconds: 2),
   }) async {
     final sessionIndex = _sessions.indexWhere((s) => s.id == sessionId);
     if (sessionIndex == -1) {
@@ -755,9 +780,14 @@ class TerminalSessionService extends ChangeNotifier {
     }
 
     final channel = const MethodChannel('com.termode/native_shell');
+    final completer = waitForCompletion ? Completer<bool>() : null;
     try {
-      if (silent) {
-        _queueSilentPtyInput(sessionId, shellHelperReloadCommand);
+      if (silent || waitForCompletion) {
+        _startHelperReloadTracking(
+          sessionId,
+          completer: completer,
+          appendFailureOnFailure: !waitForCompletion,
+        );
       }
       final bool? success = await channel.invokeMethod('realPtySendRaw', {
         'sessionId': sessionId,
@@ -765,39 +795,48 @@ class TerminalSessionService extends ChangeNotifier {
       });
       final reloaded = success ?? true;
       if (!reloaded) {
-        _clearSilentPtyInputs(sessionId);
+        _completeHelperReload(sessionId, false, appendFailure: false);
+        return false;
+      }
+      if (waitForCompletion && completer != null) {
+        return completer.future.timeout(
+          completionTimeout,
+          onTimeout: () {
+            _completeHelperReload(sessionId, false);
+            return false;
+          },
+        );
       }
       return reloaded;
     } catch (e) {
-      _clearSilentPtyInputs(sessionId);
+      _completeHelperReload(sessionId, false, appendFailure: false);
       debugPrint('Error reloading shell helpers: $e');
       return false;
     }
   }
 
-  void _queueSilentPtyInput(String sessionId, String command) {
-    final normalized = command.trim();
-    final pending = _pendingSilentPtyInputs.putIfAbsent(
-      sessionId,
-      () => <String>[],
+  void _startHelperReloadTracking(
+    String sessionId, {
+    Completer<bool>? completer,
+    required bool appendFailureOnFailure,
+  }) {
+    _clearHelperReloadState(sessionId);
+    _pendingHelperReloads[sessionId] = _HelperReloadState(
+      completer: completer,
+      appendFailureOnFailure: appendFailureOnFailure,
     );
-    if (!pending.contains(normalized)) {
-      pending.add(normalized);
-    }
-    _pendingSilentPtyEchoBuffers[sessionId] = StringBuffer();
-    _pendingSilentPtyEchoChunks[sessionId] = 0;
   }
 
-  void _clearSilentPtyInputs(String sessionId) {
-    _pendingSilentPtyInputs.remove(sessionId);
-    _pendingSilentPtyEchoBuffers.remove(sessionId);
-    _pendingSilentPtyEchoChunks.remove(sessionId);
+  void _clearHelperReloadState(String sessionId) {
+    final state = _pendingHelperReloads.remove(sessionId);
+    state?.timeout?.cancel();
   }
 
-  String _normalizeForSilentEchoCompare(String text) {
+  String _normalizeForHelperReloadCompare(String text) {
     return text
         .replaceAll(RegExp(r'\x1B\[[0-9;?]*[ -/]*[@-~]'), '')
-        .replaceAll(RegExp(r'[\s<>]+'), '');
+        .replaceAll(RegExp("[\\s<>\"']+"), '')
+        .toLowerCase();
   }
 
   bool _isPromptOnlyLine(String line) {
@@ -810,73 +849,107 @@ class TerminalSessionService extends ChangeNotifier {
     return RegExp(r'^[^\n]*[$#]\s*$').hasMatch(trimmed);
   }
 
-  bool _isSilentEchoFragment(String line, String command) {
-    final lineNorm = _normalizeForSilentEchoCompare(line);
-    if (lineNorm.length < 6) {
-      return false;
-    }
-    final commandNorm = _normalizeForSilentEchoCompare(command);
-    return lineNorm.contains(commandNorm) || commandNorm.contains(lineNorm);
+  bool _isClearHelperReloadShellError(String text) {
+    final lowered = text.toLowerCase();
+    return lowered.contains('cannot open') ||
+        lowered.contains('can\'t open') ||
+        lowered.contains('permission denied') ||
+        lowered.contains('syntax error') ||
+        lowered.contains('not found');
   }
 
-  String? _filterSilentPtyOutput(String sessionId, String text) {
-    final pending = _pendingSilentPtyInputs[sessionId];
-    if (pending == null || pending.isEmpty) {
+  bool _looksLikeHelperReloadOutput(String text) {
+    final compact = _normalizeForHelperReloadCompare(text);
+    if (compact.isEmpty) {
+      return true;
+    }
+    if (compact.length >= 6) {
+      final commandCompact = _normalizeForHelperReloadCompare(
+        shellHelperReloadCommand,
+      );
+      if (commandCompact.contains(compact)) {
+        return true;
+      }
+    }
+    return compact.contains('termode_helper_reload') ||
+        compact.contains('termodeusr') ||
+        compact.contains('termode_usr') ||
+        compact.contains('termodeshellhelpers.sh') ||
+        compact.contains('termode-shell-helpers.sh') ||
+        compact.contains('helperreload') ||
+        compact.contains('printf__termode');
+  }
+
+  void _startHelperReloadTimeout(String sessionId, _HelperReloadState state) {
+    state.timeout?.cancel();
+    state.timeout = Timer(const Duration(seconds: 2), () {
+      _completeHelperReload(sessionId, false);
+    });
+  }
+
+  void _completeHelperReload(
+    String sessionId,
+    bool success, {
+    bool appendFailure = true,
+  }) {
+    final state = _pendingHelperReloads.remove(sessionId);
+    if (state == null || state.completed) {
+      return;
+    }
+    state.completed = true;
+    state.timeout?.cancel();
+    if (state.completer != null && !state.completer!.isCompleted) {
+      state.completer!.complete(success);
+    }
+    if (!success && appendFailure && state.appendFailureOnFailure) {
+      final sessionIndex = _sessions.indexWhere((s) => s.id == sessionId);
+      if (sessionIndex != -1) {
+        _appendHelperReloadFailure(_sessions[sessionIndex]);
+        notifyListeners();
+      }
+    }
+  }
+
+  String? _filterHelperReloadOutput(String sessionId, String text) {
+    final state = _pendingHelperReloads[sessionId];
+    if (state == null) {
       return text;
     }
 
-    final command = pending.first;
     final normalizedText = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
     final lines = normalizedText.split('\n');
-    final kept = <String>[];
-    var sawEcho = false;
-    var sawPromptOnly = false;
-
-    for (final line in lines) {
-      if (_isSilentEchoFragment(line, command)) {
-        sawEcho = true;
-        continue;
-      }
-      if (_isPromptOnlyLine(line)) {
-        sawPromptOnly = true;
-        continue;
-      }
-      kept.add(line);
-    }
-
-    if (kept.isNotEmpty) {
-      _clearSilentPtyInputs(sessionId);
-      return _helperReloadFailureMessage;
-    }
-
-    if (sawEcho) {
-      final buffer = _pendingSilentPtyEchoBuffers.putIfAbsent(
-        sessionId,
-        () => StringBuffer(),
-      );
-      buffer.write(_normalizeForSilentEchoCompare(normalizedText));
-      final chunks = (_pendingSilentPtyEchoChunks[sessionId] ?? 0) + 1;
-      _pendingSilentPtyEchoChunks[sessionId] = chunks;
-
-      final commandNorm = _normalizeForSilentEchoCompare(command);
-      if (buffer.toString().contains(commandNorm) || chunks >= 3) {
-        pending.removeAt(0);
-        if (pending.isEmpty) {
-          _clearSilentPtyInputs(sessionId);
-        }
-      }
+    if (lines.every(_isPromptOnlyLine)) {
       return null;
     }
 
-    if (sawPromptOnly) {
-      pending.removeAt(0);
-      if (pending.isEmpty) {
-        _clearSilentPtyInputs(sessionId);
-      }
+    if (_isClearHelperReloadShellError(normalizedText)) {
+      _completeHelperReload(sessionId, false);
       return null;
     }
 
-    return text;
+    if (!_looksLikeHelperReloadOutput(normalizedText)) {
+      if (!state.sawInternalOutput) {
+        _clearHelperReloadState(sessionId);
+        return text;
+      }
+      _startHelperReloadTimeout(sessionId, state);
+      return null;
+    }
+
+    state.sawInternalOutput = true;
+    state.buffer.write(normalizedText);
+    _startHelperReloadTimeout(sessionId, state);
+
+    final buffered = state.buffer.toString();
+    final statusMatch = RegExp(
+      '${RegExp.escape(helperReloadStatusMarker)}\\s*:?\\s*(\\d+)',
+    ).firstMatch(buffered);
+    if (buffered.contains(helperReloadEndMarker)) {
+      final statusCode = int.tryParse(statusMatch?.group(1) ?? '1') ?? 1;
+      _completeHelperReload(sessionId, statusCode == 0);
+    }
+
+    return null;
   }
 
   void _appendHelperReloadFailure(TerminalSession session) {

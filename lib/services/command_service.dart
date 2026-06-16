@@ -2258,13 +2258,14 @@ class CommandService {
 
         final reloaded = await sessionService.reloadShellHelpersForSession(
           sessionId,
+          silent: true,
+          waitForCompletion: true,
         );
         if (reloaded) {
           return CommandResult(output: 'Reloaded Termode shell helpers.');
         }
         return CommandResult(
-          output:
-              'Helper reload failed. Run reload-helpers after restarting the shell.',
+          output: 'Helper reload failed. Run: reload-helpers',
           isError: true,
         );
 

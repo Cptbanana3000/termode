@@ -2170,6 +2170,18 @@ void main() {
             rawCall.arguments['text'],
             TerminalSessionService.shellHelperReloadCommand,
           );
+          expect(
+            rawCall.arguments['text'],
+            contains(TerminalSessionService.helperReloadBeginMarker),
+          );
+          expect(
+            rawCall.arguments['text'],
+            contains(TerminalSessionService.helperReloadStatusMarker),
+          );
+          expect(
+            rawCall.arguments['text'],
+            contains(TerminalSessionService.helperReloadEndMarker),
+          );
           final promptRefresh = methodCalls.lastWhere(
             (call) => call.method == 'realPtySend',
           );
@@ -2219,6 +2231,12 @@ void main() {
             sessionService.activeSession.id,
             TerminalSessionService.shellHelperReloadCommand,
           );
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            '${TerminalSessionService.helperReloadBeginMarker}\n'
+            '${TerminalSessionService.helperReloadStatusMarker}:0\n'
+            '${TerminalSessionService.helperReloadEndMarker}\n',
+          );
 
           final output = sessionService.activeSession.lines
               .map((l) => l.text)
@@ -2227,6 +2245,7 @@ void main() {
           expect(output, contains('Tip: Command is available now. Try: hello'));
           expect(output, isNot(contains('TERMODE_USR')));
           expect(output, isNot(contains('termode-shell-helpers.sh')));
+          expect(output, isNot(contains('Helper reload failed')));
 
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
               .setMockMethodCallHandler(
@@ -2322,6 +2341,156 @@ void main() {
       );
 
       test(
+        'successful auto reload status does not print false failure',
+        () async {
+          final sessionService = TerminalSessionService();
+          sessionService.clearMemoryStateForTesting();
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                (MethodCall methodCall) async {
+                  if (methodCall.method == 'realPtyStart' ||
+                      methodCall.method == 'realPtySend' ||
+                      methodCall.method == 'realPtySendRaw') {
+                    return true;
+                  }
+                  return null;
+                },
+              );
+
+          sessionService.addSession();
+          await Future.delayed(Duration.zero);
+          await sessionService.executeCommand('pkg install hello');
+          await sessionService.executeCommand('pkg reinstall hello');
+
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            '${TerminalSessionService.helperReloadBeginMarker}\n'
+            '${TerminalSessionService.helperReloadStatusMarker}:0\n'
+            '${TerminalSessionService.helperReloadEndMarker}\n',
+          );
+
+          final output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, contains('Reinstalled package hello'));
+          expect(output, isNot(contains('Helper reload failed')));
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                null,
+              );
+        },
+      );
+
+      test('failed reload status prints clean failure message', () async {
+        final sessionService = TerminalSessionService();
+        sessionService.clearMemoryStateForTesting();
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('com.termode/native_shell'),
+              (MethodCall methodCall) async {
+                if (methodCall.method == 'realPtyStart' ||
+                    methodCall.method == 'realPtySend' ||
+                    methodCall.method == 'realPtySendRaw') {
+                  return true;
+                }
+                return null;
+              },
+            );
+
+        sessionService.addSession();
+        await Future.delayed(Duration.zero);
+        await sessionService.executeCommand('pkg install hello');
+
+        sessionService.appendRealPtyOutput(
+          sessionService.activeSession.id,
+          '${TerminalSessionService.helperReloadBeginMarker}\n'
+          '${TerminalSessionService.helperReloadStatusMarker}:1\n'
+          '${TerminalSessionService.helperReloadEndMarker}\n',
+        );
+
+        final output = sessionService.activeSession.lines
+            .map((l) => l.text)
+            .join('\n');
+        expect(output, contains('Helper reload failed. Run: reload-helpers'));
+        expect(
+          output,
+          isNot(contains(TerminalSessionService.helperReloadBeginMarker)),
+        );
+        expect(
+          output,
+          isNot(contains(TerminalSessionService.helperReloadStatusMarker)),
+        );
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('com.termode/native_shell'),
+              null,
+            );
+      });
+
+      test('split marker chunks are buffered and hidden', () async {
+        final sessionService = TerminalSessionService();
+        sessionService.clearMemoryStateForTesting();
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('com.termode/native_shell'),
+              (MethodCall methodCall) async {
+                if (methodCall.method == 'realPtyStart' ||
+                    methodCall.method == 'realPtySend' ||
+                    methodCall.method == 'realPtySendRaw') {
+                  return true;
+                }
+                return null;
+              },
+            );
+
+        sessionService.addSession();
+        await Future.delayed(Duration.zero);
+        await sessionService.executeCommand('pkg install hello');
+
+        final begin = TerminalSessionService.helperReloadBeginMarker;
+        final status = TerminalSessionService.helperReloadStatusMarker;
+        final end = TerminalSessionService.helperReloadEndMarker;
+        sessionService.appendRealPtyOutput(
+          sessionService.activeSession.id,
+          begin.substring(0, 12),
+        );
+        sessionService.appendRealPtyOutput(
+          sessionService.activeSession.id,
+          '${begin.substring(12)}\n${status.substring(0, 10)}',
+        );
+        sessionService.appendRealPtyOutput(
+          sessionService.activeSession.id,
+          '${status.substring(10)}:0\n${end.substring(0, 8)}',
+        );
+        sessionService.appendRealPtyOutput(
+          sessionService.activeSession.id,
+          '${end.substring(8)}\n',
+        );
+
+        final output = sessionService.activeSession.lines
+            .map((l) => l.text)
+            .join('\n');
+        expect(output, contains('Success: Installed package hello'));
+        expect(output, isNot(contains('Helper reload failed')));
+        expect(output, isNot(contains(begin)));
+        expect(output, isNot(contains(status)));
+        expect(output, isNot(contains(end)));
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('com.termode/native_shell'),
+              null,
+            );
+      });
+
+      test(
         'pkg remove triggers helper reload when REAL PTY mode is active',
         () async {
           final sessionService = TerminalSessionService();
@@ -2384,8 +2553,19 @@ void main() {
               (MethodCall methodCall) async {
                 methodCalls.add(methodCall);
                 if (methodCall.method == 'realPtyStart' ||
-                    methodCall.method == 'realPtySend' ||
-                    methodCall.method == 'realPtySendRaw') {
+                    methodCall.method == 'realPtySend') {
+                  return true;
+                }
+                if (methodCall.method == 'realPtySendRaw') {
+                  Future.microtask(() {
+                    sessionService.appendRealPtyOutput(
+                      sessionService.activeSession.id,
+                      '${methodCall.arguments['text']}'
+                      '${TerminalSessionService.helperReloadBeginMarker}\n'
+                      '${TerminalSessionService.helperReloadStatusMarker}:0\n'
+                      '${TerminalSessionService.helperReloadEndMarker}\n',
+                    );
+                  });
                   return true;
                 }
                 return null;
@@ -2405,19 +2585,21 @@ void main() {
           rawCall.arguments['text'],
           TerminalSessionService.shellHelperReloadCommand,
         );
+        expect(
+          rawCall.arguments['text'],
+          contains(TerminalSessionService.helperReloadBeginMarker),
+        );
         final output = sessionService.activeSession.lines
             .map((l) => l.text)
             .join('\n');
         expect(output, contains('reload-helpers'));
         expect(output, contains('Reloaded Termode shell helpers.'));
-        sessionService.appendRealPtyOutput(
-          sessionService.activeSession.id,
-          TerminalSessionService.shellHelperReloadCommand,
+        expect(output, isNot(contains('TERMODE_USR')));
+        expect(output, isNot(contains('termode-shell-helpers.sh')));
+        expect(
+          output,
+          isNot(contains(TerminalSessionService.helperReloadBeginMarker)),
         );
-        final outputAfterEcho = sessionService.activeSession.lines
-            .map((l) => l.text)
-            .join('\n');
-        expect(outputAfterEcho, contains('TERMODE_USR'));
 
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(
@@ -2623,6 +2805,104 @@ void main() {
               );
         },
       );
+
+      test(
+        'hello works after reinstall without false helper reload failure',
+        () async {
+          final sessionService = TerminalSessionService();
+          sessionService.clearMemoryStateForTesting();
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                (MethodCall methodCall) async {
+                  if (methodCall.method == 'realPtyStart' ||
+                      methodCall.method == 'realPtySend' ||
+                      methodCall.method == 'realPtySendRaw') {
+                    return true;
+                  }
+                  return null;
+                },
+              );
+
+          sessionService.addSession();
+          await Future.delayed(Duration.zero);
+          await sessionService.executeCommand('pkg install hello');
+          await sessionService.executeCommand('pkg reinstall hello');
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            '${TerminalSessionService.helperReloadBeginMarker}\n'
+            '${TerminalSessionService.helperReloadStatusMarker}:0\n'
+            '${TerminalSessionService.helperReloadEndMarker}\n',
+          );
+
+          await sessionService.executeCommand('hello');
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            'Hello from Termode package manager!\n',
+          );
+
+          final output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, contains('Reinstalled package hello'));
+          expect(output, contains('Hello from Termode package manager!'));
+          expect(output, isNot(contains('Helper reload failed')));
+
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.termode/native_shell'),
+                null,
+              );
+        },
+      );
+
+      test('cowsay-lite output is not hidden after helper reload', () async {
+        final sessionService = TerminalSessionService();
+        sessionService.clearMemoryStateForTesting();
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('com.termode/native_shell'),
+              (MethodCall methodCall) async {
+                if (methodCall.method == 'realPtyStart' ||
+                    methodCall.method == 'realPtySend' ||
+                    methodCall.method == 'realPtySendRaw') {
+                  return true;
+                }
+                return null;
+              },
+            );
+
+        sessionService.addSession();
+        await Future.delayed(Duration.zero);
+        await sessionService.executeCommand('pkg install cowsay-lite');
+        sessionService.appendRealPtyOutput(
+          sessionService.activeSession.id,
+          '${TerminalSessionService.helperReloadBeginMarker}\n'
+          '${TerminalSessionService.helperReloadStatusMarker}:0\n'
+          '${TerminalSessionService.helperReloadEndMarker}\n',
+        );
+
+        await sessionService.executeCommand('cowsay-lite "mooo"');
+        sessionService.appendRealPtyOutput(
+          sessionService.activeSession.id,
+          ' ____________________\n< mooo >\n --------------------\n',
+        );
+
+        final output = sessionService.activeSession.lines
+            .map((l) => l.text)
+            .join('\n');
+        expect(output, contains('Success: Installed package cowsay-lite'));
+        expect(output, contains('< mooo >'));
+        expect(output, isNot(contains('Helper reload failed')));
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('com.termode/native_shell'),
+              null,
+            );
+      });
 
       test(
         'Intercepted commands: mode, host-help, normal-mode, stop-shell',
