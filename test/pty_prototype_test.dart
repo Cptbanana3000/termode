@@ -2490,6 +2490,88 @@ void main() {
             );
       });
 
+      test('END marker is suppressed after successful reload status', () async {
+        final sessionService = TerminalSessionService();
+        sessionService.clearMemoryStateForTesting();
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('com.termode/native_shell'),
+              (MethodCall methodCall) async {
+                if (methodCall.method == 'realPtyStart' ||
+                    methodCall.method == 'realPtySend' ||
+                    methodCall.method == 'realPtySendRaw') {
+                  return true;
+                }
+                return null;
+              },
+            );
+
+        sessionService.addSession();
+        await Future.delayed(Duration.zero);
+        await sessionService.executeCommand('pkg install hello');
+
+        sessionService.appendRealPtyOutput(
+          sessionService.activeSession.id,
+          '${TerminalSessionService.helperReloadBeginMarker}\n'
+          '${TerminalSessionService.helperReloadStatusMarker}:0\n',
+        );
+        var output = sessionService.activeSession.lines
+            .map((l) => l.text)
+            .join('\n');
+        expect(output, contains('Success: Installed package hello'));
+        expect(
+          output,
+          isNot(contains(TerminalSessionService.helperReloadStatusMarker)),
+        );
+        expect(output, isNot(contains('Helper reload failed')));
+
+        sessionService.appendRealPtyOutput(
+          sessionService.activeSession.id,
+          '${TerminalSessionService.helperReloadEndMarker}\n',
+        );
+        output = sessionService.activeSession.lines
+            .map((l) => l.text)
+            .join('\n');
+        expect(
+          output,
+          isNot(contains(TerminalSessionService.helperReloadEndMarker)),
+        );
+        expect(output, isNot(contains('Helper reload failed')));
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('com.termode/native_shell'),
+              null,
+            );
+      });
+
+      test(
+        'orphan and split END marker chunks are globally suppressed',
+        () async {
+          final sessionService = TerminalSessionService();
+          sessionService.clearMemoryStateForTesting();
+          final sessionId = sessionService.activeSession.id;
+
+          sessionService.appendRealPtyOutput(
+            sessionId,
+            '${TerminalSessionService.helperReloadEndMarker}\n',
+          );
+          sessionService.appendRealPtyOutput(sessionId, '__TERMODE_HELPER');
+          sessionService.appendRealPtyOutput(sessionId, '_RELOAD_END__\n');
+          sessionService.appendRealPtyOutput(sessionId, 'normal output\n');
+
+          final output = sessionService.activeSession.lines
+              .map((l) => l.text)
+              .join('\n');
+          expect(output, contains('normal output'));
+          expect(
+            output,
+            isNot(contains(TerminalSessionService.helperReloadEndMarker)),
+          );
+        },
+      );
+
       test(
         'pkg remove triggers helper reload when REAL PTY mode is active',
         () async {
@@ -2599,6 +2681,14 @@ void main() {
         expect(
           output,
           isNot(contains(TerminalSessionService.helperReloadBeginMarker)),
+        );
+        expect(
+          output,
+          isNot(contains(TerminalSessionService.helperReloadStatusMarker)),
+        );
+        expect(
+          output,
+          isNot(contains(TerminalSessionService.helperReloadEndMarker)),
         );
 
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -2765,6 +2855,10 @@ void main() {
               .map((l) => l.text)
               .join('\n');
           expect(output, isNot(contains('termode-shell-helpers.sh')));
+          expect(
+            output,
+            isNot(contains(TerminalSessionService.helperReloadEndMarker)),
+          );
 
           final backup = File('${paths['usr']!}/termode-shell-helpers.sh.bak');
           await backup.writeAsString('backup');
@@ -2783,6 +2877,10 @@ void main() {
               .map((l) => l.text)
               .join('\n');
           expect(output, contains('=== Package Clean ==='));
+          expect(
+            output,
+            isNot(contains(TerminalSessionService.helperReloadEndMarker)),
+          );
 
           methodCalls.clear();
           await sessionService.executeCommand('pkg files hello');

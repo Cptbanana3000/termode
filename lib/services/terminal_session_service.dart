@@ -16,6 +16,7 @@ class _HelperReloadState {
   final Completer<bool>? completer;
   final bool appendFailureOnFailure;
   Timer? timeout;
+  int? statusCode;
   bool sawInternalOutput = false;
   bool completed = false;
 
@@ -32,6 +33,7 @@ class TerminalSessionService extends ChangeNotifier {
   int _sessionCounter = 0;
   PersistenceService _persistenceService = PersistenceService();
   final Map<String, _HelperReloadState> _pendingHelperReloads = {};
+  final Map<String, StringBuffer> _orphanHelperMarkerBuffers = {};
 
   static const String _helperReloadFailureMessage =
       'Helper reload failed. Run: reload-helpers';
@@ -496,6 +498,7 @@ class TerminalSessionService extends ChangeNotifier {
       state.timeout?.cancel();
     }
     _pendingHelperReloads.clear();
+    _orphanHelperMarkerBuffers.clear();
     notifyListeners();
   }
 
@@ -624,6 +627,16 @@ class TerminalSessionService extends ChangeNotifier {
         return;
       }
       sanitized = filtered;
+
+      final markerFiltered = _filterOrphanHelperReloadMarkers(
+        sessionId,
+        sanitized,
+      );
+      if (markerFiltered == null) {
+        notifyListeners();
+        return;
+      }
+      sanitized = markerFiltered;
     }
 
     if (SettingsService().enableAnsiRenderer) {
@@ -849,6 +862,67 @@ class TerminalSessionService extends ChangeNotifier {
     return RegExp(r'^[^\n]*[$#]\s*$').hasMatch(trimmed);
   }
 
+  List<String> get _helperReloadMarkers => const [
+    helperReloadBeginMarker,
+    helperReloadStatusMarker,
+    helperReloadEndMarker,
+  ];
+
+  String _stripCompleteHelperReloadMarkerLines(String text) {
+    final normalized = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    final hadTrailingNewline = normalized.endsWith('\n');
+    final parts = normalized.split('\n');
+    if (hadTrailingNewline && parts.isNotEmpty && parts.last.isEmpty) {
+      parts.removeLast();
+    }
+    final kept = parts.where((line) {
+      return !_helperReloadMarkers.any(line.contains);
+    }).toList();
+    if (kept.isEmpty) {
+      return '';
+    }
+    return '${kept.join('\n')}${hadTrailingNewline ? '\n' : ''}';
+  }
+
+  bool _isHelperReloadMarkerPrefix(String text) {
+    if (text.isEmpty) {
+      return false;
+    }
+    return _helperReloadMarkers.any((marker) {
+      final maxLen = text.length < marker.length ? text.length : marker.length;
+      for (var len = 6; len <= maxLen; len++) {
+        if (marker.startsWith(text.substring(text.length - len))) {
+          return true;
+        }
+      }
+      return false;
+    });
+  }
+
+  String? _filterOrphanHelperReloadMarkers(String sessionId, String text) {
+    final existing = _orphanHelperMarkerBuffers[sessionId];
+    final combined = existing == null ? text : '${existing.toString()}$text';
+    _orphanHelperMarkerBuffers.remove(sessionId);
+
+    if (_helperReloadMarkers.any(combined.contains)) {
+      final stripped = _stripCompleteHelperReloadMarkerLines(combined);
+      if (stripped.isEmpty || _isHelperReloadMarkerPrefix(stripped)) {
+        if (_isHelperReloadMarkerPrefix(stripped)) {
+          _orphanHelperMarkerBuffers[sessionId] = StringBuffer(stripped);
+        }
+        return null;
+      }
+      return stripped;
+    }
+
+    if (_isHelperReloadMarkerPrefix(combined)) {
+      _orphanHelperMarkerBuffers[sessionId] = StringBuffer(combined);
+      return null;
+    }
+
+    return combined;
+  }
+
   bool _isClearHelperReloadShellError(String text) {
     final lowered = text.toLowerCase();
     return lowered.contains('cannot open') ||
@@ -944,9 +1018,11 @@ class TerminalSessionService extends ChangeNotifier {
     final statusMatch = RegExp(
       '${RegExp.escape(helperReloadStatusMarker)}\\s*:?\\s*(\\d+)',
     ).firstMatch(buffered);
+    if (statusMatch != null) {
+      state.statusCode = int.tryParse(statusMatch.group(1) ?? '1') ?? 1;
+    }
     if (buffered.contains(helperReloadEndMarker)) {
-      final statusCode = int.tryParse(statusMatch?.group(1) ?? '1') ?? 1;
-      _completeHelperReload(sessionId, statusCode == 0);
+      _completeHelperReload(sessionId, state.statusCode == 0);
     }
 
     return null;
