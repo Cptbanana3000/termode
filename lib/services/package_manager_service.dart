@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'runtime_bootstrap_service.dart';
 
 class PackageManagerService {
-  static final PackageManagerService _instance = PackageManagerService._internal();
+  static final PackageManagerService _instance =
+      PackageManagerService._internal();
   factory PackageManagerService() => _instance;
   PackageManagerService._internal();
 
@@ -16,8 +17,9 @@ class PackageManagerService {
       'description': 'Prints a hello message from Termode package manager.',
       'executable': 'hello',
       'files': {
-        'usr/bin/hello': '#!/system/bin/sh\necho "Hello from Termode package manager!"\n',
-      }
+        'usr/bin/hello':
+            '#!/system/bin/sh\necho "Hello from Termode package manager!"\n',
+      },
     },
     'cowsay-lite': {
       'name': 'cowsay-lite',
@@ -26,7 +28,8 @@ class PackageManagerService {
       'description': 'Prints text in a simple ASCII speech bubble.',
       'executable': 'cowsay-lite',
       'files': {
-        'usr/bin/cowsay-lite': '#!/system/bin/sh\n'
+        'usr/bin/cowsay-lite':
+            '#!/system/bin/sh\n'
             'if [ \$# -eq 0 ]; then\n'
             '  msg="Moo"\n'
             'else\n'
@@ -40,16 +43,18 @@ class PackageManagerService {
             'echo \'            (__)\\       )\\/\\\'\n'
             'echo \'                ||----w |\'\n'
             'echo \'                ||     ||\'\n',
-      }
+      },
     },
     'sysinfo-lite': {
       'name': 'sysinfo-lite',
       'version': '1.0.0',
       'type': 'script',
-      'description': 'Prints basic Android/system information using shell commands.',
+      'description':
+          'Prints basic Android/system information using shell commands.',
       'executable': 'sysinfo-lite',
       'files': {
-        'usr/bin/sysinfo-lite': '#!/system/bin/sh\n'
+        'usr/bin/sysinfo-lite':
+            '#!/system/bin/sh\n'
             'echo "=== Termode System Information ==="\n'
             'echo "OS: \$(uname -o 2>/dev/null || echo Android)"\n'
             'echo "Kernel: \$(uname -r)"\n'
@@ -58,8 +63,8 @@ class PackageManagerService {
             'echo "Brand: \$(getprop ro.product.brand 2>/dev/null || echo Unknown)"\n'
             'echo "Android Version: \$(getprop ro.build.version.release 2>/dev/null || echo Unknown)"\n'
             'echo "CPU Architecture: \$(getprop ro.product.cpu.abi 2>/dev/null || echo Unknown)"\n',
-      }
-    }
+      },
+    },
   };
 
   String _calculateFnv1a(String content) {
@@ -118,7 +123,9 @@ class PackageManagerService {
         final fileContent = entry.value;
 
         // Safety check: block path traversals
-        if (relPath.contains('..') || relPath.startsWith('/') || relPath.contains('\\')) {
+        if (relPath.contains('..') ||
+            relPath.startsWith('/') ||
+            relPath.contains('\\')) {
           return 'Error: path traversal detected';
         }
 
@@ -196,9 +203,12 @@ class PackageManagerService {
       // Delete only registered files
       for (final fileObj in filesList) {
         final relPath = fileObj.toString();
-        
+
         // Safety check: block path traversals and restrict to Termode usr/bin
-        if (relPath.contains('..') || relPath.startsWith('/') || relPath.contains('\\') || !relPath.startsWith('usr/bin/')) {
+        if (relPath.contains('..') ||
+            relPath.startsWith('/') ||
+            relPath.contains('\\') ||
+            !relPath.startsWith('usr/bin/')) {
           continue;
         }
 
@@ -234,6 +244,7 @@ class PackageManagerService {
     bool hasHelpers = await helpersFile.exists();
     bool hasMeta = await pkgsMetaFile.exists();
     bool helpersGenerated = false;
+    int helperFunctionCount = 0;
 
     if (hasMeta) {
       try {
@@ -262,9 +273,11 @@ class PackageManagerService {
     if (hasHelpers) {
       try {
         final content = await helpersFile.readAsString();
-        if (content.contains('() {')) {
-          helpersGenerated = true;
-        }
+        helperFunctionCount = RegExp(r'\(\)\s*\{').allMatches(content).length;
+        helpersGenerated =
+            helperFunctionCount > 0 ||
+            content.contains('unalias ') ||
+            content.contains('unset -f ');
       } catch (_) {}
     }
 
@@ -277,6 +290,10 @@ class PackageManagerService {
       'metadataExists': hasMeta,
       'missingFiles': missingFiles,
       'helpersGenerated': helpersGenerated,
+      'helperFunctionCount': helperFunctionCount,
+      'helperReloadCommand':
+          '[ -f "\$TERMODE_USR/termode-shell-helpers.sh" ] && . "\$TERMODE_USR/termode-shell-helpers.sh"',
+      'mayNeedReload': hasHelpers,
     };
   }
 
@@ -284,12 +301,21 @@ class PackageManagerService {
     final paths = await RuntimeBootstrapService().getPaths();
     final usrDir = paths['usr']!;
 
-    bool hasTools = false;
-    bool hasPackages = false;
-
     final sb = StringBuffer();
     sb.writeln('# Termode runtime shell helpers and aliases');
     sb.writeln('# Generated automatically. Do not edit manually.');
+    sb.writeln();
+    sb.writeln(
+      '# Clear stale helpers before defining the currently installed set.',
+    );
+    sb.writeln('unalias hello-termode 2>/dev/null');
+    for (final pkg in localIndex.values) {
+      final execName = pkg['executable'] as String?;
+      if (execName != null && execName.isNotEmpty) {
+        sb.writeln('unset -f $execName 2>/dev/null');
+      }
+    }
+    sb.writeln('hash -r 2>/dev/null');
     sb.writeln();
 
     // 1. Check tools metadata for hello-termode
@@ -300,8 +326,9 @@ class PackageManagerService {
         final data = jsonDecode(content) as Map<String, dynamic>;
         final List<dynamic>? tools = data['installedTools'] as List<dynamic>?;
         if (tools != null && tools.contains('hello-termode')) {
-          sb.writeln('alias hello-termode=\'sh "\$TERMODE_BIN/hello-termode"\'');
-          hasTools = true;
+          sb.writeln(
+            'alias hello-termode=\'sh "\$TERMODE_BIN/hello-termode"\'',
+          );
         }
       } catch (_) {}
     }
@@ -314,7 +341,6 @@ class PackageManagerService {
         final data = jsonDecode(content) as Map<String, dynamic>;
         final packages = data['packages'] as Map?;
         if (packages != null && packages.isNotEmpty) {
-          hasPackages = true;
           for (final pkgEntry in packages.values) {
             final pkg = pkgEntry as Map;
             final execName = pkg['executable'] as String?;
@@ -330,12 +356,6 @@ class PackageManagerService {
     }
 
     final helpersFile = File('$usrDir/termode-shell-helpers.sh');
-    if (!hasTools && !hasPackages) {
-      if (await helpersFile.exists()) {
-        await helpersFile.delete();
-      }
-    } else {
-      await helpersFile.writeAsString(sb.toString());
-    }
+    await helpersFile.writeAsString(sb.toString());
   }
 }

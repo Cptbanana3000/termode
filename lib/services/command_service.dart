@@ -14,11 +14,17 @@ class CommandResult {
   final String output;
   final bool isError;
   final bool shouldClear;
+  final bool shouldReloadShellHelpers;
+  final String? helperReloadSuccessMessage;
+  final String? helperReloadFailureMessage;
 
   CommandResult({
     required this.output,
     this.isError = false,
     this.shouldClear = false,
+    this.shouldReloadShellHelpers = false,
+    this.helperReloadSuccessMessage,
+    this.helperReloadFailureMessage,
   });
 }
 
@@ -27,7 +33,7 @@ class CommandService {
   final String sessionId;
 
   CommandService(this.vfs, this.sessionId);
-  
+
   String _formatStorageError(PlatformException e) {
     switch (e.code) {
       case 'NOT_LINKED':
@@ -68,8 +74,9 @@ class CommandService {
     final combined = '$homePath/$inputPath';
     final normalized = _normalizePath(combined);
     final normalizedHome = _normalizePath(homePath);
-    
-    if (normalized == normalizedHome || normalized.startsWith('$normalizedHome/')) {
+
+    if (normalized == normalizedHome ||
+        normalized.startsWith('$normalizedHome/')) {
       return File(normalized);
     }
     return null; // Path traversal detected!
@@ -119,7 +126,8 @@ class CommandService {
     switch (command) {
       case 'help':
         return CommandResult(
-          output: 'Termode runs in a true native REAL PTY shell by default.\n'
+          output:
+              'Termode runs in a true native REAL PTY shell by default.\n'
               'Most commands are executed directly in the Unix environment.\n'
               'Management commands like "pkg" are intercepted and run in the host app.\n\n'
               'Useful Prompt Commands:\n'
@@ -165,36 +173,33 @@ class CommandService {
       case 'cd':
         final path = args.isNotEmpty ? args[0] : '';
         final error = vfs.cd(path);
-        return CommandResult(
-          output: error ?? '',
-          isError: error != null,
-        );
+        return CommandResult(output: error ?? '', isError: error != null);
 
       case 'mkdir':
         if (args.isEmpty) {
           return CommandResult(output: 'mkdir: missing operand', isError: true);
         }
         final error = vfs.mkdir(args[0]);
-        return CommandResult(
-          output: error ?? '',
-          isError: error != null,
-        );
+        return CommandResult(output: error ?? '', isError: error != null);
 
       case 'touch':
         if (args.isEmpty) {
-          return CommandResult(output: 'touch: missing file operand', isError: true);
+          return CommandResult(
+            output: 'touch: missing file operand',
+            isError: true,
+          );
         }
         final path = args[0];
         final content = args.length > 1 ? args[1] : '';
         final error = vfs.touch(path, content);
-        return CommandResult(
-          output: error ?? '',
-          isError: error != null,
-        );
+        return CommandResult(output: error ?? '', isError: error != null);
 
       case 'cat':
         if (args.isEmpty) {
-          return CommandResult(output: 'cat: missing file operand', isError: true);
+          return CommandResult(
+            output: 'cat: missing file operand',
+            isError: true,
+          );
         }
         final result = vfs.cat(args[0]);
         final isError = result.startsWith('cat:');
@@ -216,14 +221,14 @@ class CommandService {
           path = args[0];
         }
         final error = vfs.rm(path, recursive: recursive);
-        return CommandResult(
-          output: error ?? '',
-          isError: error != null,
-        );
+        return CommandResult(output: error ?? '', isError: error != null);
 
       case 'cp':
         if (args.isEmpty) {
-          return CommandResult(output: 'cp: missing file operand', isError: true);
+          return CommandResult(
+            output: 'cp: missing file operand',
+            isError: true,
+          );
         }
         bool recursive = false;
         String src = '';
@@ -237,7 +242,8 @@ class CommandService {
 
         if (args.length < argIdx + 2) {
           return CommandResult(
-            output: 'cp: missing destination file operand after \'${args[args.length - 1]}\'',
+            output:
+                'cp: missing destination file operand after \'${args[args.length - 1]}\'',
             isError: true,
           );
         }
@@ -245,10 +251,7 @@ class CommandService {
         dest = args[argIdx + 1];
 
         final error = vfs.cp(src, dest, recursive: recursive);
-        return CommandResult(
-          output: error ?? '',
-          isError: error != null,
-        );
+        return CommandResult(output: error ?? '', isError: error != null);
 
       case 'mv':
         if (args.length < 2) {
@@ -260,29 +263,28 @@ class CommandService {
           );
         }
         final error = vfs.mv(args[0], args[1]);
-        return CommandResult(
-          output: error ?? '',
-          isError: error != null,
-        );
+        return CommandResult(output: error ?? '', isError: error != null);
 
       case 'android-shell':
         if (args.isEmpty) {
           return CommandResult(
-            output: 'android-shell: missing command operand\nUsage: android-shell <command>',
+            output:
+                'android-shell: missing command operand\nUsage: android-shell <command>',
             isError: true,
           );
         }
         final cmdStr = args.join(' ');
         final nativeService = NativeCommandService();
         final nativeResult = await nativeService.execute(cmdStr, sessionId);
-        
+
         String exitMsg = '';
         if (nativeResult.exitCode == 127) {
           exitMsg = 'android-shell: command not found';
         } else if (nativeResult.exitCode == 126) {
           exitMsg = 'android-shell: permission denied';
         } else if (nativeResult.exitCode != 0) {
-          exitMsg = 'Process exited with non-zero code ${nativeResult.exitCode}';
+          exitMsg =
+              'Process exited with non-zero code ${nativeResult.exitCode}';
         }
 
         final outputBuilder = StringBuffer();
@@ -293,19 +295,21 @@ class CommandService {
           if (outputBuilder.isNotEmpty) outputBuilder.write('\n');
           outputBuilder.write(nativeResult.stderr);
         }
-        
+
         if (outputBuilder.isEmpty) {
           if (exitMsg.isNotEmpty) {
             outputBuilder.write(exitMsg);
           } else {
-            outputBuilder.write('Process exited with code ${nativeResult.exitCode}');
+            outputBuilder.write(
+              'Process exited with code ${nativeResult.exitCode}',
+            );
           }
         } else {
           if (exitMsg.isNotEmpty) {
             outputBuilder.write('\n[$exitMsg]');
           }
         }
-        
+
         return CommandResult(
           output: outputBuilder.toString(),
           isError: nativeResult.exitCode != 0,
@@ -316,7 +320,8 @@ class CommandService {
         final diag = await nativeService.getDiagnostics();
         if (diag == null) {
           return CommandResult(
-            output: 'android-shell-diagnostics: failed to retrieve native diagnostics.',
+            output:
+                'android-shell-diagnostics: failed to retrieve native diagnostics.',
             isError: true,
           );
         }
@@ -348,14 +353,14 @@ class CommandService {
           final exists = map['exists'] as bool? ?? false;
           final canRead = map['canRead'] as bool? ?? false;
           final canExecute = map['canExecute'] as bool? ?? false;
-          
+
           final status = exists
               ? '[OK] r:${canRead ? "y" : "n"} x:${canExecute ? "y" : "n"}'
               : '[NOT FOUND]';
           sb.writeln('  - $path: $status');
         }
         sb.writeln('Test run (sh -c "echo shell-ok"): $testOutput');
-        
+
         return CommandResult(output: sb.toString().trimRight());
 
       case 'android-shell-env':
@@ -382,13 +387,14 @@ class CommandService {
       case 'termode-runtime':
         if (args.isEmpty) {
           return CommandResult(
-            output: 'termode-runtime: missing subcommand operand\nUsage: termode-runtime [status|path|reset]',
+            output:
+                'termode-runtime: missing subcommand operand\nUsage: termode-runtime [status|path|reset]',
             isError: true,
           );
         }
         final subcmd = args[0].toLowerCase();
         final runtimeService = RuntimeBootstrapService();
-        
+
         if (subcmd == 'status') {
           final status = await runtimeService.checkStatus();
           final sb = StringBuffer();
@@ -412,19 +418,23 @@ class CommandService {
           return CommandResult(output: sb.toString());
         } else if (subcmd == 'reset') {
           await runtimeService.reset();
-          return CommandResult(output: 'Runtime environment reset successfully.');
+          return CommandResult(
+            output: 'Runtime environment reset successfully.',
+          );
         } else {
           return CommandResult(
-            output: 'termode-runtime: unknown subcommand: $subcmd\nUsage: termode-runtime [status|path|reset]',
+            output:
+                'termode-runtime: unknown subcommand: $subcmd\nUsage: termode-runtime [status|path|reset]',
             isError: true,
           );
         }
 
       case 'toybox':
         final nativeService = NativeCommandService();
-        final cmdStr = '/system/bin/toybox${args.isNotEmpty ? " ${args.join(' ')}" : ""}';
+        final cmdStr =
+            '/system/bin/toybox${args.isNotEmpty ? " ${args.join(' ')}" : ""}';
         final result = await nativeService.execute(cmdStr, sessionId);
-        
+
         final outputBuilder = StringBuffer();
         if (result.stdout.isNotEmpty) {
           outputBuilder.write(result.stdout);
@@ -434,7 +444,9 @@ class CommandService {
           outputBuilder.write(result.stderr);
         }
         if (outputBuilder.isEmpty && result.exitCode != 0) {
-          outputBuilder.write('Process exited with non-zero code ${result.exitCode}');
+          outputBuilder.write(
+            'Process exited with non-zero code ${result.exitCode}',
+          );
         }
         return CommandResult(
           output: outputBuilder.toString().trimRight(),
@@ -443,8 +455,11 @@ class CommandService {
 
       case 'toybox-list':
         final nativeService = NativeCommandService();
-        final result = await nativeService.execute('/system/bin/toybox', sessionId);
-        
+        final result = await nativeService.execute(
+          '/system/bin/toybox',
+          sessionId,
+        );
+
         final outputBuilder = StringBuffer();
         if (result.stdout.isNotEmpty) {
           outputBuilder.write(result.stdout);
@@ -464,7 +479,10 @@ class CommandService {
         final homePath = paths['home']!;
         final dir = Directory(homePath);
         if (!await dir.exists()) {
-          return CommandResult(output: 'runtime-ls: home directory not found', isError: true);
+          return CommandResult(
+            output: 'runtime-ls: home directory not found',
+            isError: true,
+          );
         }
         try {
           final List<String> fileNames = [];
@@ -477,7 +495,10 @@ class CommandService {
           }
           return CommandResult(output: fileNames.join('\n'));
         } catch (e) {
-          return CommandResult(output: 'runtime-ls: error listing directory: $e', isError: true);
+          return CommandResult(
+            output: 'runtime-ls: error listing directory: $e',
+            isError: true,
+          );
         }
 
       case 'runtime-pwd':
@@ -487,33 +508,54 @@ class CommandService {
 
       case 'runtime-cat':
         if (args.isEmpty) {
-          return CommandResult(output: 'runtime-cat: missing file operand', isError: true);
+          return CommandResult(
+            output: 'runtime-cat: missing file operand',
+            isError: true,
+          );
         }
         final runtimeService = RuntimeBootstrapService();
         final paths = await runtimeService.getPaths();
         final homePath = paths['home']!;
         final file = _resolveFileInHome(args[0], homePath);
         if (file == null) {
-          return CommandResult(output: 'runtime-cat: path traversal detected or invalid path', isError: true);
+          return CommandResult(
+            output: 'runtime-cat: path traversal detected or invalid path',
+            isError: true,
+          );
         }
         if (!await file.exists()) {
-          return CommandResult(output: 'runtime-cat: ${args[0]}: No such file or directory', isError: true);
+          return CommandResult(
+            output: 'runtime-cat: ${args[0]}: No such file or directory',
+            isError: true,
+          );
         }
         try {
           final content = await file.readAsString();
           return CommandResult(output: content);
         } on FileSystemException {
-          return CommandResult(output: 'runtime-cat: ${args[0]}: Permission denied or read error', isError: true);
+          return CommandResult(
+            output: 'runtime-cat: ${args[0]}: Permission denied or read error',
+            isError: true,
+          );
         } catch (e) {
-          return CommandResult(output: 'runtime-cat: ${args[0]}: Error: $e', isError: true);
+          return CommandResult(
+            output: 'runtime-cat: ${args[0]}: Error: $e',
+            isError: true,
+          );
         }
 
       case 'runtime-write':
         if (args.isEmpty) {
-          return CommandResult(output: 'runtime-write: missing file operand', isError: true);
+          return CommandResult(
+            output: 'runtime-write: missing file operand',
+            isError: true,
+          );
         }
         if (args.length < 2) {
-          return CommandResult(output: 'runtime-write: missing text operand', isError: true);
+          return CommandResult(
+            output: 'runtime-write: missing text operand',
+            isError: true,
+          );
         }
         final filename = args[0];
         final text = args.sublist(1).join(' ');
@@ -523,16 +565,28 @@ class CommandService {
         final homePath = paths['home']!;
         final file = _resolveFileInHome(filename, homePath);
         if (file == null) {
-          return CommandResult(output: 'runtime-write: path traversal detected or invalid path', isError: true);
+          return CommandResult(
+            output: 'runtime-write: path traversal detected or invalid path',
+            isError: true,
+          );
         }
-        
+
         try {
           await file.writeAsString(text);
-          return CommandResult(output: 'Wrote ${text.length} characters to $filename.');
+          return CommandResult(
+            output: 'Wrote ${text.length} characters to $filename.',
+          );
         } on FileSystemException {
-          return CommandResult(output: 'runtime-write: $filename: Permission denied or write error', isError: true);
+          return CommandResult(
+            output:
+                'runtime-write: $filename: Permission denied or write error',
+            isError: true,
+          );
         } catch (e) {
-          return CommandResult(output: 'runtime-write: $filename: Error: $e', isError: true);
+          return CommandResult(
+            output: 'runtime-write: $filename: Error: $e',
+            isError: true,
+          );
         }
 
       case 'whereami':
@@ -565,15 +619,20 @@ class CommandService {
         sb.writeln('  Home: ${paths['home']}');
         sb.writeln('  Bin:  ${paths['bin']}');
         sb.writeln('  Tmp:  ${paths['tmp']}');
-        sb.writeln('  State: ${isHealthy ? "HEALTHY" : "UNHEALTHY (corrupted folders)"}');
+        sb.writeln(
+          '  State: ${isHealthy ? "HEALTHY" : "UNHEALTHY (corrupted folders)"}',
+        );
         sb.writeln('User-Linked Android Storage:');
         sb.writeln('  Status: $storageStatusStr');
-        sb.write('NOTE: Dart VFS, native runtime, and user-linked Android storage are currently separate.');
+        sb.write(
+          'NOTE: Dart VFS, native runtime, and user-linked Android storage are currently separate.',
+        );
         return CommandResult(output: sb.toString());
 
       case 'runtime-help':
         return CommandResult(
-          output: 'WARNING: Native sandbox commands operate directly on physical storage.\n\n'
+          output:
+              'WARNING: Native sandbox commands operate directly on physical storage.\n\n'
               'Native Sandbox Commands:\n'
               '  android-shell [cmd]    - Run native shell command\n'
               '  android-shell-env      - Print environment config\n'
@@ -602,7 +661,10 @@ class CommandService {
           if (result != null) {
             return CommandResult(output: 'Folder linked successfully: $result');
           } else {
-            return CommandResult(output: 'Failed to link folder or linking cancelled.', isError: true);
+            return CommandResult(
+              output: 'Failed to link folder or linking cancelled.',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
           return CommandResult(output: _formatStorageError(e), isError: true);
@@ -616,7 +678,9 @@ class CommandService {
             final uri = status['uri'];
             final name = status['displayName'];
             final namePart = name != null ? ' (Name: $name)' : '';
-            return CommandResult(output: 'Linked storage folder: $uri$namePart');
+            return CommandResult(
+              output: 'Linked storage folder: $uri$namePart',
+            );
           } else {
             return CommandResult(output: 'No folder is currently linked.');
           }
@@ -638,7 +702,10 @@ class CommandService {
         try {
           final files = await storageService.listFiles();
           if (files == null) {
-            return CommandResult(output: 'storage-list: No linked storage or failed to query.', isError: true);
+            return CommandResult(
+              output: 'storage-list: No linked storage or failed to query.',
+              isError: true,
+            );
           }
           if (files.isEmpty) {
             return CommandResult(output: '(empty directory)');
@@ -650,7 +717,10 @@ class CommandService {
 
       case 'storage-read':
         if (args.isEmpty) {
-          return CommandResult(output: 'storage-read: missing file operand', isError: true);
+          return CommandResult(
+            output: 'storage-read: missing file operand',
+            isError: true,
+          );
         }
         final filename = args.join(' ');
         final storageService = StorageAccessService();
@@ -659,7 +729,10 @@ class CommandService {
           if (content != null) {
             return CommandResult(output: content);
           } else {
-            return CommandResult(output: 'storage-read: Failed to read file or file empty.', isError: true);
+            return CommandResult(
+              output: 'storage-read: Failed to read file or file empty.',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
           return CommandResult(output: _formatStorageError(e), isError: true);
@@ -667,10 +740,16 @@ class CommandService {
 
       case 'storage-write':
         if (args.isEmpty) {
-          return CommandResult(output: 'storage-write: missing file operand', isError: true);
+          return CommandResult(
+            output: 'storage-write: missing file operand',
+            isError: true,
+          );
         }
         if (args.length < 2) {
-          return CommandResult(output: 'storage-write: missing text operand', isError: true);
+          return CommandResult(
+            output: 'storage-write: missing text operand',
+            isError: true,
+          );
         }
         final filename = args[0];
         final text = args.sublist(1).join(' ');
@@ -679,9 +758,15 @@ class CommandService {
         try {
           final success = await storageService.writeFile(filename, text);
           if (success) {
-            return CommandResult(output: 'Wrote ${text.length} characters to $filename inside linked folder.');
+            return CommandResult(
+              output:
+                  'Wrote ${text.length} characters to $filename inside linked folder.',
+            );
           } else {
-            return CommandResult(output: 'storage-write: Failed to write to file.', isError: true);
+            return CommandResult(
+              output: 'storage-write: Failed to write to file.',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
           return CommandResult(output: _formatStorageError(e), isError: true);
@@ -689,20 +774,32 @@ class CommandService {
 
       case 'storage-delete':
         if (args.isEmpty) {
-          return CommandResult(output: 'storage-delete: missing file operand', isError: true);
+          return CommandResult(
+            output: 'storage-delete: missing file operand',
+            isError: true,
+          );
         }
         final filename = args.join(' ');
         final storageService = StorageAccessService();
         try {
           final canDelete = await storageService.supportsDelete(filename);
           if (!canDelete) {
-            return CommandResult(output: 'Error: Deletion not supported by provider for file "$filename".', isError: true);
+            return CommandResult(
+              output:
+                  'Error: Deletion not supported by provider for file "$filename".',
+              isError: true,
+            );
           }
           final success = await storageService.deleteFile(filename);
           if (success) {
-            return CommandResult(output: 'Deleted file "$filename" from linked storage.');
+            return CommandResult(
+              output: 'Deleted file "$filename" from linked storage.',
+            );
           } else {
-            return CommandResult(output: 'Error: Failed to delete file "$filename".', isError: true);
+            return CommandResult(
+              output: 'Error: Failed to delete file "$filename".',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
           return CommandResult(output: _formatStorageError(e), isError: true);
@@ -710,16 +807,24 @@ class CommandService {
 
       case 'storage-mkdir':
         if (args.isEmpty) {
-          return CommandResult(output: 'storage-mkdir: missing directory operand', isError: true);
+          return CommandResult(
+            output: 'storage-mkdir: missing directory operand',
+            isError: true,
+          );
         }
         final folderName = args.join(' ');
         final storageService = StorageAccessService();
         try {
           final success = await storageService.createDirectory(folderName);
           if (success) {
-            return CommandResult(output: 'Created directory "$folderName" inside linked storage.');
+            return CommandResult(
+              output: 'Created directory "$folderName" inside linked storage.',
+            );
           } else {
-            return CommandResult(output: 'Error: Failed to create directory "$folderName".', isError: true);
+            return CommandResult(
+              output: 'Error: Failed to create directory "$folderName".',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
           return CommandResult(output: _formatStorageError(e), isError: true);
@@ -729,7 +834,7 @@ class CommandService {
         final storageService = StorageAccessService();
         final sb = StringBuffer();
         sb.writeln('=== Starting Storage Integration Test ===');
-        
+
         sb.write('1. Checking storage status... ');
         Map<String, String>? status;
         try {
@@ -740,7 +845,7 @@ class CommandService {
           sb.write('Result: FAIL');
           return CommandResult(output: sb.toString(), isError: true);
         }
-        
+
         if (status == null || status['uri'] == null) {
           sb.writeln('FAIL (No folder is currently linked)');
           sb.writeln('=== Storage Integration Test Failed ===');
@@ -749,12 +854,15 @@ class CommandService {
         }
         final folderDisplayName = status['displayName'] ?? status['uri']!;
         sb.writeln('PASS (Linked: $folderDisplayName)');
-        
+
         final testFilename = 'termode_test_temp.txt';
         final testContent = 'Termode storage test content - ${DateTime.now()}';
         sb.write('2. Writing temporary test file ($testFilename)... ');
         try {
-          final success = await storageService.writeFile(testFilename, testContent);
+          final success = await storageService.writeFile(
+            testFilename,
+            testContent,
+          );
           if (!success) {
             sb.writeln('FAIL (writeFile returned false)');
             sb.writeln('=== Storage Integration Test Failed ===');
@@ -768,7 +876,7 @@ class CommandService {
           return CommandResult(output: sb.toString(), isError: true);
         }
         sb.writeln('PASS');
-        
+
         sb.write('3. Reading test file back... ');
         try {
           final readContent = await storageService.readFile(testFilename);
@@ -785,7 +893,7 @@ class CommandService {
           return CommandResult(output: sb.toString(), isError: true);
         }
         sb.writeln('PASS');
-        
+
         sb.write('4. Checking deletion support... ');
         bool canDelete = false;
         try {
@@ -796,7 +904,7 @@ class CommandService {
           sb.write('Result: FAIL');
           return CommandResult(output: sb.toString(), isError: true);
         }
-        
+
         if (canDelete) {
           sb.writeln('YES');
           sb.write('5. Deleting temporary test file... ');
@@ -818,14 +926,15 @@ class CommandService {
         } else {
           sb.writeln('NO (Skipping delete test step)');
         }
-        
+
         sb.writeln('=== Storage Integration Test Complete ===');
         sb.write('Result: PASS');
         return CommandResult(output: sb.toString());
 
       case 'storage-help':
         return CommandResult(
-          output: '=== Termode User-Approved Storage Help ===\n\n'
+          output:
+              '=== Termode User-Approved Storage Help ===\n\n'
               'Android security limits direct storage access. Termode uses the Android Storage Access Framework (SAF) to let you approve access to a specific folder.\n\n'
               'Commands:\n'
               '  storage-link       - Open picker to link an Android folder\n'
@@ -846,26 +955,38 @@ class CommandService {
       case 'shell-start':
         final channel = const MethodChannel('com.termode/native_shell');
         try {
-          final bool? started = await channel.invokeMethod('ptyStart', {'sessionId': sessionId});
+          final bool? started = await channel.invokeMethod('ptyStart', {
+            'sessionId': sessionId,
+          });
           if (started == true) {
             TerminalSessionService().setShellActive(sessionId, true);
             return CommandResult(
-              output: 'WARNING: Experimental Shell Mode is highly experimental and may behave unpredictably.\n'
+              output:
+                  'WARNING: Experimental Shell Mode is highly experimental and may behave unpredictably.\n'
                   'This is currently an interactive process bridge, not a full native PTY.\n'
                   'Use "shell-send <text>" to interact with the shell.\n'
                   'Shell process started successfully.',
             );
           } else {
-            return CommandResult(output: 'Shell session is already running.', isError: true);
+            return CommandResult(
+              output: 'Shell session is already running.',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
-          return CommandResult(output: 'Error starting shell: ${e.message}', isError: true);
+          return CommandResult(
+            output: 'Error starting shell: ${e.message}',
+            isError: true,
+          );
         }
 
       case 'shell-status':
         final channel = const MethodChannel('com.termode/native_shell');
         try {
-          final Map<dynamic, dynamic>? status = await channel.invokeMethod('ptyStatus', {'sessionId': sessionId});
+          final Map<dynamic, dynamic>? status = await channel.invokeMethod(
+            'ptyStatus',
+            {'sessionId': sessionId},
+          );
           if (status != null && status['running'] == true) {
             final pid = status['pid'];
             return CommandResult(output: 'Shell Status: RUNNING (PID: $pid)');
@@ -873,83 +994,140 @@ class CommandService {
             return CommandResult(output: 'Shell Status: NOT RUNNING');
           }
         } on PlatformException catch (e) {
-          return CommandResult(output: 'Error querying shell status: ${e.message}', isError: true);
+          return CommandResult(
+            output: 'Error querying shell status: ${e.message}',
+            isError: true,
+          );
         }
 
       case 'shell-stop':
         final channel = const MethodChannel('com.termode/native_shell');
         try {
-          final bool? stopped = await channel.invokeMethod('ptyStop', {'sessionId': sessionId});
+          final bool? stopped = await channel.invokeMethod('ptyStop', {
+            'sessionId': sessionId,
+          });
           if (stopped == true) {
             TerminalSessionService().setShellActive(sessionId, false);
             return CommandResult(output: 'Shell process stopped.');
           } else {
-            return CommandResult(output: 'No active shell process to stop.', isError: true);
+            return CommandResult(
+              output: 'No active shell process to stop.',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
-          return CommandResult(output: 'Error stopping shell: ${e.message}', isError: true);
+          return CommandResult(
+            output: 'Error stopping shell: ${e.message}',
+            isError: true,
+          );
         }
 
       case 'shell-send':
         if (args.isEmpty) {
-          return CommandResult(output: 'shell-send: missing command/text operand\nUsage: shell-send <text>', isError: true);
+          return CommandResult(
+            output:
+                'shell-send: missing command/text operand\nUsage: shell-send <text>',
+            isError: true,
+          );
         }
         final text = args.join(' ');
         final sessionService = TerminalSessionService();
-        final sessionIndex = sessionService.sessions.indexWhere((s) => s.id == sessionId);
+        final sessionIndex = sessionService.sessions.indexWhere(
+          (s) => s.id == sessionId,
+        );
         if (sessionIndex != -1) {
           sessionService.sessions[sessionIndex].lastSentPtyInput = text;
         }
         final channel = const MethodChannel('com.termode/native_shell');
         try {
-          final bool? success = await channel.invokeMethod('ptySend', {'sessionId': sessionId, 'text': text});
+          final bool? success = await channel.invokeMethod('ptySend', {
+            'sessionId': sessionId,
+            'text': text,
+          });
           if (success == true) {
-            return CommandResult(output: ''); // output will be streamed asynchronously!
+            return CommandResult(
+              output: '',
+            ); // output will be streamed asynchronously!
           } else {
-            return CommandResult(output: 'Error: Failed to send input to shell.', isError: true);
+            return CommandResult(
+              output: 'Error: Failed to send input to shell.',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
           if (e.code == 'NOT_RUNNING') {
-            return CommandResult(output: 'Error: No active shell process. Start one with shell-start.', isError: true);
+            return CommandResult(
+              output:
+                  'Error: No active shell process. Start one with shell-start.',
+              isError: true,
+            );
           }
-          return CommandResult(output: 'Error sending to shell: ${e.message}', isError: true);
+          return CommandResult(
+            output: 'Error sending to shell: ${e.message}',
+            isError: true,
+          );
         }
 
       case 'shell-send-ctrl-c':
         final channel = const MethodChannel('com.termode/native_shell');
         try {
-          final bool? success = await channel.invokeMethod('ptySendCtrlC', {'sessionId': sessionId});
+          final bool? success = await channel.invokeMethod('ptySendCtrlC', {
+            'sessionId': sessionId,
+          });
           if (success == true) {
-            return CommandResult(output: 'Sent Ctrl-C (SIGINT) to shell process.');
+            return CommandResult(
+              output: 'Sent Ctrl-C (SIGINT) to shell process.',
+            );
           } else {
-            return CommandResult(output: 'Failed to send Ctrl-C.', isError: true);
+            return CommandResult(
+              output: 'Failed to send Ctrl-C.',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
           if (e.code == 'NOT_RUNNING') {
-            return CommandResult(output: 'Error: No active shell process.', isError: true);
+            return CommandResult(
+              output: 'Error: No active shell process.',
+              isError: true,
+            );
           }
-          return CommandResult(output: 'Error sending Ctrl-C: ${e.message}', isError: true);
+          return CommandResult(
+            output: 'Error sending Ctrl-C: ${e.message}',
+            isError: true,
+          );
         }
 
       case 'shell-send-ctrl-d':
         final channel = const MethodChannel('com.termode/native_shell');
         try {
-          final bool? success = await channel.invokeMethod('ptySendCtrlD', {'sessionId': sessionId});
+          final bool? success = await channel.invokeMethod('ptySendCtrlD', {
+            'sessionId': sessionId,
+          });
           if (success == true) {
             return CommandResult(output: 'Sent Ctrl-D (EOF) to shell process.');
           } else {
-            return CommandResult(output: 'Failed to send Ctrl-D.', isError: true);
+            return CommandResult(
+              output: 'Failed to send Ctrl-D.',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
           if (e.code == 'NOT_RUNNING') {
-            return CommandResult(output: 'Error: No active shell process.', isError: true);
+            return CommandResult(
+              output: 'Error: No active shell process.',
+              isError: true,
+            );
           }
-          return CommandResult(output: 'Error sending Ctrl-D: ${e.message}', isError: true);
+          return CommandResult(
+            output: 'Error sending Ctrl-D: ${e.message}',
+            isError: true,
+          );
         }
 
       case 'shell-help':
         return CommandResult(
-          output: '=== Termode Experimental Shell Mode Help ===\n\n'
+          output:
+              '=== Termode Experimental Shell Mode Help ===\n\n'
               'This mode runs an interactive shell (/system/bin/sh) inside the Termode sandbox.\n\n'
               'Note: This is currently an interactive process bridge and NOT a full native pseudo-terminal (PTY).\n'
               '- Simple shell commands (e.g. ls, echo, pwd) will work.\n'
@@ -966,60 +1144,98 @@ class CommandService {
       case 'real-pty-start':
         final channel = const MethodChannel('com.termode/native_shell');
         try {
-          final bool? started = await channel.invokeMethod('realPtyStart', {'sessionId': sessionId});
+          final bool? started = await channel.invokeMethod('realPtyStart', {
+            'sessionId': sessionId,
+          });
           if (started == true) {
             TerminalSessionService().setRealPtyActive(sessionId, true);
             return CommandResult(
-              output: 'Warning: Experimental PTY prototype. Real PTY started.\n'
+              output:
+                  'Warning: Experimental PTY prototype. Real PTY started.\n'
                   'Use enter-pty-mode or termode-shell to interact.',
             );
           } else {
-            return CommandResult(output: 'Real PTY session is already running.', isError: true);
+            return CommandResult(
+              output: 'Real PTY session is already running.',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
           if (e.code == 'LIMIT_EXCEEDED') {
             return CommandResult(output: 'Error: ${e.message}', isError: true);
           }
-          return CommandResult(output: 'Error starting real PTY: ${e.message}', isError: true);
+          return CommandResult(
+            output: 'Error starting real PTY: ${e.message}',
+            isError: true,
+          );
         }
 
       case 'real-pty-status':
         final channel = const MethodChannel('com.termode/native_shell');
         try {
-          final Map<dynamic, dynamic>? status = await channel.invokeMethod('realPtyStatus', {'sessionId': sessionId});
+          final Map<dynamic, dynamic>? status = await channel.invokeMethod(
+            'realPtyStatus',
+            {'sessionId': sessionId},
+          );
           if (status != null && status['running'] == true) {
             final pid = status['pid'];
-            return CommandResult(output: 'Real PTY Status: RUNNING (PID: $pid)');
+            return CommandResult(
+              output: 'Real PTY Status: RUNNING (PID: $pid)',
+            );
           } else {
             return CommandResult(output: 'Real PTY Status: NOT RUNNING');
           }
         } on PlatformException catch (e) {
-          return CommandResult(output: 'Error querying real PTY status: ${e.message}', isError: true);
+          return CommandResult(
+            output: 'Error querying real PTY status: ${e.message}',
+            isError: true,
+          );
         }
 
       case 'real-pty-send':
         if (args.isEmpty) {
-          return CommandResult(output: 'real-pty-send: missing command/text operand\nUsage: real-pty-send <text>', isError: true);
+          return CommandResult(
+            output:
+                'real-pty-send: missing command/text operand\nUsage: real-pty-send <text>',
+            isError: true,
+          );
         }
         final text = args.join(' ');
         final sessionService = TerminalSessionService();
-        final sessionIndex = sessionService.sessions.indexWhere((s) => s.id == sessionId);
+        final sessionIndex = sessionService.sessions.indexWhere(
+          (s) => s.id == sessionId,
+        );
         if (sessionIndex != -1) {
           sessionService.sessions[sessionIndex].lastSentRealPtyInput = text;
         }
         final channel = const MethodChannel('com.termode/native_shell');
         try {
-          final bool? success = await channel.invokeMethod('realPtySend', {'sessionId': sessionId, 'text': text});
+          final bool? success = await channel.invokeMethod('realPtySend', {
+            'sessionId': sessionId,
+            'text': text,
+          });
           if (success == true) {
-            return CommandResult(output: ''); // output will be streamed asynchronously!
+            return CommandResult(
+              output: '',
+            ); // output will be streamed asynchronously!
           } else {
-            return CommandResult(output: 'Error: Failed to send input to real PTY.', isError: true);
+            return CommandResult(
+              output: 'Error: Failed to send input to real PTY.',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
           if (e.code == 'NOT_RUNNING') {
-            return CommandResult(output: 'Error: No active real PTY process. Start one with real-pty-start.', isError: true);
+            return CommandResult(
+              output:
+                  'Error: No active real PTY process. Start one with real-pty-start.',
+              isError: true,
+            );
           }
-          return CommandResult(output: 'Error sending to real PTY: ${e.message}', isError: true);
+          return CommandResult(
+            output: 'Error sending to real PTY: ${e.message}',
+            isError: true,
+          );
         }
 
       case 'real-pty-stop':
@@ -1028,15 +1244,23 @@ class CommandService {
         sessionService.setPtyInteractionActive(sessionId, false);
         final channel = const MethodChannel('com.termode/native_shell');
         try {
-          final bool? stopped = await channel.invokeMethod('realPtyStop', {'sessionId': sessionId});
+          final bool? stopped = await channel.invokeMethod('realPtyStop', {
+            'sessionId': sessionId,
+          });
           if (stopped == true) {
-            return CommandResult(output: 'Real PTY process stopped. Returned to NORMAL mode.');
+            return CommandResult(
+              output: 'Real PTY process stopped. Returned to NORMAL mode.',
+            );
           } else {
-            return CommandResult(output: 'Error: No active real PTY process to stop.', isError: true);
+            return CommandResult(
+              output: 'Error: No active real PTY process to stop.',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
           return CommandResult(
-            output: 'Error: Failed to stop real PTY: ${e.message}. Cleaned up local session state.',
+            output:
+                'Error: Failed to stop real PTY: ${e.message}. Cleaned up local session state.',
             isError: true,
           );
         }
@@ -1044,43 +1268,76 @@ class CommandService {
       case 'real-pty-send-ctrl-c':
         final channel = const MethodChannel('com.termode/native_shell');
         try {
-          final bool? success = await channel.invokeMethod('realPtySendCtrlC', {'sessionId': sessionId});
+          final bool? success = await channel.invokeMethod('realPtySendCtrlC', {
+            'sessionId': sessionId,
+          });
           if (success == true) {
-            return CommandResult(output: 'Sent Ctrl-C (SIGINT) to real PTY process.');
+            return CommandResult(
+              output: 'Sent Ctrl-C (SIGINT) to real PTY process.',
+            );
           } else {
-            return CommandResult(output: 'Failed to send Ctrl-C.', isError: true);
+            return CommandResult(
+              output: 'Failed to send Ctrl-C.',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
           if (e.code == 'NOT_RUNNING') {
-            return CommandResult(output: 'Error: No active real PTY process.', isError: true);
+            return CommandResult(
+              output: 'Error: No active real PTY process.',
+              isError: true,
+            );
           }
-          return CommandResult(output: 'Error sending Ctrl-C to real PTY: ${e.message}', isError: true);
+          return CommandResult(
+            output: 'Error sending Ctrl-C to real PTY: ${e.message}',
+            isError: true,
+          );
         }
 
       case 'real-pty-send-ctrl-d':
         final channel = const MethodChannel('com.termode/native_shell');
         try {
-          final bool? success = await channel.invokeMethod('realPtySendCtrlD', {'sessionId': sessionId});
+          final bool? success = await channel.invokeMethod('realPtySendCtrlD', {
+            'sessionId': sessionId,
+          });
           if (success == true) {
-            return CommandResult(output: 'Sent Ctrl-D (EOF) to real PTY process.');
+            return CommandResult(
+              output: 'Sent Ctrl-D (EOF) to real PTY process.',
+            );
           } else {
-            return CommandResult(output: 'Failed to send Ctrl-D.', isError: true);
+            return CommandResult(
+              output: 'Failed to send Ctrl-D.',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
           if (e.code == 'NOT_RUNNING') {
-            return CommandResult(output: 'Error: No active real PTY process.', isError: true);
+            return CommandResult(
+              output: 'Error: No active real PTY process.',
+              isError: true,
+            );
           }
-          return CommandResult(output: 'Error sending Ctrl-D to real PTY: ${e.message}', isError: true);
+          return CommandResult(
+            output: 'Error sending Ctrl-D to real PTY: ${e.message}',
+            isError: true,
+          );
         }
 
       case 'real-pty-resize':
         if (args.length < 2) {
-          return CommandResult(output: 'real-pty-resize: missing columns/rows operand\nUsage: real-pty-resize <cols> <rows>', isError: true);
+          return CommandResult(
+            output:
+                'real-pty-resize: missing columns/rows operand\nUsage: real-pty-resize <cols> <rows>',
+            isError: true,
+          );
         }
         final cols = int.tryParse(args[0]);
         final rows = int.tryParse(args[1]);
         if (cols == null || rows == null || cols <= 0 || rows <= 0) {
-          return CommandResult(output: 'Error: cols and rows must be positive integers.', isError: true);
+          return CommandResult(
+            output: 'Error: cols and rows must be positive integers.',
+            isError: true,
+          );
         }
         final channel = const MethodChannel('com.termode/native_shell');
         try {
@@ -1092,25 +1349,39 @@ class CommandService {
           if (success == true) {
             try {
               final sessionService = TerminalSessionService();
-              final session = sessionService.sessions.firstWhere((s) => s.id == sessionId);
+              final session = sessionService.sessions.firstWhere(
+                (s) => s.id == sessionId,
+              );
               session.ansiBuffer.resize(cols, rows);
             } catch (_) {
               // Ignore if session not found or fails
             }
-            return CommandResult(output: 'Resized real PTY to $cols cols x $rows rows.');
+            return CommandResult(
+              output: 'Resized real PTY to $cols cols x $rows rows.',
+            );
           } else {
-            return CommandResult(output: 'Error: Failed to resize real PTY.', isError: true);
+            return CommandResult(
+              output: 'Error: Failed to resize real PTY.',
+              isError: true,
+            );
           }
         } on PlatformException catch (e) {
           if (e.code == 'NOT_RUNNING') {
-            return CommandResult(output: 'Error: No active real PTY process.', isError: true);
+            return CommandResult(
+              output: 'Error: No active real PTY process.',
+              isError: true,
+            );
           }
-          return CommandResult(output: 'Error resizing real PTY: ${e.message}', isError: true);
+          return CommandResult(
+            output: 'Error resizing real PTY: ${e.message}',
+            isError: true,
+          );
         }
 
       case 'real-pty-help':
         return CommandResult(
-          output: '=== Termode Native PTY Prototype Help ===\n\n'
+          output:
+              '=== Termode Native PTY Prototype Help ===\n\n'
               'Termode runs in a native pseudo-terminal (PTY) attached to /system/bin/sh by default.\n'
               'This provides a command-line environment similar to Termux.\n\n'
               'Commands:\n'
@@ -1139,50 +1410,74 @@ class CommandService {
               '    which can be invoked directly inside default-shell.\n'
               '  - "pkg" commands can be typed directly inside REAL PTY mode and are intercepted by the app.',
         );
- 
+
       case 'enter-pty-mode':
         final sessionService = TerminalSessionService();
-        final sessionIndex = sessionService.sessions.indexWhere((s) => s.id == sessionId);
+        final sessionIndex = sessionService.sessions.indexWhere(
+          (s) => s.id == sessionId,
+        );
         if (sessionIndex == -1) {
-          return CommandResult(output: 'Error: Session not found.', isError: true);
+          return CommandResult(
+            output: 'Error: Session not found.',
+            isError: true,
+          );
         }
         final session = sessionService.sessions[sessionIndex];
         if (!session.isRealPtyActive) {
-          return CommandResult(output: 'Start real PTY first using real-pty-start.', isError: true);
+          return CommandResult(
+            output: 'Start real PTY first using real-pty-start.',
+            isError: true,
+          );
         }
         sessionService.setPtyInteractionActive(sessionId, true);
-        return CommandResult(output: 'Entered Real PTY Interaction Mode. All inputs are now routed to PTY.\n');
- 
+        return CommandResult(
+          output:
+              'Entered Real PTY Interaction Mode. All inputs are now routed to PTY.\n',
+        );
+
       case 'exit-pty-mode':
         final sessionService = TerminalSessionService();
         sessionService.setPtyInteractionActive(sessionId, false);
-        return CommandResult(output: 'Exited Real PTY Interaction Mode. Normal routing active.\n');
+        return CommandResult(
+          output: 'Exited Real PTY Interaction Mode. Normal routing active.\n',
+        );
 
       case 'default-shell':
       case 'termode-shell':
         final sessionService = TerminalSessionService();
-        final sessionIndex = sessionService.sessions.indexWhere((s) => s.id == sessionId);
+        final sessionIndex = sessionService.sessions.indexWhere(
+          (s) => s.id == sessionId,
+        );
         if (sessionIndex == -1) {
-          return CommandResult(output: 'Error: Session not found.', isError: true);
+          return CommandResult(
+            output: 'Error: Session not found.',
+            isError: true,
+          );
         }
         final session = sessionService.sessions[sessionIndex];
 
         if (!session.isRealPtyActive) {
           final success = await sessionService.startRealPty(sessionId);
           if (success) {
-            return CommandResult(output: 'Started Termode shell. Type normal-mode to return to commands.\n');
+            return CommandResult(
+              output:
+                  'Started Termode shell. Type normal-mode to return to commands.\n',
+            );
           } else {
             sessionService.setRealPtyActive(sessionId, false);
             sessionService.setPtyInteractionActive(sessionId, false);
             return CommandResult(
-              output: 'Error: Failed to start real PTY shell. Make sure native binary can execute.',
+              output:
+                  'Error: Failed to start real PTY shell. Make sure native binary can execute.',
               isError: true,
             );
           }
         } else {
           if (!session.isPtyInteractionActive) {
             sessionService.setPtyInteractionActive(sessionId, true);
-            return CommandResult(output: 'Entered Real PTY Interaction Mode.\n');
+            return CommandResult(
+              output: 'Entered Real PTY Interaction Mode.\n',
+            );
           } else {
             return CommandResult(output: 'Already in real shell.');
           }
@@ -1190,21 +1485,29 @@ class CommandService {
 
       case 'normal-mode':
         final sessionService = TerminalSessionService();
-        final sessionIndex = sessionService.sessions.indexWhere((s) => s.id == sessionId);
+        final sessionIndex = sessionService.sessions.indexWhere(
+          (s) => s.id == sessionId,
+        );
         if (sessionIndex == -1) {
-          return CommandResult(output: 'Error: Session not found.', isError: true);
+          return CommandResult(
+            output: 'Error: Session not found.',
+            isError: true,
+          );
         }
         final session = sessionService.sessions[sessionIndex];
         sessionService.setPtyInteractionActive(sessionId, false);
         if (session.isRealPtyActive) {
-          return CommandResult(output: 'Returned to NORMAL mode. Real PTY is still running.');
+          return CommandResult(
+            output: 'Returned to NORMAL mode. Real PTY is still running.',
+          );
         } else {
           return CommandResult(output: 'Returned to NORMAL mode.');
         }
 
       case 'keyboard-help':
         return CommandResult(
-          output: '=== Termode Keyboard & Input Help ===\n\n'
+          output:
+              '=== Termode Keyboard & Input Help ===\n\n'
               'Special Keys in REAL PTY Mode:\n'
               '  ESC   - Sends escape code (\\u001B)\n'
               '  TAB   - Sends horizontal tab (\\t) for autocompletion\n'
@@ -1221,9 +1524,14 @@ class CommandService {
 
       case 'stop-shell':
         final sessionService = TerminalSessionService();
-        final sessionIndex = sessionService.sessions.indexWhere((s) => s.id == sessionId);
+        final sessionIndex = sessionService.sessions.indexWhere(
+          (s) => s.id == sessionId,
+        );
         if (sessionIndex == -1) {
-          return CommandResult(output: 'Error: Session not found.', isError: true);
+          return CommandResult(
+            output: 'Error: Session not found.',
+            isError: true,
+          );
         }
         final session = sessionService.sessions[sessionIndex];
 
@@ -1235,10 +1543,13 @@ class CommandService {
           final channel = const MethodChannel('com.termode/native_shell');
           try {
             await channel.invokeMethod('realPtyStop', {'sessionId': sessionId});
-            return CommandResult(output: 'Real PTY shell stopped. Returned to NORMAL mode.');
+            return CommandResult(
+              output: 'Real PTY shell stopped. Returned to NORMAL mode.',
+            );
           } catch (e) {
             return CommandResult(
-              output: 'Error: Failed to stop PTY: $e. Cleaned up local session state.',
+              output:
+                  'Error: Failed to stop PTY: $e. Cleaned up local session state.',
               isError: true,
             );
           }
@@ -1249,9 +1560,14 @@ class CommandService {
       case 'shell-doctor':
         final sessionService = TerminalSessionService();
         final settings = SettingsService();
-        final sessionIndex = sessionService.sessions.indexWhere((s) => s.id == sessionId);
+        final sessionIndex = sessionService.sessions.indexWhere(
+          (s) => s.id == sessionId,
+        );
         if (sessionIndex == -1) {
-          return CommandResult(output: 'Error: Session not found.', isError: true);
+          return CommandResult(
+            output: 'Error: Session not found.',
+            isError: true,
+          );
         }
         final session = sessionService.sessions[sessionIndex];
 
@@ -1265,8 +1581,9 @@ class CommandService {
         bool nativeRunning = false;
         int nativePid = -1;
         try {
-          final res = await const MethodChannel('com.termode/native_shell')
-              .invokeMethod('realPtyStatus', {'sessionId': sessionId});
+          final res = await const MethodChannel(
+            'com.termode/native_shell',
+          ).invokeMethod('realPtyStatus', {'sessionId': sessionId});
           if (res is Map) {
             nativeRunning = res['running'] as bool? ?? false;
             nativePid = res['pid'] as int? ?? -1;
@@ -1279,17 +1596,23 @@ class CommandService {
         }
 
         final List<String> mismatches = [];
-        String suggestedFix = 'No issues detected. Your shell environment is healthy.';
+        String suggestedFix =
+            'No issues detected. Your shell environment is healthy.';
 
         if (isRealPtyActive != nativeRunning) {
-          mismatches.add('Session active flag ($isRealPtyActive) does not match native process status ($nativeRunning)');
+          mismatches.add(
+            'Session active flag ($isRealPtyActive) does not match native process status ($nativeRunning)',
+          );
         }
         if (isPtyInteractionActive && !isRealPtyActive) {
-          mismatches.add('Session interaction flag is true but session active flag is false');
+          mismatches.add(
+            'Session interaction flag is true but session active flag is false',
+          );
         }
 
         if (mismatches.isNotEmpty) {
-          suggestedFix = 'Mismatch detected. Recommended actions:\n'
+          suggestedFix =
+              'Mismatch detected. Recommended actions:\n'
               '  - Run stop-shell to reset the session state.\n'
               '  - Or run default-shell to re-initialize the shell process.';
         }
@@ -1315,9 +1638,14 @@ class CommandService {
 
       case 'real-pty-mode-status':
         final sessionService = TerminalSessionService();
-        final sessionIndex = sessionService.sessions.indexWhere((s) => s.id == sessionId);
+        final sessionIndex = sessionService.sessions.indexWhere(
+          (s) => s.id == sessionId,
+        );
         if (sessionIndex == -1) {
-          return CommandResult(output: 'Error: Session not found.', isError: true);
+          return CommandResult(
+            output: 'Error: Session not found.',
+            isError: true,
+          );
         }
         final session = sessionService.sessions[sessionIndex];
         if (session.isPtyInteractionActive) {
@@ -1329,14 +1657,15 @@ class CommandService {
       case 'runtime-tools':
         if (args.isEmpty) {
           return CommandResult(
-            output: 'Usage: runtime-tools <status|install-test|test-run|reset|path|help>\n'
+            output:
+                'Usage: runtime-tools <status|install-test|test-run|reset|path|help>\n'
                 'Type "runtime-tools help" for more information.',
             isError: true,
           );
         }
         final subcommand = args[0].toLowerCase();
         final runtimeService = RuntimeToolService();
-        
+
         switch (subcommand) {
           case 'status':
             final status = await runtimeService.checkStatus();
@@ -1344,35 +1673,56 @@ class CommandService {
             final missing = status['missingTools'] as List<String>;
             final chmodMap = status['chmodStatus'] as Map<String, String>;
             final directMap = status['directExecStatus'] as Map<String, String>;
-            final interpreterMap = status['interpreterStatus'] as Map<String, String>;
-            
+            final interpreterMap =
+                status['interpreterStatus'] as Map<String, String>;
+
             final buf = StringBuffer();
             buf.writeln('=== Termode Runtime Tools Status ===');
             buf.writeln('Health:               ${status['health']}');
             buf.writeln('Bin Path:             ${status['binPath']}');
-            buf.writeln('Installed Tools:      ${installed.isEmpty ? "None" : installed.join(", ")}');
-            buf.writeln('Missing Tools:        ${missing.isEmpty ? "None" : missing.join(", ")}');
-            
+            buf.writeln(
+              'Installed Tools:      ${installed.isEmpty ? "None" : installed.join(", ")}',
+            );
+            buf.writeln(
+              'Missing Tools:        ${missing.isEmpty ? "None" : missing.join(", ")}',
+            );
+
             final chmodList = <String>[];
             chmodMap.forEach((k, v) => chmodList.add('$k: $v'));
-            buf.writeln('Chmod Executable:     ${chmodList.isEmpty ? "None" : chmodList.join(", ")}');
+            buf.writeln(
+              'Chmod Executable:     ${chmodList.isEmpty ? "None" : chmodList.join(", ")}',
+            );
 
             final directList = <String>[];
             directMap.forEach((k, v) => directList.add('$k: $v'));
-            buf.writeln('Direct Executable:    ${directList.isEmpty ? "None" : directList.join(", ")}');
+            buf.writeln(
+              'Direct Executable:    ${directList.isEmpty ? "None" : directList.join(", ")}',
+            );
 
             final interpreterList = <String>[];
             interpreterMap.forEach((k, v) => interpreterList.add('$k: $v'));
-            buf.writeln('Interpreter Runnable: ${interpreterList.isEmpty ? "None" : interpreterList.join(", ")}');
-            
+            buf.writeln(
+              'Interpreter Runnable: ${interpreterList.isEmpty ? "None" : interpreterList.join(", ")}',
+            );
+
             return CommandResult(output: buf.toString());
-            
+
           case 'install-test':
             final success = await runtimeService.installTestTool();
             if (success) {
-              return CommandResult(output: 'Success: Installed hello-termode test tool into files/usr/bin.');
+              return CommandResult(
+                output:
+                    'Success: Installed hello-termode test tool into files/usr/bin.',
+                shouldReloadShellHelpers: true,
+                helperReloadSuccessMessage: 'Reloaded Termode shell helpers.',
+                helperReloadFailureMessage:
+                    'Runtime tool installed, but helper reload failed. Run: reload-helpers',
+              );
             } else {
-              return CommandResult(output: 'Error: Failed to install test tool.', isError: true);
+              return CommandResult(
+                output: 'Error: Failed to install test tool.',
+                isError: true,
+              );
             }
 
           case 'test-run':
@@ -1380,7 +1730,8 @@ class CommandService {
             final installed = status['installedTools'] as List<String>;
             if (!installed.contains('hello-termode')) {
               return CommandResult(
-                output: 'Error: hello-termode test tool is not installed.\n'
+                output:
+                    'Error: hello-termode test tool is not installed.\n'
                     'Run "runtime-tools install-test" first.',
                 isError: true,
               );
@@ -1390,12 +1741,17 @@ class CommandService {
             final toolFile = File('$binDir/hello-termode');
 
             final cmdStr = '/system/bin/sh "${toolFile.path}"';
-            final nativeResult = await NativeCommandService().execute(cmdStr, sessionId);
+            final nativeResult = await NativeCommandService().execute(
+              cmdStr,
+              sessionId,
+            );
             final cleanOut = nativeResult.stdout.trim();
             final cleanErr = nativeResult.stderr.trim();
 
             final buf = StringBuffer();
-            buf.writeln('Executing /system/bin/sh \$TERMODE_BIN/hello-termode...');
+            buf.writeln(
+              'Executing /system/bin/sh \$TERMODE_BIN/hello-termode...',
+            );
             if (cleanOut.isNotEmpty) {
               buf.writeln('Output: $cleanOut');
             }
@@ -1404,19 +1760,31 @@ class CommandService {
             }
             buf.writeln('Exit code: ${nativeResult.exitCode}');
 
-            final pass = nativeResult.exitCode == 0 && cleanOut.contains('Hello from Termode runtime tools');
+            final pass =
+                nativeResult.exitCode == 0 &&
+                cleanOut.contains('Hello from Termode runtime tools');
             buf.write('Result: ${pass ? "PASS" : "FAIL"}');
 
             return CommandResult(output: buf.toString(), isError: !pass);
-            
+
           case 'reset':
             final success = await runtimeService.reset();
             if (success) {
-              return CommandResult(output: 'Success: Cleaned up managed runtime tools and metadata.');
+              return CommandResult(
+                output:
+                    'Success: Cleaned up managed runtime tools and metadata.',
+                shouldReloadShellHelpers: true,
+                helperReloadSuccessMessage: 'Reloaded Termode shell helpers.',
+                helperReloadFailureMessage:
+                    'Runtime tools reset, but helper reload failed. Run: reload-helpers',
+              );
             } else {
-              return CommandResult(output: 'Error: Failed to reset runtime tools.', isError: true);
+              return CommandResult(
+                output: 'Error: Failed to reset runtime tools.',
+                isError: true,
+              );
             }
-            
+
           case 'path':
             final paths = await RuntimeBootstrapService().getPaths();
             final buf = StringBuffer();
@@ -1424,12 +1792,15 @@ class CommandService {
             buf.writeln('HOME:        ${paths['home']}');
             buf.writeln('TERMODE_USR: ${paths['usr']}');
             buf.writeln('TERMODE_BIN: ${paths['bin']}');
-            buf.writeln('PTY PATH:    ${paths['bin']}:/system/bin:/system/xbin:/vendor/bin:/product/bin');
+            buf.writeln(
+              'PTY PATH:    ${paths['bin']}:/system/bin:/system/xbin:/vendor/bin:/product/bin',
+            );
             return CommandResult(output: buf.toString());
-            
+
           case 'help':
             return CommandResult(
-              output: '=== Termode Runtime Tools Help ===\n\n'
+              output:
+                  '=== Termode Runtime Tools Help ===\n\n'
                   'Termode runtime tools allow installing and running local command-line tools.\n\n'
                   'Key Details:\n'
                   '  - Bundled runtime tools are experimental and run within the sandboxed files/usr/bin directory.\n'
@@ -1446,10 +1817,11 @@ class CommandService {
                   '  - runtime-tools path         - Print shell environment directory paths\n'
                   '  - runtime-tools help         - Show this help reference',
             );
-            
+
           default:
             return CommandResult(
-              output: 'Unknown subcommand: $subcommand\n'
+              output:
+                  'Unknown subcommand: $subcommand\n'
                   'Usage: runtime-tools <status|install-test|test-run|reset|path|help>',
               isError: true,
             );
@@ -1458,7 +1830,8 @@ class CommandService {
       case 'run-tool':
         if (args.isEmpty) {
           return CommandResult(
-            output: 'Usage: run-tool <tool-name> [args...]\n'
+            output:
+                'Usage: run-tool <tool-name> [args...]\n'
                 'Type "runtime-tools help" for more information.',
             isError: true,
           );
@@ -1466,21 +1839,36 @@ class CommandService {
         final toolName = args[0];
         final paths = await RuntimeBootstrapService().getPaths();
         final binDir = paths['bin']!;
-        
+
         // Safety check: block path traversals
-        if (toolName.contains('/') || toolName.contains('\\') || toolName.contains('..')) {
-          return CommandResult(output: 'run-tool: invalid tool name', isError: true);
+        if (toolName.contains('/') ||
+            toolName.contains('\\') ||
+            toolName.contains('..')) {
+          return CommandResult(
+            output: 'run-tool: invalid tool name',
+            isError: true,
+          );
         }
-        
+
         final toolFile = File('$binDir/$toolName');
         if (!await toolFile.exists()) {
-          return CommandResult(output: 'run-tool: tool not found: $toolName', isError: true);
+          return CommandResult(
+            output: 'run-tool: tool not found: $toolName',
+            isError: true,
+          );
         }
-        
-        final toolArgs = args.sublist(1).map((arg) => arg.contains(' ') ? '"$arg"' : arg).join(' ');
-        final cmdStr = '/system/bin/sh "${toolFile.path}"${toolArgs.isNotEmpty ? " $toolArgs" : ""}';
-        
-        final nativeResult = await NativeCommandService().execute(cmdStr, sessionId);
+
+        final toolArgs = args
+            .sublist(1)
+            .map((arg) => arg.contains(' ') ? '"$arg"' : arg)
+            .join(' ');
+        final cmdStr =
+            '/system/bin/sh "${toolFile.path}"${toolArgs.isNotEmpty ? " $toolArgs" : ""}';
+
+        final nativeResult = await NativeCommandService().execute(
+          cmdStr,
+          sessionId,
+        );
         final outputBuilder = StringBuffer();
         if (nativeResult.stdout.isNotEmpty) {
           outputBuilder.write(nativeResult.stdout);
@@ -1490,7 +1878,9 @@ class CommandService {
           outputBuilder.write(nativeResult.stderr);
         }
         if (outputBuilder.isEmpty && nativeResult.exitCode != 0) {
-          outputBuilder.write('Process exited with code ${nativeResult.exitCode}');
+          outputBuilder.write(
+            'Process exited with code ${nativeResult.exitCode}',
+          );
         }
         return CommandResult(
           output: outputBuilder.toString().trimRight(),
@@ -1510,7 +1900,8 @@ class CommandService {
         switch (subcommand) {
           case 'help':
             return CommandResult(
-              output: '=== Termode Package Manager (pkg) ===\n'
+              output:
+                  '=== Termode Package Manager (pkg) ===\n'
                   'Manage script-based packages inside Termode.\n\n'
                   'Commands:\n'
                   '  pkg help                 - Show this help message\n'
@@ -1527,7 +1918,8 @@ class CommandService {
           case 'update':
             final res = await pmService.updateIndex();
             return CommandResult(
-              output: 'Updating package index...\n'
+              output:
+                  'Updating package index...\n'
                   '${res['message']}\n'
                   'Success: Index updated (${res['count']} packages available).',
             );
@@ -1539,14 +1931,21 @@ class CommandService {
             for (final entry in PackageManagerService.localIndex.entries) {
               final name = entry.key;
               final pkg = entry.value;
-              final status = installed.containsKey(name) ? 'Installed' : 'Not Installed';
-              sb.writeln('$name [${pkg['version']}] - ${pkg['description']} (Status: $status)');
+              final status = installed.containsKey(name)
+                  ? 'Installed'
+                  : 'Not Installed';
+              sb.writeln(
+                '$name [${pkg['version']}] - ${pkg['description']} (Status: $status)',
+              );
             }
             return CommandResult(output: sb.toString().trimRight());
 
           case 'search':
             if (args.length < 2) {
-              return CommandResult(output: 'Usage: pkg search <query>', isError: true);
+              return CommandResult(
+                output: 'Usage: pkg search <query>',
+                isError: true,
+              );
             }
             final query = args[1].toLowerCase();
             final installed = await _getInstalledPackages(pUsrDir);
@@ -1559,8 +1958,12 @@ class CommandService {
               final desc = (pkg['description'] as String).toLowerCase();
               if (name.toLowerCase().contains(query) || desc.contains(query)) {
                 count++;
-                final status = installed.containsKey(name) ? 'Installed' : 'Not Installed';
-                sb.writeln('$name [${pkg['version']}] - ${pkg['description']} (Status: $status)');
+                final status = installed.containsKey(name)
+                    ? 'Installed'
+                    : 'Not Installed';
+                sb.writeln(
+                  '$name [${pkg['version']}] - ${pkg['description']} (Status: $status)',
+                );
               }
             }
             if (count == 0) {
@@ -1570,12 +1973,18 @@ class CommandService {
 
           case 'info':
             if (args.length < 2) {
-              return CommandResult(output: 'Usage: pkg info <package-name>', isError: true);
+              return CommandResult(
+                output: 'Usage: pkg info <package-name>',
+                isError: true,
+              );
             }
             final pkgName = args[1];
             final pkg = PackageManagerService.localIndex[pkgName];
             if (pkg == null) {
-              return CommandResult(output: 'pkg info: Package "$pkgName" not found in index.', isError: true);
+              return CommandResult(
+                output: 'pkg info: Package "$pkgName" not found in index.',
+                isError: true,
+              );
             }
             final installed = await _getInstalledPackages(pUsrDir);
             final isInst = installed.containsKey(pkgName);
@@ -1583,7 +1992,9 @@ class CommandService {
             sb.writeln('Package:     ${pkg['name']}');
             sb.writeln('Version:     ${pkg['version']}');
             sb.writeln('Type:        ${pkg['type']}');
-            sb.writeln('Status:      ${isInst ? "Installed" : "Not Installed"}');
+            sb.writeln(
+              'Status:      ${isInst ? "Installed" : "Not Installed"}',
+            );
             sb.writeln('Description: ${pkg['description']}');
             sb.writeln('Files:');
             final filesMap = pkg['files'] as Map<String, dynamic>;
@@ -1594,21 +2005,51 @@ class CommandService {
 
           case 'install':
             if (args.length < 2) {
-              return CommandResult(output: 'Usage: pkg install <package-name>', isError: true);
+              return CommandResult(
+                output: 'Usage: pkg install <package-name>',
+                isError: true,
+              );
             }
             final pkgName = args[1];
             final result = await pmService.installPackage(pkgName);
             final isError = result.startsWith('Error:');
-            return CommandResult(output: result, isError: isError);
+            if (isError) {
+              return CommandResult(output: result, isError: true);
+            }
+            final pkg = PackageManagerService.localIndex[pkgName];
+            final executable = pkg?['executable'] as String? ?? pkgName;
+            return CommandResult(
+              output:
+                  '$result\nTip: Command is available now. Try: $executable',
+              shouldReloadShellHelpers: true,
+              helperReloadFailureMessage:
+                  'Package installed, but helper reload failed. Run: reload-helpers',
+            );
 
           case 'remove':
             if (args.length < 2) {
-              return CommandResult(output: 'Usage: pkg remove <package-name>', isError: true);
+              return CommandResult(
+                output: 'Usage: pkg remove <package-name>',
+                isError: true,
+              );
             }
             final pkgName = args[1];
+            final pkg = PackageManagerService.localIndex[pkgName];
+            final executable = pkg?['executable'] as String? ?? pkgName;
             final result = await pmService.removePackage(pkgName);
             final isError = result.startsWith('Error:');
-            return CommandResult(output: result, isError: isError);
+            if (isError) {
+              return CommandResult(output: result, isError: true);
+            }
+            return CommandResult(
+              output:
+                  '$result\n'
+                  'Tip: Helper reload removes "$executable" from the current shell. '
+                  'If it still appears cached, run: reload-helpers',
+              shouldReloadShellHelpers: true,
+              helperReloadFailureMessage:
+                  'Package removed, but helper reload failed. Run: reload-helpers',
+            );
 
           case 'installed':
             final installed = await _getInstalledPackages(pUsrDir);
@@ -1620,7 +2061,9 @@ class CommandService {
             for (final entry in installed.entries) {
               final name = entry.key;
               final data = entry.value as Map<String, dynamic>;
-              sb.writeln('$name [${data['version']}] - Installed at: ${data['installedAt']}');
+              sb.writeln(
+                '$name [${data['version']}] - Installed at: ${data['installedAt']}',
+              );
             }
             return CommandResult(output: sb.toString().trimRight());
 
@@ -1628,11 +2071,20 @@ class CommandService {
             final doc = await pmService.checkDoctor();
             final sb = StringBuffer();
             sb.writeln('=== Termode Package Manager Doctor ===');
-            sb.writeln('Metadata File:      ${doc['metadataExists'] ? "EXISTS" : "MISSING"} (${doc['metadataPath']})');
+            sb.writeln(
+              'Metadata File:      ${doc['metadataExists'] ? "EXISTS" : "MISSING"} (${doc['metadataPath']})',
+            );
             sb.writeln('Bin Directory:      ${doc['binPath']}');
-            sb.writeln('Helper Script:      ${doc['helperExists'] ? "EXISTS" : "MISSING"} (${doc['helperPath']})');
+            sb.writeln(
+              'Helper Script:      ${doc['helperExists'] ? "EXISTS" : "MISSING"} (${doc['helperPath']})',
+            );
             sb.writeln('Installed Packages: ${doc['installedCount']}');
-            
+            sb.writeln('Helper Function Count: ${doc['helperFunctionCount']}');
+            sb.writeln('Helper Reload Command: ${doc['helperReloadCommand']}');
+            sb.writeln(
+              'Current Shell May Need Reload: ${doc['mayNeedReload'] ? "YES" : "NO"}',
+            );
+
             final missing = doc['missingFiles'] as List<dynamic>;
             if (missing.isNotEmpty) {
               sb.writeln('Missing Package Files:');
@@ -1642,17 +2094,25 @@ class CommandService {
             } else {
               sb.writeln('All registered files: Present');
             }
-            
-            sb.writeln('Helper Functions:   ${doc['helpersGenerated'] ? "OK" : "NOT GENERATED"}');
-            
-            bool isHealthy = missing.isEmpty &&
-                             (!doc['metadataExists'] || doc['installedCount'] == 0 || doc['helperExists']);
-            sb.write('Overall Status:     ${isHealthy ? "HEALTHY" : "UNHEALTHY"}');
+
+            sb.writeln(
+              'Helper Functions:   ${doc['helpersGenerated'] ? "OK" : "NOT GENERATED"}',
+            );
+
+            bool isHealthy =
+                missing.isEmpty &&
+                (!doc['metadataExists'] ||
+                    doc['installedCount'] == 0 ||
+                    doc['helperExists']);
+            sb.write(
+              'Overall Status:     ${isHealthy ? "HEALTHY" : "UNHEALTHY"}',
+            );
             return CommandResult(output: sb.toString(), isError: !isHealthy);
 
           default:
             return CommandResult(
-              output: 'Unknown subcommand: $subcommand\n'
+              output:
+                  'Unknown subcommand: $subcommand\n'
                   'Usage: pkg <help|update|list|search|info|install|remove|installed|doctor>',
               isError: true,
             );
@@ -1660,9 +2120,14 @@ class CommandService {
 
       case 'mode':
         final sessionService = TerminalSessionService();
-        final sessionIndex = sessionService.sessions.indexWhere((s) => s.id == sessionId);
+        final sessionIndex = sessionService.sessions.indexWhere(
+          (s) => s.id == sessionId,
+        );
         if (sessionIndex == -1) {
-          return CommandResult(output: 'Error: Session not found.', isError: true);
+          return CommandResult(
+            output: 'Error: Session not found.',
+            isError: true,
+          );
         }
         final session = sessionService.sessions[sessionIndex];
         final settings = SettingsService();
@@ -1670,8 +2135,12 @@ class CommandService {
         final modeStr = session.isPtyInteractionActive
             ? 'REAL PTY'
             : (session.isRealPtyActive ? 'PTY RUNNING' : 'NORMAL');
-        final interceptionStr = session.isPtyInteractionActive ? 'Active' : 'Inactive';
-        final startInRealShellStr = settings.startInRealShell ? 'Enabled' : 'Disabled';
+        final interceptionStr = session.isPtyInteractionActive
+            ? 'Active'
+            : 'Inactive';
+        final startInRealShellStr = settings.startInRealShell
+            ? 'Enabled'
+            : 'Disabled';
 
         final sb = StringBuffer();
         sb.writeln('=== Termode Mode Status ===');
@@ -1680,36 +2149,98 @@ class CommandService {
         sb.write('Start In Real Shell (Setting):  $startInRealShellStr');
         return CommandResult(output: sb.toString());
 
+      case 'reload-helpers':
+        final sessionService = TerminalSessionService();
+        final sessionIndex = sessionService.sessions.indexWhere(
+          (s) => s.id == sessionId,
+        );
+        if (sessionIndex == -1) {
+          return CommandResult(
+            output: 'Error: Session not found.',
+            isError: true,
+          );
+        }
+        final session = sessionService.sessions[sessionIndex];
+        if (!session.isPtyInteractionActive || !session.isRealPtyActive) {
+          return CommandResult(
+            output:
+                'Termode shell helpers are sourced inside REAL PTY shell sessions.\n'
+                'Start or enter the shell with default-shell, then run reload-helpers.',
+          );
+        }
+
+        final reloaded = await sessionService.reloadShellHelpersForSession(
+          sessionId,
+        );
+        if (reloaded) {
+          return CommandResult(output: 'Reloaded Termode shell helpers.');
+        }
+        return CommandResult(
+          output:
+              'Helper reload failed. Run reload-helpers after restarting the shell.',
+          isError: true,
+        );
+
       case 'host-help':
         final sb = StringBuffer();
         sb.writeln('=== Termode Host Command Interception ===');
-        sb.writeln('Termode runs in a real PTY shell by default, meaning most commands');
+        sb.writeln(
+          'Termode runs in a real PTY shell by default, meaning most commands',
+        );
         sb.writeln('are sent directly to the underlying Android system shell.');
         sb.writeln();
-        sb.writeln('However, Termode intercepts specific management commands to run');
+        sb.writeln(
+          'However, Termode intercepts specific management commands to run',
+        );
         sb.writeln('them inside the app environment:');
         sb.writeln();
         sb.writeln('Intercepted Host Commands:');
-        sb.writeln('  pkg            - Manage Termode packages (list, install, search, doctor, etc.)');
-        sb.writeln('  runtime-tools  - Manage Termode runtime tools (status, install-test, test-run)');
-        sb.writeln('  storage-*      - Access user-linked Android storage (storage-link, storage-list, etc.)');
-        sb.writeln('  shell-doctor   - Audit PTY shell configuration and status');
+        sb.writeln(
+          '  pkg            - Manage Termode packages (list, install, search, doctor, etc.)',
+        );
+        sb.writeln(
+          '  runtime-tools  - Manage Termode runtime tools (status, install-test, test-run)',
+        );
+        sb.writeln(
+          '  storage-*      - Access user-linked Android storage (storage-link, storage-list, etc.)',
+        );
+        sb.writeln(
+          '  shell-doctor   - Audit PTY shell configuration and status',
+        );
         sb.writeln('  keyboard-help  - Show keyboard shortcuts reference');
         sb.writeln('  real-pty-help  - Show PTY prototype help reference');
-        sb.writeln('  normal-mode    - Exit PTY interaction mode to return to classic Termode prompt');
-        sb.writeln('  stop-shell     - Kill the PTY shell process and return to NORMAL mode');
-        sb.writeln('  mode           - Display active mode and environment settings');
-        sb.writeln('  whereami       - Show directory layouts of VFS, runtime, and linked storage');
-        sb.writeln('  host-help      - Show this host interception help reference');
+        sb.writeln(
+          '  normal-mode    - Exit PTY interaction mode to return to classic Termode prompt',
+        );
+        sb.writeln(
+          '  stop-shell     - Kill the PTY shell process and return to NORMAL mode',
+        );
+        sb.writeln(
+          '  mode           - Display active mode and environment settings',
+        );
+        sb.writeln(
+          '  whereami       - Show directory layouts of VFS, runtime, and linked storage',
+        );
+        sb.writeln(
+          '  reload-helpers - Source package helper functions into the current shell',
+        );
+        sb.writeln(
+          '  host-help      - Show this host interception help reference',
+        );
         sb.writeln();
-        sb.write('Note: Installed package script utilities like \'hello\' and \'cowsay-lite\'\n'
-            'execute directly inside the shell using helper functions.');
+        sb.write(
+          'Package Notes:\n'
+          '  - pkg is handled by Termode host interception.\n'
+          '  - Installed packages run inside the shell through helper functions.\n'
+          '  - If a newly installed package does not work, run reload-helpers.',
+        );
         return CommandResult(output: sb.toString());
 
       case 'pty-start':
         final res = await execute('shell-start');
         return CommandResult(
-          output: 'WARNING: "pty-start" is deprecated/experimental. Please use "shell-start" instead.\n${res.output}',
+          output:
+              'WARNING: "pty-start" is deprecated/experimental. Please use "shell-start" instead.\n${res.output}',
           isError: res.isError,
           shouldClear: res.shouldClear,
         );
@@ -1717,7 +2248,8 @@ class CommandService {
       case 'pty-status':
         final res = await execute('shell-status');
         return CommandResult(
-          output: 'WARNING: "pty-status" is deprecated/experimental. Please use "shell-status" instead.\n${res.output}',
+          output:
+              'WARNING: "pty-status" is deprecated/experimental. Please use "shell-status" instead.\n${res.output}',
           isError: res.isError,
           shouldClear: res.shouldClear,
         );
@@ -1725,18 +2257,25 @@ class CommandService {
       case 'pty-stop':
         final res = await execute('shell-stop');
         return CommandResult(
-          output: 'WARNING: "pty-stop" is deprecated/experimental. Please use "shell-stop" instead.\n${res.output}',
+          output:
+              'WARNING: "pty-stop" is deprecated/experimental. Please use "shell-stop" instead.\n${res.output}',
           isError: res.isError,
           shouldClear: res.shouldClear,
         );
 
       case 'pty-send':
         if (args.isEmpty) {
-          return CommandResult(output: 'pty-send: missing command/text operand\nUsage: pty-send <text>', isError: true);
+          return CommandResult(
+            output:
+                'pty-send: missing command/text operand\nUsage: pty-send <text>',
+            isError: true,
+          );
         }
         final res = await execute('shell-send ${args.join(' ')}');
         return CommandResult(
-          output: 'WARNING: "pty-send" is deprecated/experimental. Please use "shell-send" instead.\n${res.output}'.trimRight(),
+          output:
+              'WARNING: "pty-send" is deprecated/experimental. Please use "shell-send" instead.\n${res.output}'
+                  .trimRight(),
           isError: res.isError,
           shouldClear: res.shouldClear,
         );

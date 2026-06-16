@@ -147,7 +147,9 @@ class _TerminalScreenState extends State<TerminalScreen> {
     final command = _sessionService.navigateHistoryUp();
     if (command != null) {
       _textController.text = command;
-      _textController.selection = TextSelection.collapsed(offset: command.length);
+      _textController.selection = TextSelection.collapsed(
+        offset: command.length,
+      );
     }
   }
 
@@ -156,7 +158,9 @@ class _TerminalScreenState extends State<TerminalScreen> {
     final command = _sessionService.navigateHistoryDown();
     if (command != null) {
       _textController.text = command;
-      _textController.selection = TextSelection.collapsed(offset: command.length);
+      _textController.selection = TextSelection.collapsed(
+        offset: command.length,
+      );
     }
   }
 
@@ -167,23 +171,76 @@ class _TerminalScreenState extends State<TerminalScreen> {
 
     final parts = text.split(RegExp(r'\s+'));
     final lastWord = parts.last.toLowerCase();
-    
+
     final commands = [
-      'help', 'clear', 'echo', 'pwd', 'whoami', 'date',
-      'ls', 'cd', 'mkdir', 'touch', 'cat', 'rm', 'cp', 'mv',
-      'android-shell', 'android-shell-env', 'android-shell-diagnostics',
-      'termode-runtime', 'toybox', 'toybox-list', 'runtime-pwd', 'runtime-ls',
-      'runtime-cat', 'runtime-write', 'whereami', 'runtime-help',
-      'storage-link', 'storage-status', 'storage-unlink', 'storage-list',
-      'storage-read', 'storage-write', 'storage-delete', 'storage-mkdir',
-      'storage-test', 'storage-help',
-      'shell-start', 'shell-status', 'shell-stop', 'shell-send',
-      'shell-send-ctrl-c', 'shell-send-ctrl-d', 'shell-help',
-      'pty-start', 'pty-status', 'pty-stop', 'pty-send',
-      'real-pty-start', 'real-pty-status', 'real-pty-stop', 'real-pty-send',
-      'real-pty-send-ctrl-c', 'real-pty-send-ctrl-d', 'real-pty-resize',
-      'real-pty-help', 'enter-pty-mode', 'exit-pty-mode', 'real-pty-mode-status',
-      'termode-shell', 'stop-shell', 'default-shell', 'normal-mode', 'keyboard-help', 'shell-doctor', 'runtime-tools', 'run-tool', 'pkg'
+      'help',
+      'clear',
+      'echo',
+      'pwd',
+      'whoami',
+      'date',
+      'ls',
+      'cd',
+      'mkdir',
+      'touch',
+      'cat',
+      'rm',
+      'cp',
+      'mv',
+      'android-shell',
+      'android-shell-env',
+      'android-shell-diagnostics',
+      'termode-runtime',
+      'toybox',
+      'toybox-list',
+      'runtime-pwd',
+      'runtime-ls',
+      'runtime-cat',
+      'runtime-write',
+      'whereami',
+      'runtime-help',
+      'storage-link',
+      'storage-status',
+      'storage-unlink',
+      'storage-list',
+      'storage-read',
+      'storage-write',
+      'storage-delete',
+      'storage-mkdir',
+      'storage-test',
+      'storage-help',
+      'shell-start',
+      'shell-status',
+      'shell-stop',
+      'shell-send',
+      'shell-send-ctrl-c',
+      'shell-send-ctrl-d',
+      'shell-help',
+      'pty-start',
+      'pty-status',
+      'pty-stop',
+      'pty-send',
+      'real-pty-start',
+      'real-pty-status',
+      'real-pty-stop',
+      'real-pty-send',
+      'real-pty-send-ctrl-c',
+      'real-pty-send-ctrl-d',
+      'real-pty-resize',
+      'real-pty-help',
+      'enter-pty-mode',
+      'exit-pty-mode',
+      'real-pty-mode-status',
+      'termode-shell',
+      'stop-shell',
+      'default-shell',
+      'normal-mode',
+      'keyboard-help',
+      'shell-doctor',
+      'reload-helpers',
+      'runtime-tools',
+      'run-tool',
+      'pkg',
     ];
     final matches = commands.where((cmd) => cmd.startsWith(lastWord)).toList();
 
@@ -191,14 +248,19 @@ class _TerminalScreenState extends State<TerminalScreen> {
       parts[parts.length - 1] = matches[0];
       final newText = parts.join(' ');
       _textController.text = '$newText ';
-      _textController.selection = TextSelection.collapsed(offset: _textController.text.length);
+      _textController.selection = TextSelection.collapsed(
+        offset: _textController.text.length,
+      );
     }
   }
 
   void _pageUp() {
     if (_scrollController.hasClients) {
       final viewportHeight = _scrollController.position.viewportDimension;
-      final newOffset = (_scrollController.offset - viewportHeight).clamp(0.0, _scrollController.position.maxScrollExtent);
+      final newOffset = (_scrollController.offset - viewportHeight).clamp(
+        0.0,
+        _scrollController.position.maxScrollExtent,
+      );
       _scrollController.animateTo(
         newOffset,
         duration: const Duration(milliseconds: 200),
@@ -210,7 +272,10 @@ class _TerminalScreenState extends State<TerminalScreen> {
   void _pageDown() {
     if (_scrollController.hasClients) {
       final viewportHeight = _scrollController.position.viewportDimension;
-      final newOffset = (_scrollController.offset + viewportHeight).clamp(0.0, _scrollController.position.maxScrollExtent);
+      final newOffset = (_scrollController.offset + viewportHeight).clamp(
+        0.0,
+        _scrollController.position.maxScrollExtent,
+      );
       _scrollController.animateTo(
         newOffset,
         duration: const Duration(milliseconds: 200),
@@ -232,69 +297,84 @@ class _TerminalScreenState extends State<TerminalScreen> {
               itemBuilder: (context, index) {
                 final session = _sessionService.sessions[index];
                 final isActive = index == _sessionService.activeSessionIndex;
-                        final badgeText = session.isPtyInteractionActive
-                            ? 'REAL PTY'
-                            : (session.isRealPtyActive ? 'PTY RUNNING' : 'NORMAL');
-                        final badgeColor = session.isPtyInteractionActive
-                            ? const Color(0xFF5AF78E)
-                            : (session.isRealPtyActive ? const Color(0xFFFFB000) : Colors.white30);
-                        final badgeBgColor = session.isPtyInteractionActive
-                            ? const Color(0xFF5AF78E).withValues(alpha: 0.2)
-                            : (session.isRealPtyActive ? const Color(0xFFFFB000).withValues(alpha: 0.2) : Colors.white10);
-                        final badgeBorderColor = session.isPtyInteractionActive
-                            ? const Color(0xFF5AF78E)
-                            : (session.isRealPtyActive ? const Color(0xFFFFB000) : Colors.transparent);
+                final badgeText = session.isPtyInteractionActive
+                    ? 'REAL PTY'
+                    : (session.isRealPtyActive ? 'PTY RUNNING' : 'NORMAL');
+                final badgeColor = session.isPtyInteractionActive
+                    ? const Color(0xFF5AF78E)
+                    : (session.isRealPtyActive
+                          ? const Color(0xFFFFB000)
+                          : Colors.white30);
+                final badgeBgColor = session.isPtyInteractionActive
+                    ? const Color(0xFF5AF78E).withValues(alpha: 0.2)
+                    : (session.isRealPtyActive
+                          ? const Color(0xFFFFB000).withValues(alpha: 0.2)
+                          : Colors.white10);
+                final badgeBorderColor = session.isPtyInteractionActive
+                    ? const Color(0xFF5AF78E)
+                    : (session.isRealPtyActive
+                          ? const Color(0xFFFFB000)
+                          : Colors.transparent);
 
-                        return GestureDetector(
-                          onTap: () {
-                            _sessionService.setActiveSession(index);
-                            _scrollToBottom();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: isActive ? settings.backgroundColor : const Color(0xFF1E1E1E),
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: isActive ? settings.primaryColor : Colors.transparent,
-                                  width: 2.5,
-                                ),
-                              ),
+                return GestureDetector(
+                  onTap: () {
+                    _sessionService.setActiveSession(index);
+                    _scrollToBottom();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? settings.backgroundColor
+                          : const Color(0xFF1E1E1E),
+                      border: Border(
+                        bottom: BorderSide(
+                          color: isActive
+                              ? settings.primaryColor
+                              : Colors.transparent,
+                          width: 2.5,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          session.name,
+                          style: TextStyle(
+                            color: isActive ? Colors.white : Colors.white54,
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                            fontWeight: isActive
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: badgeBgColor,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: badgeBorderColor,
+                              width: 1,
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  session.name,
-                                  style: TextStyle(
-                                    color: isActive ? Colors.white : Colors.white54,
-                                    fontFamily: 'monospace',
-                                    fontSize: 11,
-                                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: badgeBgColor,
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(
-                                      color: badgeBorderColor,
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    badgeText,
-                                    style: TextStyle(
-                                      color: badgeColor,
-                                      fontSize: 8,
-                                      fontFamily: 'monospace',
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
+                          ),
+                          child: Text(
+                            badgeText,
+                            style: TextStyle(
+                              color: badgeColor,
+                              fontSize: 8,
+                              fontFamily: 'monospace',
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                         if (_sessionService.sessions.length > 1) ...[
                           const SizedBox(width: 8),
                           GestureDetector(
@@ -356,7 +436,9 @@ class _TerminalScreenState extends State<TerminalScreen> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const HelpScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const HelpScreen(),
+                          ),
                         );
                       },
                       tooltip: 'Help',
@@ -366,7 +448,9 @@ class _TerminalScreenState extends State<TerminalScreen> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsScreen(),
+                          ),
                         );
                       },
                       tooltip: 'Settings',
@@ -393,7 +477,9 @@ class _TerminalScreenState extends State<TerminalScreen> {
                             },
                             onPointerMove: (event) {
                               if (_pointerDownPosition != null) {
-                                final distance = (event.position - _pointerDownPosition!).distance;
+                                final distance =
+                                    (event.position - _pointerDownPosition!)
+                                        .distance;
                                 if (distance > 10.0) {
                                   _pointerDownPosition = null;
                                 }
@@ -401,12 +487,19 @@ class _TerminalScreenState extends State<TerminalScreen> {
                             },
                             onPointerUp: (event) {
                               if (_pointerDownPosition != null) {
-                                final difference = (event.position - _pointerDownPosition!).distance;
+                                final difference =
+                                    (event.position - _pointerDownPosition!)
+                                        .distance;
                                 if (difference < 10.0) {
-                                  Future.delayed(const Duration(milliseconds: 50), () {
-                                    _focusNode.requestFocus();
-                                    SystemChannels.textInput.invokeMethod('TextInput.show');
-                                  });
+                                  Future.delayed(
+                                    const Duration(milliseconds: 50),
+                                    () {
+                                      _focusNode.requestFocus();
+                                      SystemChannels.textInput.invokeMethod(
+                                        'TextInput.show',
+                                      );
+                                    },
+                                  );
                                 }
                               }
                               _pointerDownPosition = null;
@@ -414,7 +507,9 @@ class _TerminalScreenState extends State<TerminalScreen> {
                             child: TerminalView(
                               lines: _sessionService.lines,
                               scrollController: _scrollController,
-                              showInput: !_sessionService.activeSession.isExecutingNativeCommand,
+                              showInput: !_sessionService
+                                  .activeSession
+                                  .isExecutingNativeCommand,
                               textController: _textController,
                               focusNode: _focusNode,
                               prompt: _sessionService.currentPrompt,
@@ -424,10 +519,15 @@ class _TerminalScreenState extends State<TerminalScreen> {
                             ),
                           ),
                         ),
-                        if (_sessionService.activeSession.isExecutingNativeCommand) ...[
+                        if (_sessionService
+                            .activeSession
+                            .isExecutingNativeCommand) ...[
                           const Divider(height: 1, color: Color(0xFF2D2D2D)),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             color: Colors.black26,
                             child: Row(
                               children: [
@@ -436,7 +536,9 @@ class _TerminalScreenState extends State<TerminalScreen> {
                                   height: 14,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(settings.primaryColor),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      settings.primaryColor,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -457,7 +559,8 @@ class _TerminalScreenState extends State<TerminalScreen> {
                                   style: TextButton.styleFrom(
                                     padding: EdgeInsets.zero,
                                     minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
                                   child: const Text(
                                     'KILL',
@@ -483,7 +586,9 @@ class _TerminalScreenState extends State<TerminalScreen> {
                           onTabComplete: _onTabComplete,
                           onPageUp: _pageUp,
                           onPageDown: _pageDown,
-                          isPtyInteractionActive: _sessionService.activeSession.isPtyInteractionActive,
+                          isPtyInteractionActive: _sessionService
+                              .activeSession
+                              .isPtyInteractionActive,
                           isCtrlActive: _isCtrlActive,
                           onCtrlToggle: () {
                             setState(() {
@@ -503,14 +608,21 @@ class _TerminalScreenState extends State<TerminalScreen> {
                     top: 8,
                     left: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: _sessionService.activeSession.isPtyInteractionActive
+                        color:
+                            _sessionService.activeSession.isPtyInteractionActive
                             ? const Color(0xFF5AF78E).withValues(alpha: 0.2)
                             : Colors.black54,
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: _sessionService.activeSession.isPtyInteractionActive
+                          color:
+                              _sessionService
+                                  .activeSession
+                                  .isPtyInteractionActive
                               ? const Color(0xFF5AF78E)
                               : Colors.white24,
                           width: 1,
@@ -519,11 +631,18 @@ class _TerminalScreenState extends State<TerminalScreen> {
                       child: Text(
                         _sessionService.activeSession.isPtyInteractionActive
                             ? 'REAL PTY MODE'
-                            : (_sessionService.activeSession.isRealPtyActive ? 'PTY RUNNING' : 'NORMAL MODE'),
+                            : (_sessionService.activeSession.isRealPtyActive
+                                  ? 'PTY RUNNING'
+                                  : 'NORMAL MODE'),
                         style: TextStyle(
-                          color: _sessionService.activeSession.isPtyInteractionActive
+                          color:
+                              _sessionService
+                                  .activeSession
+                                  .isPtyInteractionActive
                               ? const Color(0xFF5AF78E)
-                              : (_sessionService.activeSession.isRealPtyActive ? const Color(0xFFFFB000) : Colors.white54),
+                              : (_sessionService.activeSession.isRealPtyActive
+                                    ? const Color(0xFFFFB000)
+                                    : Colors.white54),
                           fontSize: 10,
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.bold,
@@ -540,7 +659,11 @@ class _TerminalScreenState extends State<TerminalScreen> {
                         backgroundColor: Colors.black54,
                         radius: 18,
                         child: IconButton(
-                          icon: const Icon(Icons.fullscreen_exit, color: Colors.white, size: 18),
+                          icon: const Icon(
+                            Icons.fullscreen_exit,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           onPressed: () {

@@ -972,7 +972,7 @@ class MainActivity: FlutterActivity() {
                             tmpDir.absolutePath,
                             pathEnv,
                             arrayOf("PS1", "ENV"),
-                            arrayOf("termode:\\w \$ ", java.io.File(usrDir, "termode-shell-helpers.sh").absolutePath),
+                            arrayOf("termode:\$ ", java.io.File(usrDir, "termode-shell-helpers.sh").absolutePath),
                             cols,
                             rows
                         )
