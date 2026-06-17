@@ -1905,16 +1905,16 @@ class CommandService {
                   'Manage script-based packages inside Termode.\n\n'
                   'Commands:\n'
                   '  pkg help                 - Show this help message\n'
-                  '  pkg update               - Update local package index\n'
-                  '  pkg repo [cmd]           - Configure remote package repository\n'
+                  '  pkg update               - Update active package index\n'
+                  '  pkg repo [cmd]           - Configure/trust remote package repository\n'
                   '  pkg sources              - Show local/remote source summary\n'
                   '  pkg list [--long]        - List packages in index with status\n'
                   '  pkg search <term>        - Search packages in index\n'
                   '  pkg info <name> [--verbose] - Show package information\n'
                   '  pkg install <name>       - Install a package\n'
                   '  pkg reinstall <name>     - Reinstall or install a package\n'
-                  '  pkg upgrade              - Upgrade installed packages from local index\n'
-                  '  pkg repair               - Repair missing package files and helpers\n'
+                  '  pkg upgrade [name]       - Upgrade installed packages\n'
+                  '  pkg repair [name]        - Repair missing package files and helpers\n'
                   '  pkg clean                - Clean package manager temp files\n'
                   '  pkg cache clean          - Clean cached remote package index\n'
                   '  pkg files <name>         - Show files managed by a package\n'
@@ -1938,7 +1938,9 @@ class CommandService {
 
           case 'repo':
             if (args.length == 1 || args[1].toLowerCase() == 'status') {
-              final result = await pmService.repoStatus();
+              final result = args.contains('--verbose')
+                  ? await pmService.repoStatusVerbose()
+                  : await pmService.repoStatus();
               return CommandResult(
                 output: result.output,
                 isError: result.isError,
@@ -1965,6 +1967,9 @@ class CommandService {
               case 'disable':
                 result = await pmService.repoDisable();
                 break;
+              case 'trust':
+                result = await pmService.repoTrust();
+                break;
               case 'test':
                 result = await pmService.repoTest();
                 break;
@@ -1972,7 +1977,7 @@ class CommandService {
                 return CommandResult(
                   output:
                       'Unknown repo command: $repoCommand\n'
-                      'Usage: pkg repo <status|set|clear|enable|disable|test>',
+                      'Usage: pkg repo <status|set|clear|enable|disable|trust|test>',
                   isError: true,
                 );
             }
@@ -2151,7 +2156,10 @@ class CommandService {
               );
             }
             final pkgName = args[1];
-            final result = await pmService.reinstallPackage(pkgName);
+            final result = await pmService.reinstallPackage(
+              pkgName,
+              allowSourceChange: args.contains('--allow-source-change'),
+            );
             if (result.isError) {
               return CommandResult(output: result.output, isError: true);
             }
@@ -2164,7 +2172,13 @@ class CommandService {
             );
 
           case 'upgrade':
-            final result = await pmService.upgradePackages();
+            final target = args.length >= 2 && !args[1].startsWith('--')
+                ? args[1]
+                : null;
+            final result = await pmService.upgradePackages(
+              onlyPackage: target,
+              allowSourceChange: args.contains('--allow-source-change'),
+            );
             return CommandResult(
               output: result.output,
               isError: result.isError,
@@ -2174,7 +2188,13 @@ class CommandService {
             );
 
           case 'repair':
-            final result = await pmService.repairPackages();
+            final target = args.length >= 2 && !args[1].startsWith('--')
+                ? args[1]
+                : null;
+            final result = await pmService.repairPackages(
+              onlyPackage: target,
+              allowSourceChange: args.contains('--allow-source-change'),
+            );
             return CommandResult(
               output: result.output,
               isError: result.isError,
@@ -2276,11 +2296,18 @@ class CommandService {
               sb.writeln('Status: ${isHealthy ? "HEALTHY" : "UNHEALTHY"}');
               sb.writeln('Installed: ${doc['installedCount']}');
               sb.writeln('Remote installed: ${doc['remoteInstalledCount']}');
+              sb.writeln(
+                'Remote need cache: ${doc['remotePackagesNeedingCache']}',
+              );
+              sb.writeln('Source mismatches: ${doc['sourceMismatchCount']}');
               sb.writeln('Broken: ${doc['brokenPackageCount']}');
               sb.writeln('Missing files: ${doc['missingFileCount']}');
               sb.writeln('Helpers: ${helpersOk ? "OK" : "NOT GENERATED"}');
               sb.writeln(
                 'Remote repo: ${repo['remoteEnabled'] == true ? "enabled" : "disabled"}',
+              );
+              sb.writeln(
+                'Remote trusted: ${(repo['trustedRepoUrls'] as List? ?? []).contains(repo['repoUrl']) ? "yes" : "no"}',
               );
               sb.write(
                 'Remote cache: ${doc['remoteIndexCached'] == true ? "present" : "missing"}',
@@ -2296,6 +2323,10 @@ class CommandService {
               );
               sb.writeln('Installed Packages: ${doc['installedCount']}');
               sb.writeln('Remote Installed:   ${doc['remoteInstalledCount']}');
+              sb.writeln(
+                'Remote Need Cache:  ${doc['remotePackagesNeedingCache']}',
+              );
+              sb.writeln('Source Mismatches:  ${doc['sourceMismatchCount']}');
               sb.writeln('Broken Packages:    ${doc['brokenPackageCount']}');
               sb.writeln('Missing File Count: ${doc['missingFileCount']}');
               sb.writeln(
@@ -2311,6 +2342,9 @@ class CommandService {
               }
               sb.writeln(
                 'Remote Repo Enabled: ${repo['remoteEnabled'] == true ? "YES" : "NO"}',
+              );
+              sb.writeln(
+                'Remote Repo Trusted: ${(repo['trustedRepoUrls'] as List? ?? []).contains(repo['repoUrl']) ? "YES" : "NO"}',
               );
               sb.writeln(
                 'Remote Index Cache: ${doc['remoteIndexCached'] == true ? "EXISTS" : "MISSING"}',

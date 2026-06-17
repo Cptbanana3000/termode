@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "hello-remote",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "type": "script",
       "description": "Prints a hello message from the Termode test remote repository.",
       "executable": "hello-remote",
@@ -13,7 +13,7 @@
         {
           "path": "usr/bin/hello-remote",
           "url": "packages/hello-remote.sh",
-          "sha256": "9cdba09c27a7197434bf73b03b79886a4e1e42d9ed93026913dd22173a53809f"
+          "sha256": "b0b667275c46631ebac125792c00811bff4b7c9f50f1e9816537d0a85a05f9d1"
         }
       ]
     },

@@ -1530,6 +1530,7 @@ void main() {
         String url = 'https://repo.test/termode-test-repo/index.json',
       }) async {
         await commandService.execute('pkg repo set $url');
+        await commandService.execute('pkg repo trust');
         await commandService.execute('pkg repo enable');
       }
 
@@ -1599,6 +1600,69 @@ void main() {
         return commandService.execute('pkg update');
       }
 
+      Map<String, dynamic> remoteIndexForPackage({
+        required String version,
+        required String script,
+        String name = 'hello-remote',
+        String executable = 'hello-remote',
+        String path = 'usr/bin/hello-remote',
+        String url = 'packages/hello-remote.sh',
+        String? repoName,
+        String? sha256,
+      }) {
+        final knownHashes = {
+          '#!/system/bin/sh\necho "Hello remote version 1.0.0"\n':
+              '01c2afb95727427affea843cd6ea1e74fcf6607388c55d2fcbda9a80623f873e',
+          '#!/system/bin/sh\necho "Hello remote version 1.1.0"\n':
+              'b633e1c90815a309c0af31bb854adbb020d2b7f8f15b4d772b67b17ef5af6a11',
+          '#!/system/bin/sh\necho "hello 1.0.0"\n':
+              '1247a1ffea0abe7a82a64fb4e456fc6dd7f5baad1f5a32a52cd9976e81cf4ebf',
+          '#!/system/bin/sh\necho "hello 1.1.0"\n':
+              '55c393e1c2e86ff35403d9325a09dc214f29eb920ad3eea9e56154aedd3ca9d0',
+          '#!/system/bin/sh\necho "note 1.0.0"\n':
+              '03d2c1b85c55be080687972dfcdeae422bf0410db8e35b313c9139c43955de49',
+          '#!/system/bin/sh\necho "note 1.1.0"\n':
+              '47e8d0aa762a19e9d53749afa312c517076fbee3858f7ba56beb1d08bcf0ef42',
+          '#!/system/bin/sh\necho "safe v1"\n':
+              '94003044d4188cc33ce688bffe9121ed27312f9f64b091716926e4412399ad71',
+          '#!/system/bin/sh\necho "unsafe v1.1"\n':
+              'c72b873f680f08e2ea474e78283a3e25c11a6e001d318a53cd92f92f95d9fde7',
+          '#!/system/bin/sh\necho "restored remote"\n':
+              'e1cbc7e071a1029da09643be10753e997532ffdd6e139dc819515cb3614303ef',
+          '#!/system/bin/sh\necho "repair remote"\n':
+              '780c9505234a141a9d926ba9f893450a6d4ecf8fbcf04f60aeeca81c829669a3',
+          '#!/system/bin/sh\necho "http repo"\n':
+              '6b9840c57e18be52820dc17c1348d6a4562e4d3583e5dcaa4ae220a79f18a640',
+          '#!/system/bin/sh\necho "old repo"\n':
+              'dbbb933e9eec09e5df486bf2e86e086d28160472c2633bfa3cb3aaa0ee937796',
+          '#!/system/bin/sh\necho "new repo"\n':
+              'a77b77b44d3ff3ff953a65e8e67fbfc2b52e9d5896292d543bcf59006900f27c',
+          '#!/system/bin/sh\necho "doctor remote"\n':
+              '04df1baeaedcd7af1227e0bd3fedd5b642ec5f403887a4293664afdc051b4cac',
+        };
+        return {
+          'schemaVersion': 1,
+          'name': repoName ?? 'Termode Test Repo',
+          'updatedAt': '2026-06-17T00:00:00Z',
+          'packages': [
+            {
+              'name': name,
+              'version': version,
+              'type': 'script',
+              'description': 'Remote hello package for Termode.',
+              'executable': executable,
+              'files': [
+                {
+                  'path': path,
+                  'url': url,
+                  'sha256': sha256 ?? knownHashes[script]!,
+                },
+              ],
+            },
+          ],
+        };
+      }
+
       test('pkg help output', () async {
         final vfs = VirtualFileSystem();
         final commandService = CommandService(vfs, 'session_pkg');
@@ -1647,8 +1711,10 @@ void main() {
 
         final status = await commandService.execute('pkg repo status');
         expect(status.isError, isFalse);
-        expect(status.output, contains('Remote Enabled:     NO'));
-        expect(status.output, contains('Fallback To Local:  YES'));
+        expect(status.output, contains('Remote enabled: no'));
+        expect(status.output, contains('Repo trusted: no'));
+        expect(status.output, contains('Repo URL: missing'));
+        expect(status.output, contains('Fallback: yes'));
 
         final invalid = await commandService.execute('pkg repo set ftp://bad');
         expect(invalid.isError, isTrue);
@@ -1670,6 +1736,17 @@ void main() {
         );
         expect(set.isError, isFalse);
         expect(set.output, contains('Repository URL saved'));
+
+        final enableUntrusted = await commandService.execute('pkg repo enable');
+        expect(enableUntrusted.isError, isTrue);
+        expect(
+          enableUntrusted.output,
+          contains('Remote repo is not trusted yet'),
+        );
+
+        final trust = await commandService.execute('pkg repo trust');
+        expect(trust.isError, isFalse);
+        expect(trust.output, contains('Repository trusted'));
 
         final enable = await commandService.execute('pkg repo enable');
         expect(enable.isError, isFalse);
@@ -1733,6 +1810,7 @@ void main() {
         await commandService.execute(
           'pkg repo set https://repo.test/index.json',
         );
+        await commandService.execute('pkg repo trust');
         await commandService.execute('pkg repo enable');
         final update = await commandService.execute('pkg update');
         expect(update.isError, isFalse);
@@ -1793,15 +1871,23 @@ void main() {
           );
 
           final status = await commandService.execute('pkg repo status');
-          expect(status.output, contains('Remote Enabled:     YES'));
+          expect(status.output, contains('Remote enabled: yes'));
+          expect(status.output, contains('Repo trusted: yes'));
+          expect(status.output, contains('Repo URL: configured'));
+          expect(status.output, contains('Cached packages: 3'));
+
+          final statusVerbose = await commandService.execute(
+            'pkg repo status --verbose',
+          );
+          expect(statusVerbose.output, contains('Remote Enabled:     YES'));
           expect(
-            status.output,
+            statusVerbose.output,
             contains(
               'Repo URL:           https://repo.test/termode-test-repo/index.json',
             ),
           );
-          expect(status.output, contains('Active Index Source: remote'));
-          expect(status.output, contains('Cached Remote Count: 3'));
+          expect(statusVerbose.output, contains('Active Index Source: remote'));
+          expect(statusVerbose.output, contains('Cached Remote Count: 3'));
 
           final sources = await commandService.execute('pkg sources');
           expect(sources.output, contains('Local packages: 3'));
@@ -1823,14 +1909,14 @@ void main() {
           expect(info.output, contains('Repo:        configured'));
           expect(info.output, contains('Checksum:    available'));
           expect(info.output, isNot(contains('https://repo.test')));
-          expect(info.output, isNot(contains('9cdba09c')));
+          expect(info.output, isNot(contains('b0b66727')));
 
           final verboseInfo = await commandService.execute(
             'pkg info hello-remote --verbose',
           );
           expect(verboseInfo.output, contains('Repo URL:'));
           expect(verboseInfo.output, contains('usr/bin/hello-remote'));
-          expect(verboseInfo.output, contains('SHA-256: 9cdba09c'));
+          expect(verboseInfo.output, contains('SHA-256: b0b66727'));
 
           final install = await commandService.execute(
             'pkg install hello-remote',
@@ -1847,14 +1933,14 @@ void main() {
           expect(await installedFile.exists(), isTrue);
           expect(
             await installedFile.readAsString(),
-            contains('Hello from Termode remote repo!'),
+            contains('Hello from Termode remote repo v1.1.0!'),
           );
 
           final helperFile = File('${paths['usr']!}/termode-shell-helpers.sh');
           expect(await helperFile.readAsString(), contains('hello-remote()'));
 
           final installed = await commandService.execute('pkg installed');
-          expect(installed.output, contains('hello-remote [1.0.0] (remote)'));
+          expect(installed.output, contains('hello-remote [1.1.0] (remote)'));
 
           final verify = await commandService.execute(
             'pkg verify hello-remote',
@@ -1891,7 +1977,7 @@ void main() {
           );
           expect(
             installedAfterRemove.output,
-            isNot(contains('hello-remote [1.0.0] (remote)')),
+            isNot(contains('hello-remote [1.1.0] (remote)')),
           );
         },
       );
@@ -1907,6 +1993,7 @@ void main() {
         await commandService.execute(
           'pkg repo set https://repo.test/index.json',
         );
+        await commandService.execute('pkg repo trust');
         await commandService.execute('pkg repo enable');
 
         final update = await commandService.execute('pkg update');
@@ -1988,6 +2075,7 @@ void main() {
         await commandService.execute(
           'pkg repo set https://repo.test/index.json',
         );
+        await commandService.execute('pkg repo trust');
         await commandService.execute('pkg repo enable');
 
         final invalidJson = await commandService.execute('pkg repo test');
@@ -2047,6 +2135,7 @@ void main() {
           await commandService.execute(
             'pkg repo set https://repo.test/index.json',
           );
+          await commandService.execute('pkg repo trust');
           await commandService.execute('pkg repo enable');
           await commandService.execute('pkg update');
 
@@ -2127,6 +2216,7 @@ void main() {
         await commandService.execute(
           'pkg repo set https://repo.test/index.json',
         );
+        await commandService.execute('pkg repo trust');
         await commandService.execute('pkg repo enable');
         await commandService.execute('pkg update');
         final mismatch = await commandService.execute(
@@ -2165,6 +2255,456 @@ void main() {
         expect(updateUnsafe.isError, isFalse);
         expect(updateUnsafe.output, contains('Falling back to local'));
       });
+
+      test('pkg upgrade detects and installs remote updates', () async {
+        final commandService = CommandService(
+          VirtualFileSystem(),
+          'session_pkg',
+        );
+        const scriptV1 =
+            '#!/system/bin/sh\necho "Hello remote version 1.0.0"\n';
+        const scriptV11 =
+            '#!/system/bin/sh\necho "Hello remote version 1.1.0"\n';
+        var index = remoteIndexForPackage(version: '1.0.0', script: scriptV1);
+        PackageManagerService.httpBytesFetcherForTesting = (uri) async {
+          if (uri.path.endsWith('index.json')) {
+            return utf8.encode(jsonEncode(index));
+          }
+          return utf8.encode(
+            (index['packages'] as List).first['version'] == '1.1.0'
+                ? scriptV11
+                : scriptV1,
+          );
+        };
+
+        await enableTestRepo(
+          commandService,
+          url: 'https://repo.test/index.json',
+        );
+        await commandService.execute('pkg update');
+        await commandService.execute('pkg install hello-remote');
+
+        index = remoteIndexForPackage(version: '1.1.0', script: scriptV11);
+        await commandService.execute('pkg update');
+        final upgrade = await commandService.execute('pkg upgrade');
+
+        expect(upgrade.isError, isFalse);
+        expect(upgrade.output, contains('Checking packages...'));
+        expect(
+          upgrade.output,
+          contains('Upgrade available: hello-remote 1.0.0 -> 1.1.0'),
+        );
+        expect(upgrade.output, contains('Upgraded: hello-remote'));
+        expect(upgrade.output, contains('Done.'));
+
+        final paths = await bootstrapService.getPaths();
+        final file = File('${paths['usr']!}/bin/hello-remote');
+        expect(await file.readAsString(), scriptV11);
+
+        final installed = await commandService.execute('pkg installed');
+        expect(installed.output, contains('hello-remote [1.1.0] (remote)'));
+
+        final current = await commandService.execute(
+          'pkg upgrade hello-remote',
+        );
+        expect(current.isError, isFalse);
+        expect(current.output, contains('hello-remote is already up to date.'));
+      });
+
+      test(
+        'pkg upgrade <package> upgrades only the requested package',
+        () async {
+          final commandService = CommandService(
+            VirtualFileSystem(),
+            'session_pkg',
+          );
+          const helloV1 = '#!/system/bin/sh\necho "hello 1.0.0"\n';
+          const helloV11 = '#!/system/bin/sh\necho "hello 1.1.0"\n';
+          const noteV1 = '#!/system/bin/sh\necho "note 1.0.0"\n';
+          const noteV11 = '#!/system/bin/sh\necho "note 1.1.0"\n';
+          var index = {
+            'schemaVersion': 1,
+            'packages': [
+              ...remoteIndexForPackage(
+                    version: '1.0.0',
+                    script: helloV1,
+                  )['packages']
+                  as List,
+              ...remoteIndexForPackage(
+                    name: 'note-remote',
+                    executable: 'note-remote',
+                    path: 'usr/bin/note-remote',
+                    url: 'packages/note-remote.sh',
+                    version: '1.0.0',
+                    script: noteV1,
+                  )['packages']
+                  as List,
+            ],
+          };
+          PackageManagerService.httpBytesFetcherForTesting = (uri) async {
+            if (uri.path.endsWith('index.json')) {
+              return utf8.encode(jsonEncode(index));
+            }
+            if (uri.path.endsWith('note-remote.sh')) {
+              return utf8.encode(
+                jsonEncode(index).contains('"note-remote","version":"1.1.0"')
+                    ? noteV11
+                    : noteV1,
+              );
+            }
+            return utf8.encode(
+              jsonEncode(index).contains('"hello-remote","version":"1.1.0"')
+                  ? helloV11
+                  : helloV1,
+            );
+          };
+
+          await enableTestRepo(
+            commandService,
+            url: 'https://repo.test/index.json',
+          );
+          await commandService.execute('pkg update');
+          await commandService.execute('pkg install hello-remote');
+          await commandService.execute('pkg install note-remote');
+
+          index = {
+            'schemaVersion': 1,
+            'packages': [
+              ...remoteIndexForPackage(
+                    version: '1.1.0',
+                    script: helloV11,
+                  )['packages']
+                  as List,
+              ...remoteIndexForPackage(
+                    name: 'note-remote',
+                    executable: 'note-remote',
+                    path: 'usr/bin/note-remote',
+                    url: 'packages/note-remote.sh',
+                    version: '1.1.0',
+                    script: noteV11,
+                  )['packages']
+                  as List,
+            ],
+          };
+          await commandService.execute('pkg update');
+
+          final upgrade = await commandService.execute(
+            'pkg upgrade hello-remote',
+          );
+          expect(upgrade.isError, isFalse);
+          expect(upgrade.output, contains('Upgraded: hello-remote'));
+          expect(upgrade.output, isNot(contains('Upgraded: note-remote')));
+
+          final paths = await bootstrapService.getPaths();
+          expect(
+            await File('${paths['usr']!}/bin/hello-remote').readAsString(),
+            helloV11,
+          );
+          expect(
+            await File('${paths['usr']!}/bin/note-remote').readAsString(),
+            noteV1,
+          );
+        },
+      );
+
+      test(
+        'checksum mismatch cancels remote upgrade before metadata write',
+        () async {
+          final commandService = CommandService(
+            VirtualFileSystem(),
+            'session_pkg',
+          );
+          const scriptV1 = '#!/system/bin/sh\necho "safe v1"\n';
+          const scriptV11 = '#!/system/bin/sh\necho "unsafe v1.1"\n';
+          var index = remoteIndexForPackage(version: '1.0.0', script: scriptV1);
+          PackageManagerService.httpBytesFetcherForTesting = (uri) async {
+            if (uri.path.endsWith('index.json')) {
+              return utf8.encode(jsonEncode(index));
+            }
+            return utf8.encode(
+              (index['packages'] as List).first['version'] == '1.1.0'
+                  ? scriptV11
+                  : scriptV1,
+            );
+          };
+
+          await enableTestRepo(
+            commandService,
+            url: 'https://repo.test/index.json',
+          );
+          await commandService.execute('pkg update');
+          await commandService.execute('pkg install hello-remote');
+          index = remoteIndexForPackage(
+            version: '1.1.0',
+            script: scriptV11,
+            sha256: List.filled(64, '0').join(),
+          );
+          await commandService.execute('pkg update');
+
+          final upgrade = await commandService.execute(
+            'pkg upgrade hello-remote',
+          );
+          expect(upgrade.isError, isTrue);
+          expect(
+            upgrade.output,
+            contains('Checksum mismatch for hello-remote'),
+          );
+
+          final paths = await bootstrapService.getPaths();
+          final meta =
+              jsonDecode(
+                    await File(
+                      '${paths['usr']!}/termode-packages.json',
+                    ).readAsString(),
+                  )
+                  as Map<String, dynamic>;
+          expect(meta['packages']['hello-remote']['version'], '1.0.0');
+          expect(
+            await File('${paths['usr']!}/bin/hello-remote').readAsString(),
+            scriptV1,
+          );
+        },
+      );
+
+      test(
+        'remote reinstall uses cache and fails clearly without cache',
+        () async {
+          final commandService = CommandService(
+            VirtualFileSystem(),
+            'session_pkg',
+          );
+          const script = '#!/system/bin/sh\necho "restored remote"\n';
+          final index = remoteIndexForPackage(version: '1.0.0', script: script);
+          PackageManagerService.httpBytesFetcherForTesting = (uri) async {
+            if (uri.path.endsWith('index.json')) {
+              return utf8.encode(jsonEncode(index));
+            }
+            return utf8.encode(script);
+          };
+
+          await enableTestRepo(
+            commandService,
+            url: 'https://repo.test/index.json',
+          );
+          await commandService.execute('pkg update');
+          await commandService.execute('pkg install hello-remote');
+          final paths = await bootstrapService.getPaths();
+          final file = File('${paths['usr']!}/bin/hello-remote');
+          await file.writeAsString('broken');
+
+          final reinstall = await commandService.execute(
+            'pkg reinstall hello-remote',
+          );
+          expect(reinstall.isError, isFalse);
+          expect(
+            reinstall.output,
+            contains('Reinstalled package hello-remote'),
+          );
+          expect(await file.readAsString(), script);
+
+          await File('${paths['usr']!}/termode-remote-index.json').delete();
+          final noCache = await commandService.execute(
+            'pkg reinstall hello-remote',
+          );
+          expect(noCache.isError, isTrue);
+          expect(
+            noCache.output,
+            contains('Remote package not found in cache. Run: pkg update'),
+          );
+        },
+      );
+
+      test(
+        'remote repair restores missing files and reports missing cache',
+        () async {
+          final commandService = CommandService(
+            VirtualFileSystem(),
+            'session_pkg',
+          );
+          const script = '#!/system/bin/sh\necho "repair remote"\n';
+          final index = remoteIndexForPackage(version: '1.0.0', script: script);
+          PackageManagerService.httpBytesFetcherForTesting = (uri) async {
+            if (uri.path.endsWith('index.json')) {
+              return utf8.encode(jsonEncode(index));
+            }
+            return utf8.encode(script);
+          };
+
+          await enableTestRepo(
+            commandService,
+            url: 'https://repo.test/index.json',
+          );
+          await commandService.execute('pkg update');
+          await commandService.execute('pkg install hello-remote');
+          final paths = await bootstrapService.getPaths();
+          final file = File('${paths['usr']!}/bin/hello-remote');
+          await file.delete();
+
+          final repair = await commandService.execute(
+            'pkg repair hello-remote',
+          );
+          expect(repair.isError, isFalse);
+          expect(repair.output, contains('Fixed Files: usr/bin/hello-remote'));
+          expect(await file.exists(), isTrue);
+          expect(await file.readAsString(), script);
+
+          await File('${paths['usr']!}/termode-remote-index.json').delete();
+          await file.delete();
+          final noCache = await commandService.execute(
+            'pkg repair hello-remote',
+          );
+          expect(noCache.isError, isTrue);
+          expect(
+            noCache.output,
+            contains(
+              'Some remote packages need cached repo data. Run: pkg update then pkg repair.',
+            ),
+          );
+        },
+      );
+
+      test('repo trust is per URL and HTTP repos show warnings', () async {
+        final commandService = CommandService(
+          VirtualFileSystem(),
+          'session_pkg',
+        );
+        const script = '#!/system/bin/sh\necho "http repo"\n';
+        final index = remoteIndexForPackage(version: '1.0.0', script: script);
+        PackageManagerService.httpBytesFetcherForTesting = (uri) async {
+          if (uri.path.endsWith('index.json')) {
+            return utf8.encode(jsonEncode(index));
+          }
+          return utf8.encode(script);
+        };
+
+        final setHttp = await commandService.execute(
+          'pkg repo set http://repo.test/index.json',
+        );
+        expect(setHttp.isError, isFalse);
+        expect(
+          setHttp.output,
+          contains('Warning: HTTP repos are not encrypted'),
+        );
+
+        final enableUntrusted = await commandService.execute('pkg repo enable');
+        expect(enableUntrusted.isError, isTrue);
+        expect(
+          enableUntrusted.output,
+          contains('Remote repo is not trusted yet'),
+        );
+
+        final trust = await commandService.execute('pkg repo trust');
+        expect(trust.isError, isFalse);
+        final enable = await commandService.execute('pkg repo enable');
+        expect(enable.isError, isFalse);
+
+        final update = await commandService.execute('pkg update');
+        expect(update.isError, isFalse);
+        expect(update.output, contains('Warning: repo is not HTTPS.'));
+
+        await commandService.execute(
+          'pkg repo set https://repo.test/index.json',
+        );
+        final status = await commandService.execute('pkg repo status');
+        expect(status.output, contains('Repo trusted: no'));
+        final blocked = await commandService.execute('pkg repo enable');
+        expect(blocked.isError, isTrue);
+        expect(blocked.output, contains('Remote repo is not trusted yet'));
+      });
+
+      test(
+        'source locking blocks repo switch unless explicitly allowed',
+        () async {
+          final commandService = CommandService(
+            VirtualFileSystem(),
+            'session_pkg',
+          );
+          const oldScript = '#!/system/bin/sh\necho "old repo"\n';
+          const newScript = '#!/system/bin/sh\necho "new repo"\n';
+          var repoUrl = 'https://repo.test/index.json';
+          PackageManagerService.httpBytesFetcherForTesting = (uri) async {
+            final script = uri.host == 'other.test' ? newScript : oldScript;
+            final version = uri.host == 'other.test' ? '1.1.0' : '1.0.0';
+            if (uri.path.endsWith('index.json')) {
+              return utf8.encode(
+                jsonEncode(
+                  remoteIndexForPackage(version: version, script: script),
+                ),
+              );
+            }
+            return utf8.encode(script);
+          };
+
+          await enableTestRepo(commandService, url: repoUrl);
+          await commandService.execute('pkg update');
+          await commandService.execute('pkg install hello-remote');
+
+          repoUrl = 'https://other.test/index.json';
+          await enableTestRepo(commandService, url: repoUrl);
+          await commandService.execute('pkg update');
+          final blocked = await commandService.execute(
+            'pkg upgrade hello-remote',
+          );
+          expect(blocked.isError, isTrue);
+          expect(
+            blocked.output,
+            contains('package was installed from a different repo'),
+          );
+          expect(blocked.output, contains('Run with --allow-source-change'));
+
+          final allowed = await commandService.execute(
+            'pkg upgrade hello-remote --allow-source-change',
+          );
+          expect(allowed.isError, isFalse);
+          expect(allowed.output, contains('Upgraded: hello-remote'));
+
+          final paths = await bootstrapService.getPaths();
+          expect(
+            await File('${paths['usr']!}/bin/hello-remote').readAsString(),
+            newScript,
+          );
+        },
+      );
+
+      test(
+        'pkg doctor detects remote cache and source mismatch issues',
+        () async {
+          final commandService = CommandService(
+            VirtualFileSystem(),
+            'session_pkg',
+          );
+          const script = '#!/system/bin/sh\necho "doctor remote"\n';
+          final index = remoteIndexForPackage(version: '1.0.0', script: script);
+          PackageManagerService.httpBytesFetcherForTesting = (uri) async {
+            if (uri.path.endsWith('index.json')) {
+              return utf8.encode(jsonEncode(index));
+            }
+            return utf8.encode(script);
+          };
+
+          await enableTestRepo(
+            commandService,
+            url: 'https://repo.test/index.json',
+          );
+          await commandService.execute('pkg update');
+          await commandService.execute('pkg install hello-remote');
+          final paths = await bootstrapService.getPaths();
+          await File('${paths['usr']!}/termode-remote-index.json').delete();
+
+          final missingCache = await commandService.execute('pkg doctor');
+          expect(missingCache.isError, isTrue);
+          expect(missingCache.output, contains('Remote need cache: 1'));
+          expect(missingCache.output, contains('Status: UNHEALTHY'));
+
+          await commandService.execute('pkg update');
+          await commandService.execute(
+            'pkg repo set https://other.test/index.json',
+          );
+          final mismatch = await commandService.execute('pkg doctor');
+          expect(mismatch.isError, isTrue);
+          expect(mismatch.output, contains('Source mismatches: 1'));
+        },
+      );
 
       test('pkg cache clean removes cached remote index only', () async {
         final commandService = CommandService(
@@ -3798,7 +4338,8 @@ void main() {
             .map((l) => l.text)
             .join('\n');
         expect(output, contains('pkg repo status'));
-        expect(output, contains('Termode Package Repository Config'));
+        expect(output, contains('Remote enabled: no'));
+        expect(output, contains('Repo trusted: no'));
         expect(output, contains('pkg sources'));
         expect(output, contains('Local packages:'));
         expect(
