@@ -2667,6 +2667,116 @@ void main() {
       );
 
       test(
+        'remote operations check source and repo state before up-to-date output',
+        () async {
+          final commandService = CommandService(
+            VirtualFileSystem(),
+            'session_pkg',
+          );
+          const script = '#!/system/bin/sh\necho "old repo"\n';
+          PackageManagerService.httpBytesFetcherForTesting = (uri) async {
+            if (uri.path.endsWith('index.json')) {
+              return utf8.encode(
+                jsonEncode(
+                  remoteIndexForPackage(version: '1.0.0', script: script),
+                ),
+              );
+            }
+            return utf8.encode(script);
+          };
+
+          await enableTestRepo(
+            commandService,
+            url: 'https://repo.test/index.json',
+          );
+          await commandService.execute('pkg update');
+          await commandService.execute('pkg install hello-remote');
+
+          await commandService.execute(
+            'pkg repo set https://example.com/fake/index.json',
+          );
+
+          for (final command in [
+            'pkg upgrade hello-remote',
+            'pkg reinstall hello-remote',
+            'pkg repair hello-remote',
+          ]) {
+            final blocked = await commandService.execute(command);
+            expect(blocked.isError, isTrue, reason: command);
+            expect(
+              blocked.output,
+              contains('package was installed from a different repo'),
+              reason: command,
+            );
+            expect(
+              blocked.output,
+              isNot(contains('already up to date')),
+              reason: command,
+            );
+          }
+
+          final allowButDisabled = await commandService.execute(
+            'pkg upgrade hello-remote --allow-source-change',
+          );
+          expect(allowButDisabled.isError, isTrue);
+          expect(
+            allowButDisabled.output,
+            contains('Remote repo is disabled. Run: pkg repo enable'),
+          );
+        },
+      );
+
+      test('remote operations explain disabled and untrusted repos', () async {
+        final commandService = CommandService(
+          VirtualFileSystem(),
+          'session_pkg',
+        );
+        const script = '#!/system/bin/sh\necho "old repo"\n';
+        PackageManagerService.httpBytesFetcherForTesting = (uri) async {
+          if (uri.path.endsWith('index.json')) {
+            return utf8.encode(
+              jsonEncode(
+                remoteIndexForPackage(version: '1.0.0', script: script),
+              ),
+            );
+          }
+          return utf8.encode(script);
+        };
+
+        await enableTestRepo(
+          commandService,
+          url: 'https://repo.test/index.json',
+        );
+        await commandService.execute('pkg update');
+        await commandService.execute('pkg install hello-remote');
+
+        await commandService.execute('pkg repo disable');
+        final disabled = await commandService.execute(
+          'pkg upgrade hello-remote',
+        );
+        expect(disabled.isError, isTrue);
+        expect(
+          disabled.output,
+          contains('Remote repo is disabled. Run: pkg repo enable'),
+        );
+
+        final paths = await bootstrapService.getPaths();
+        final repoConfig = File('${paths['usr']!}/termode-repo.json');
+        final data =
+            jsonDecode(await repoConfig.readAsString()) as Map<String, dynamic>;
+        data['remoteEnabled'] = true;
+        data['trustedRepoUrls'] = <String>[];
+        await repoConfig.writeAsString(jsonEncode(data));
+
+        final untrusted = await commandService.execute(
+          'pkg repair hello-remote',
+        );
+        expect(untrusted.isError, isTrue);
+        expect(untrusted.output, contains('Remote repo is not trusted yet'));
+        expect(untrusted.output, contains('Run: pkg repo trust'));
+      });
+
+      test(
         'pkg doctor detects remote cache and source mismatch issues',
         () async {
           final commandService = CommandService(

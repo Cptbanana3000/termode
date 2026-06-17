@@ -598,23 +598,34 @@ class PackageManagerService {
     return _packagesFromRemoteIndex(cached, config.repoUrl)[pkgName];
   }
 
-  Future<String?> _sourceLockError(
+  Future<String?> _remoteOperationPreflightError(
     Map<dynamic, dynamic> installed, {
     required bool allowSourceChange,
   }) async {
     final source = installed['source']?.toString() ?? 'local';
-    if (source != 'remote' || allowSourceChange) {
+    if (source != 'remote') {
       return null;
     }
+    final config = await _readRepoConfig();
     final installedRepo = installed['repoUrl']?.toString() ?? '';
-    final currentRepo = (await _readRepoConfig()).repoUrl;
+    final currentRepo = config.repoUrl;
     if (installedRepo.isNotEmpty &&
         currentRepo.isNotEmpty &&
-        installedRepo != currentRepo) {
+        installedRepo != currentRepo &&
+        !allowSourceChange) {
       return 'Warning: package was installed from a different repo.\n'
           'Installed repo: $installedRepo\n'
           'Current repo: $currentRepo\n'
           'Run with --allow-source-change to continue.';
+    }
+    if (config.repoUrl.isEmpty) {
+      return 'Error: remote repo URL missing. Run: pkg repo set <url>';
+    }
+    if (!config.remoteEnabled) {
+      return 'Error: Remote repo is disabled. Run: pkg repo enable';
+    }
+    if (!config.isCurrentRepoTrusted) {
+      return 'Error: Remote repo is not trusted yet.\nRun: pkg repo trust';
     }
     return null;
   }
@@ -1387,7 +1398,7 @@ class PackageManagerService {
       final existing = packages[pkgName];
       if (existing != null) {
         final pkgInfo = Map<dynamic, dynamic>.from(existing as Map);
-        final sourceLock = await _sourceLockError(
+        final sourceLock = await _remoteOperationPreflightError(
           pkgInfo,
           allowSourceChange: allowSourceChange,
         );
@@ -1455,17 +1466,17 @@ class PackageManagerService {
         }
         final installed = Map<dynamic, dynamic>.from(entry.value as Map);
         if (installed['source'] == 'remote') {
-          final remotePkg = available.packages[pkgName];
-          if (remotePkg == null || remotePkg['source'] != 'remote') {
-            skipped.add(pkgName);
-            continue;
-          }
-          final sourceLock = await _sourceLockError(
+          final sourceLock = await _remoteOperationPreflightError(
             installed,
             allowSourceChange: allowSourceChange,
           );
           if (sourceLock != null) {
             return PackageOperationResult(output: sourceLock, isError: true);
+          }
+          final remotePkg = available.packages[pkgName];
+          if (remotePkg == null || remotePkg['source'] != 'remote') {
+            skipped.add(pkgName);
+            continue;
           }
           final installedVersion = installed['version']?.toString() ?? '0.0.0';
           final remoteVersion = remotePkg['version']?.toString() ?? '0.0.0';
@@ -1569,7 +1580,7 @@ class PackageManagerService {
         }
         final installed = Map<dynamic, dynamic>.from(entry.value as Map);
         if (installed['source'] == 'remote') {
-          final sourceLock = await _sourceLockError(
+          final sourceLock = await _remoteOperationPreflightError(
             installed,
             allowSourceChange: allowSourceChange,
           );
