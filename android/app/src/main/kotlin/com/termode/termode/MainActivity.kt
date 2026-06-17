@@ -1,5 +1,6 @@
 package com.termode.termode
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -675,6 +676,72 @@ class MainActivity: FlutterActivity() {
                         }
                     }
                 }
+                "bundledRuntimeProof" -> {
+                    thread {
+                        try {
+                            // Call into the bundled native library. No external
+                            // process is launched and no files are written.
+                            val token = try {
+                                nativeProofToken()
+                            } catch (e: Throwable) {
+                                ""
+                            }
+                            val echo = try {
+                                nativeEchoProof("echo hello")
+                            } catch (e: Throwable) {
+                                ""
+                            }
+                            val abi = android.os.Build.SUPPORTED_ABIS.firstOrNull().orEmpty()
+                            val pid = android.os.Process.myPid()
+                            val cwd = System.getProperty("user.dir") ?: ""
+                            val bridgeOk = token == "termode-native-proof-ok"
+
+                            val response = mapOf(
+                                "token" to token,
+                                "echo" to echo,
+                                "abi" to (if (abi.isNotEmpty()) abi else "unknown"),
+                                "pid" to pid,
+                                "cwd" to cwd,
+                                "nativeBridge" to bridgeOk,
+                                "apkNativeLayer" to "available"
+                            )
+                            Handler(Looper.getMainLooper()).post {
+                                result.success(response)
+                            }
+                        } catch (e: Throwable) {
+                            Handler(Looper.getMainLooper()).post {
+                                result.error("PROOF_FAILED", e.message ?: "Native proof failed", null)
+                            }
+                        }
+                    }
+                }
+                "openUrl" -> {
+                    val url = call.argument<String>("url")
+                    if (url == null) {
+                        result.error("INVALID_ARGUMENTS", "URL was null", null)
+                        return@setMethodCallHandler
+                    }
+                    val parsed = try {
+                        Uri.parse(url)
+                    } catch (e: Exception) {
+                        null
+                    }
+                    val scheme = parsed?.scheme?.lowercase()
+                    if (parsed == null || (scheme != "http" && scheme != "https")) {
+                        result.error("UNSAFE_URL", "Only http and https URLs can be opened", null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, parsed)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: ActivityNotFoundException) {
+                        result.success(false)
+                    } catch (e: Exception) {
+                        result.error("OPEN_FAILED", e.message ?: "Could not open URL", null)
+                    }
+                }
                 "ptyStart" -> {
                     val sessionId = call.argument<String>("sessionId")
                     if (sessionId == null) {
@@ -1321,6 +1388,10 @@ class MainActivity: FlutterActivity() {
     private external fun nativeRead(fd: Int, buffer: ByteArray): Int
     private external fun nativeWrite(fd: Int, data: ByteArray): Int
     private external fun nativeClose(fd: Int)
+
+    // Bundled runtime proof (v0.28)
+    private external fun nativeProofToken(): String
+    private external fun nativeEchoProof(input: String): String
 
     companion object {
         init {

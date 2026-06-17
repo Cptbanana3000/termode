@@ -65,3 +65,40 @@ management proofs before they become package types.
 The next runtime target should be a tiny bundled native binary proof, not Node.
 It should report `native-ok`, ABI, pid, and cwd, and it should be tested across
 devices before any large runtime is added.
+
+## Bundled Runtime Proof Findings (v0.28)
+
+v0.28 adds a Bundled Runtime Proof Strategy. See
+[BUNDLED_RUNTIME_PROOF.md](BUNDLED_RUNTIME_PROOF.md) for the full breakdown.
+
+What v0.28 proves:
+
+- Termode can call into its own bundled native library (`libtermode_pty.so`)
+  through JNI and receive a result. The proof returns a fixed token
+  (`termode-native-proof-ok`), the device ABI, the native pid, and the native
+  cwd, exposed via `bundled-runtime-info`, `bundled-runtime-test`, and
+  `bundled-runtime-doctor`.
+- A tiny native-side command dispatcher proof handles a literal `echo hello`
+  inside native code and returns `hello`. It runs no shell and no external
+  process. This proves native bridge command handling without executing
+  external code.
+
+Native bridge calls: working. The proof is delivered entirely through the
+existing NDK/JNI layer that already powers REAL PTY, so it adds no new runtime
+and no new permissions.
+
+Direct bundled executable invocation: not attempted in v0.28. Termode does not
+ship a standalone native executable. Android blocks execution from
+app-writable paths, so `bundled-runtime-doctor` reports
+`Bundled executable: blocked` on-device (and `unknown` off-device). The safe,
+proven path is JNI/native-library calls, not app-private executable launches.
+
+Why this matters for future Node.js: it shows the dependable mechanism for any
+future bundled runtime is the APK native layer reached through JNI, rather than
+trying to drop and execute a binary in app storage. A future Node strategy
+should be evaluated as an APK-shipped native component driven through a native
+bridge.
+
+Recommended next step: a tiny *audited* native tool proof (still no Node), to
+confirm the native-library approach scales from a fixed token to a small,
+real native tool before any large runtime is attempted.

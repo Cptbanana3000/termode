@@ -11,6 +11,7 @@ import 'virtual_filesystem.dart';
 import 'persistence_service.dart';
 import 'settings_service.dart';
 import 'ansi_parser.dart';
+import 'preview_service.dart';
 import 'runtime_bootstrap_service.dart';
 
 class _HelperReloadState {
@@ -612,11 +613,25 @@ class TerminalSessionService extends ChangeNotifier {
         'runtime-capabilities',
         'runtime-exec-test',
         'runtime-plan',
+        'bundled-runtime-info',
+        'bundled-runtime-test',
+        'bundled-runtime-doctor',
+        'bundled-runtime-paths',
+        'bundled-runtime-plan',
         'localhost-doctor',
         'localhost-capabilities',
         'port-check',
         'http-test',
         'preview-url',
+        'preview',
+        'preview-copy',
+        'preview-open',
+        'preview-check',
+        'preview-history',
+        'preview-clear-history',
+        'preview-settings',
+        'preview-doctor',
+        'preview-help',
         'devserver-help',
         'storage-status',
         'storage',
@@ -872,6 +887,7 @@ class TerminalSessionService extends ChangeNotifier {
       'settings': settings.toJson(),
       'activeSessionIndex': _activeSessionIndex,
       'sessions': _sessions.map((s) => s.toJson()).toList(),
+      'previewHistory': PreviewService().historyToJson(),
     };
     await _persistenceService.saveState(state);
   }
@@ -882,6 +898,10 @@ class TerminalSessionService extends ChangeNotifier {
       try {
         final settingsJson = state['settings'] as Map<String, dynamic>?;
         SettingsService().loadFromJson(settingsJson);
+
+        PreviewService().loadHistoryFromJson(
+          state['previewHistory'] as List<dynamic>?,
+        );
 
         final sessionsJson = state['sessions'] as List<dynamic>?;
         if (sessionsJson != null && sessionsJson.isNotEmpty) {

@@ -2,6 +2,8 @@
 
 Termode packages are script-only packages installed into the app sandbox. Native binaries, Node.js, Python, Git, npm, root-only commands, and hidden network calls are not supported yet.
 
+Native binary packages are not supported. Both local and remote packages must be `type: script`. Native runtime support is experimental and planned, not available for packages. The bundled runtime proof (the `bundled-runtime-*` commands, see [BUNDLED_RUNTIME_PROOF.md](BUNDLED_RUNTIME_PROOF.md)) is a separate native-bridge proof and is **not** a package mechanism — it is independent of `pkg` and remote repo installs.
+
 ## Package Shape
 
 Each package entry must include:

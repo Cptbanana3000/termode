@@ -7,8 +7,42 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <signal.h>
+#include <string>
 
 extern "C" {
+
+// Bundled runtime proof (v0.28): a tiny, self-contained native bridge proof.
+// It executes NO external code and writes NO files. It only proves that
+// Termode can call into its own bundled native library and get a result back.
+
+JNIEXPORT jstring JNICALL
+Java_com_termode_termode_MainActivity_nativeProofToken(
+    JNIEnv *env, jobject thiz) {
+    return env->NewStringUTF("termode-native-proof-ok");
+}
+
+// Tiny native-side command dispatcher proof. It only understands a literal
+// "echo <text>" and returns "<text>". It does not run a shell or external
+// process. Anything else is echoed back unchanged.
+JNIEXPORT jstring JNICALL
+Java_com_termode_termode_MainActivity_nativeEchoProof(
+    JNIEnv *env, jobject thiz, jstring input) {
+    const char *c_input = env->GetStringUTFChars(input, nullptr);
+    std::string text(c_input ? c_input : "");
+    if (c_input) {
+        env->ReleaseStringUTFChars(input, c_input);
+    }
+    const std::string prefix = "echo ";
+    std::string out;
+    if (text.rfind(prefix, 0) == 0) {
+        out = text.substr(prefix.size());
+    } else if (text == "echo") {
+        out = "";
+    } else {
+        out = text;
+    }
+    return env->NewStringUTF(out.c_str());
+}
 
 JNIEXPORT jintArray JNICALL
 Java_com_termode_termode_MainActivity_nativeStartPty(

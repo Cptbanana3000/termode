@@ -173,8 +173,8 @@ void main() {
           'runtime-capabilities',
         );
 
-        expect(plan.output, contains('3. Localhost/port probes'));
-        expect(plan.output, contains('8. Preview panel'));
+        expect(plan.output, contains('3. Localhost/preview workflow'));
+        expect(plan.output, contains('8. Vite proof later'));
         expect(capabilities.output, contains('Localhost diagnostics'));
       },
     );

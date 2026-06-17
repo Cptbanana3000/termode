@@ -145,6 +145,9 @@ class RuntimeCapabilityService {
     sb.writeln('Scripts via sh: ${_ok(report.scriptsViaShOk)}');
     sb.writeln('Direct app-bin exec: ${report.directAppBinExec}');
     sb.writeln('Native bridge: ${_ok(report.nativeBridgeOk)}');
+    sb.writeln(
+      'Bundled proof: ${report.nativeBridgeOk ? 'PROOF READY' : 'UNAVAILABLE'}',
+    );
     sb.writeln('Workspace cwd: ${_ok(report.workspaceCwdOk)}');
     if (verbose) {
       sb.writeln();
@@ -179,6 +182,7 @@ class RuntimeCapabilityService {
     sb.writeln('direct app-bin exec: ${report.directAppBinExec}');
     sb.writeln('workspace cwd probe: ${_pass(report.workspaceCwdOk)}');
     sb.writeln('native bridge probe: ${_pass(report.nativeBridgeOk)}');
+    sb.writeln('bundled native proof: ${_pass(report.nativeBridgeOk)}');
     if (verbose) {
       sb.writeln();
       sb.writeln('Details:');
@@ -199,26 +203,29 @@ class RuntimeCapabilityService {
         '  - Script packages through /system/bin/sh\n'
         '  - Remote script packages after repo trust/source checks\n'
         '  - Workspace folders under files/home/projects\n'
-        '  - Localhost diagnostics for ports, HTTP checks, and preview URLs\n\n'
+        '  - Localhost diagnostics for ports, HTTP checks, and preview URLs\n'
+        '  - Bundled native bridge proof (v0.28)\n\n'
         'Not supported yet:\n'
         '  - Native binary packages\n'
         '  - Node.js\n'
         '  - npm\n'
         '  - Python\n'
-        '  - Git';
+        '  - Git\n\n'
+        'Bundled runtime: native bridge proof available. Node.js not included.\n'
+        'Next runtime phase: tiny native tool proof.';
   }
 
   String plan() {
     return '=== Runtime Plan ===\n'
         '1. Script packages - keep package helpers reliable and source-locked.\n'
         '2. Runtime diagnostics - keep shell, Toybox, and script probes visible.\n'
-        '3. Localhost/port probes - prove dev server readiness without Node yet.\n'
-        '4. Bundled native runtime proof - add one tiny audited binary later.\n'
-        '5. Node proof - test ABI, extraction, and execution constraints.\n'
-        '6. npm proof - prove package install/cache behavior in app storage.\n'
-        '7. Vite proof - run a minimal dev server inside the sandbox.\n'
-        '8. Preview panel - connect localhost output to an in-app/browser preview.\n'
-        '9. CalypsoIDE integration later - wire editor workflows only after runtime proof.';
+        '3. Localhost/preview workflow - prove dev server readiness and preview URLs without Node yet.\n'
+        '4. Bundled native proof - tiny JNI/native bridge proof inside the APK (v0.28), no Node.\n'
+        '5. Tiny native tool proof - add one tiny audited native tool later.\n'
+        '6. Node proof later - test ABI, extraction, and execution constraints.\n'
+        '7. npm proof later - prove package install/cache behavior in app storage.\n'
+        '8. Vite proof later - run a minimal dev server inside the sandbox.\n'
+        '9. CalypsoIDE integration later - wire editor workflows after runtime proof.';
   }
 
   String _directExecStatus(NativeCommandResult result) {

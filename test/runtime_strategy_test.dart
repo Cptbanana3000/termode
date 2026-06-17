@@ -152,9 +152,10 @@ void main() {
 
       expect(result.isError, isFalse);
       expect(result.output, contains('1. Script packages'));
-      expect(result.output, contains('3. Localhost/port probes'));
-      expect(result.output, contains('4. Bundled native runtime proof'));
-      expect(result.output, contains('7. Vite proof'));
+      expect(result.output, contains('3. Localhost/preview workflow'));
+      expect(result.output, contains('4. Bundled native proof'));
+      expect(result.output, contains('5. Tiny native tool proof'));
+      expect(result.output, contains('8. Vite proof later'));
       expect(result.output, contains('9. CalypsoIDE integration later'));
     });
 

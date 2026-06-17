@@ -10,6 +10,8 @@ import 'settings_service.dart';
 import 'runtime_tool_service.dart';
 import 'runtime_capability_service.dart';
 import 'localhost_service.dart';
+import 'preview_service.dart';
+import 'bundled_runtime_service.dart';
 import 'package_manager_service.dart';
 import 'workspace_service.dart';
 
@@ -151,6 +153,12 @@ class CommandService {
               '  runtime-capabilities - Show supported and unsupported runtimes\n'
               '  runtime-exec-test - Run shell/script/native bridge probes\n'
               '  runtime-plan - Show staged runtime roadmap\n\n'
+              'Bundled Runtime Proof Commands:\n'
+              '  bundled-runtime-info - Show bundled native proof info\n'
+              '  bundled-runtime-test - Run the native bridge proof\n'
+              '  bundled-runtime-doctor - Diagnose bundled runtime proof\n'
+              '  bundled-runtime-paths - Show native/runtime paths\n'
+              '  bundled-runtime-plan - Show bundled runtime roadmap\n\n'
               'Dev Server Commands:\n'
               '  localhost-doctor - Check localhost readiness\n'
               '  localhost-capabilities - Show localhost support\n'
@@ -158,6 +166,14 @@ class CommandService {
               '  http-test <port-or-url> - Test a local HTTP URL\n'
               '  preview-url <port> - Print a preview URL\n'
               '  devserver-help - Show localhost command help\n\n'
+              'Preview Commands:\n'
+              '  preview     - Show compact preview status\n'
+              '  preview-copy <port> - Copy a preview URL to clipboard\n'
+              '  preview-open <port> - Open a preview URL externally\n'
+              '  preview-check <port> - Combine port-check and http-test\n'
+              '  preview-history - Show recent preview URLs\n'
+              '  preview-doctor - Diagnose preview capabilities\n'
+              '  preview-help - Show preview workflow help\n\n'
               'Session Commands:\n'
               '  tabs        - List open tabs\n'
               '  tab-new     - Create a new tab\n'
@@ -899,6 +915,11 @@ class CommandService {
               '  runtime-capabilities   - List supported and unsupported runtimes\n'
               '  runtime-exec-test      - Run runtime execution probes\n'
               '  runtime-plan           - Show native/runtime proof roadmap\n'
+              '  bundled-runtime-info   - Show bundled native proof info\n'
+              '  bundled-runtime-test   - Run the native bridge proof\n'
+              '  bundled-runtime-doctor - Diagnose bundled runtime proof\n'
+              '  bundled-runtime-paths  - Show native/runtime paths\n'
+              '  bundled-runtime-plan   - Show bundled runtime roadmap\n'
               '  localhost-doctor       - Check localhost readiness\n'
               '  localhost-capabilities - Show dev server readiness support\n'
               '  port-check <port>      - Check 127.0.0.1 port status\n'
@@ -947,6 +968,31 @@ class CommandService {
 
       case 'runtime-plan':
         return CommandResult(output: RuntimeCapabilityService().plan());
+
+      case 'bundled-runtime-info':
+        return CommandResult(output: await BundledRuntimeService().info());
+
+      case 'bundled-runtime-test':
+        final bundledTest = await BundledRuntimeService().test();
+        return CommandResult(
+          output: bundledTest,
+          isError: bundledTest.contains('Overall: FAIL'),
+        );
+
+      case 'bundled-runtime-doctor':
+        final bundledDoctor = await BundledRuntimeService().doctor(
+          verbose: args.contains('--verbose'),
+        );
+        return CommandResult(
+          output: bundledDoctor,
+          isError: bundledDoctor.contains('Overall: UNAVAILABLE'),
+        );
+
+      case 'bundled-runtime-paths':
+        return CommandResult(output: await BundledRuntimeService().paths());
+
+      case 'bundled-runtime-plan':
+        return CommandResult(output: BundledRuntimeService().plan());
 
       case 'localhost-doctor':
         final verbose = args.contains('--verbose');
@@ -1021,6 +1067,67 @@ class CommandService {
 
       case 'devserver-help':
         return CommandResult(output: LocalhostService().help());
+
+      case 'preview':
+        return CommandResult(output: PreviewService().statusOutput());
+
+      case 'preview-copy':
+        final copyPortArg = args.isNotEmpty && !args[0].startsWith('--')
+            ? args[0]
+            : null;
+        final copyResult = await PreviewService().copy(
+          copyPortArg,
+          sessionId: sessionId,
+        );
+        return CommandResult(
+          output: copyResult.output,
+          isError: copyResult.isError,
+        );
+
+      case 'preview-open':
+        final openPortArg = args.isNotEmpty && !args[0].startsWith('--')
+            ? args[0]
+            : null;
+        final openResult = await PreviewService().open(
+          openPortArg,
+          force: args.contains('--force'),
+          sessionId: sessionId,
+        );
+        return CommandResult(
+          output: openResult.output,
+          isError: openResult.isError,
+        );
+
+      case 'preview-check':
+        final checkPortArg = args.isNotEmpty && !args[0].startsWith('--')
+            ? args[0]
+            : null;
+        final checkResult = await PreviewService().check(checkPortArg);
+        return CommandResult(
+          output: checkResult.output,
+          isError: checkResult.isError,
+        );
+
+      case 'preview-history':
+        return CommandResult(output: PreviewService().historyOutput());
+
+      case 'preview-clear-history':
+        return CommandResult(output: PreviewService().clearHistory());
+
+      case 'preview-settings':
+        return CommandResult(output: PreviewService().settingsOutput());
+
+      case 'preview-doctor':
+        final previewDoctor = await PreviewService().doctor(
+          verbose: args.contains('--verbose'),
+        );
+        return CommandResult(
+          output: previewDoctor.output,
+          isError: previewDoctor.isError,
+        );
+
+      case 'preview-help':
+        return CommandResult(output: PreviewService().help());
 
       case 'storage-link':
         final storageService = StorageAccessService();
@@ -2331,7 +2438,11 @@ class CommandService {
                   '  pkg verify <name>        - Verify files, checksums, and helper\n'
                   '  pkg remove <name>        - Uninstall a package\n'
                   '  pkg installed            - List all installed packages\n'
-                  '  pkg doctor               - Audit package installation health',
+                  '  pkg doctor               - Audit package installation health\n\n'
+                  'Package Limits:\n'
+                  '  - Packages are script-only. Native binary packages are not supported yet.\n'
+                  '  - Remote packages are script-only and require repo trust.\n'
+                  '  - The bundled runtime proof (bundled-runtime-*) is separate from pkg remote installs.',
             );
 
           case 'update':
