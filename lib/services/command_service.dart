@@ -143,6 +143,15 @@ class CommandService {
               '  stop-shell  - Kill the PTY shell process and return to NORMAL mode\n'
               '  host-help   - Show list of intercepted app management commands\n'
               '  whereami    - View active sandbox directories\n\n'
+              'Session Commands:\n'
+              '  tabs        - List open tabs\n'
+              '  tab-new     - Create a new tab\n'
+              '  tab-close   - Close current tab\n'
+              '  tab-rename  - Rename current tab\n'
+              '  tab-switch  - Switch tabs by number\n'
+              '  session-info - Show active session info\n'
+              '  session-doctor - Check session health\n'
+              '  history     - Show command history\n\n'
               'Termode VFS Commands:\n'
               '  help        - Show VFS help\n'
               '  clear       - Clear screen\n'
@@ -163,6 +172,48 @@ class CommandService {
         );
       case 'clear':
         return CommandResult(output: '', shouldClear: true);
+      case 'tabs':
+        return CommandResult(output: TerminalSessionService().tabsOutput());
+      case 'tab-new':
+        return CommandResult(output: await TerminalSessionService().newTab());
+      case 'tab-close':
+        return CommandResult(output: TerminalSessionService().closeActiveTab());
+      case 'tab-rename':
+        return CommandResult(
+          output: TerminalSessionService().renameActiveTab(args.join(' ')),
+          isError: args.isEmpty,
+        );
+      case 'tab-switch':
+        final tabNumber = args.isNotEmpty ? int.tryParse(args[0]) : null;
+        if (tabNumber == null) {
+          return CommandResult(
+            output: 'Usage: tab-switch <number>',
+            isError: true,
+          );
+        }
+        final switchOutput = TerminalSessionService().switchTab(tabNumber);
+        return CommandResult(
+          output: switchOutput,
+          isError: switchOutput.contains('invalid'),
+        );
+      case 'session-info':
+        return CommandResult(output: TerminalSessionService().sessionInfo());
+      case 'session-clear':
+        TerminalSessionService().clearActiveTranscript();
+        return CommandResult(output: 'Session transcript cleared.');
+      case 'session-doctor':
+        final output = TerminalSessionService().sessionDoctor(
+          verbose: args.contains('--verbose'),
+        );
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: UNHEALTHY'),
+        );
+      case 'history':
+        final clear = args.isNotEmpty && args[0] == 'clear';
+        return CommandResult(
+          output: TerminalSessionService().historyOutput(clear: clear),
+        );
       case 'echo':
         return CommandResult(output: args.join(' '));
       case 'pwd':
@@ -2075,10 +2126,15 @@ class CommandService {
               );
             }
             final query = args[1].toLowerCase();
+            final longMode = args.contains('--long');
             final installed = await _getInstalledPackages(pUsrDir);
             final available = await pmService.availablePackages();
             final sb = StringBuffer();
-            sb.writeln('=== Search Results for "$query" ===');
+            sb.writeln(
+              longMode
+                  ? '=== Search Results (Long) ==='
+                  : '=== Search Results ===',
+            );
             int count = 0;
             for (final entry in available.entries) {
               final name = entry.key;
@@ -2097,9 +2153,16 @@ class CommandService {
                     ? 'Installed'
                     : 'Not Installed';
                 final source = pkg['source']?.toString() ?? 'local';
-                sb.writeln(
-                  '$name [${pkg['version']}] ($source) - ${pkg['description']} (Status: $status)',
-                );
+                final category = pkg['category']?.toString() ?? 'utility';
+                if (longMode) {
+                  sb.writeln(
+                    '$name [${pkg['version']}] ($source) - ${pkg['description']} (Status: $status)',
+                  );
+                } else {
+                  sb.writeln(
+                    '${name.padRight(12)} ${pkg['version'].toString().padRight(6)} ${category.padRight(8)} ${status.toLowerCase()}',
+                  );
+                }
               }
             }
             if (count == 0) {

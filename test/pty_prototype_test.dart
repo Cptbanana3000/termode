@@ -342,6 +342,78 @@ void main() {
     });
 
     test(
+      'tab commands create, switch, rename, close, and keep fallback',
+      () async {
+        final sessionService = TerminalSessionService();
+        sessionService.clearMemoryStateForTesting();
+        final commandService = CommandService(
+          VirtualFileSystem(),
+          'session_ui',
+        );
+
+        final tabsInitial = await commandService.execute('tabs');
+        expect(tabsInitial.output, contains('Session 1'));
+
+        final newTab = await commandService.execute('tab-new');
+        expect(newTab.output, contains('Created Session 2'));
+        expect(sessionService.sessions.length, 2);
+        expect(sessionService.activeSessionIndex, 1);
+
+        final rename = await commandService.execute('tab-rename dev');
+        expect(rename.output, contains('Renamed tab to dev'));
+        expect(sessionService.activeSession.name, 'dev');
+
+        final switchBack = await commandService.execute('tab-switch 1');
+        expect(switchBack.output, contains('Switched to Session 1'));
+        expect(sessionService.activeSessionIndex, 0);
+
+        final close = await commandService.execute('tab-close');
+        expect(close.output, contains('Closed Session 1'));
+        expect(sessionService.sessions.length, 1);
+        expect(sessionService.activeSession.name, 'dev');
+
+        await commandService.execute('tab-close');
+        expect(sessionService.sessions.length, 1);
+      },
+    );
+
+    test('session-info, session-doctor, history, and session-clear', () async {
+      final sessionService = TerminalSessionService();
+      sessionService.clearMemoryStateForTesting();
+      final commandService = CommandService(VirtualFileSystem(), 'session_ui');
+
+      await sessionService.executeCommand('echo one');
+      await sessionService.executeCommand('echo one');
+      await sessionService.executeCommand('echo two');
+
+      final history = await commandService.execute('history');
+      expect(history.output, contains('1. echo one'));
+      expect(history.output, contains('2. echo two'));
+      expect(history.output, isNot(contains('3. echo two')));
+
+      final info = await commandService.execute('session-info');
+      expect(info.output, contains('Session: Session 1'));
+      expect(info.output, contains('Scrollback:'));
+      expect(info.output, contains('History: 2'));
+
+      final doctor = await commandService.execute('session-doctor');
+      expect(doctor.isError, isFalse);
+      expect(doctor.output, contains('=== Session Doctor ==='));
+      expect(doctor.output, contains('Overall: HEALTHY'));
+
+      final verbose = await commandService.execute('session-doctor --verbose');
+      expect(verbose.output, contains('Max Scrollback:'));
+
+      final clear = await commandService.execute('session-clear');
+      expect(clear.output, contains('Session transcript cleared'));
+      expect(sessionService.activeSession.lines, isEmpty);
+
+      final historyClear = await commandService.execute('history clear');
+      expect(historyClear.output, contains('History cleared'));
+      expect(sessionService.activeSession.commandHistory, isEmpty);
+    });
+
+    test(
       'real-pty-start allocates pseudo-terminal and toggles active state',
       () async {
         final vfs = VirtualFileSystem();
@@ -707,7 +779,7 @@ void main() {
           expect(sessionService.activeSession.isPtyInteractionActive, isFalse);
           expect(
             sessionService.activeSession.lines.last.text,
-            contains('Real PTY shell exited. Returned to NORMAL mode.'),
+            contains('[shell exited]'),
           );
         },
       );
@@ -2909,9 +2981,14 @@ void main() {
 
         final res = await commandService.execute('pkg search cowsay');
         expect(res.isError, isFalse);
-        expect(res.output, contains('=== Search Results for "cowsay" ==='));
-        expect(res.output, contains('cowsay-lite [1.0.0]'));
-        expect(res.output, contains('(Status: Not Installed)'));
+        expect(res.output, contains('=== Search Results ==='));
+        expect(res.output, contains('cowsay-lite'));
+        expect(res.output, contains('not installed'));
+
+        final long = await commandService.execute('pkg search cowsay --long');
+        expect(long.output, contains('=== Search Results (Long) ==='));
+        expect(long.output, contains('cowsay-lite [1.0.0]'));
+        expect(long.output, contains('(Status: Not Installed)'));
 
         final resEmpty = await commandService.execute(
           'pkg search non_existent_pkg',
@@ -2933,14 +3010,14 @@ void main() {
         expect(categories.output, contains('utility'));
 
         final byName = await commandService.execute('pkg search note');
-        expect(byName.output, contains('note-lite [1.0.0]'));
+        expect(byName.output, contains('note-lite'));
 
         final byTag = await commandService.execute('pkg search countdown');
-        expect(byTag.output, contains('timer-lite [1.0.0]'));
+        expect(byTag.output, contains('timer-lite'));
 
         final byCategory = await commandService.execute('pkg search utility');
-        expect(byCategory.output, contains('calc-lite [1.0.0]'));
-        expect(byCategory.output, contains('note-lite [1.0.0]'));
+        expect(byCategory.output, contains('calc-lite'));
+        expect(byCategory.output, contains('note-lite'));
 
         final utilityList = await commandService.execute(
           'pkg list --category utility',

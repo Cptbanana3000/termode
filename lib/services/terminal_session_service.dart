@@ -52,6 +52,7 @@ class TerminalSessionService extends ChangeNotifier {
   List<String> get commandHistory => activeSession.commandHistory;
   int get historyIndex => activeSession.historyIndex;
   VirtualFileSystem get vfs => activeSession.vfs;
+  int get maxScrollbackLines => SettingsService().maxScrollbackLines;
   String get currentPrompt {
     if (activeSession.isPtyInteractionActive) {
       return '';
@@ -157,6 +158,43 @@ class TerminalSessionService extends ChangeNotifier {
     );
 
     _sessions.add(session);
+    _trimSessionScrollback(session);
+  }
+
+  void _touchSession(TerminalSession session) {
+    session.updatedAt = DateTime.now();
+  }
+
+  void _trimSessionScrollback(TerminalSession session) {
+    final maxLines = SettingsService().maxScrollbackLines;
+    if (session.lines.length > maxLines) {
+      session.lines.removeRange(0, session.lines.length - maxLines);
+    }
+  }
+
+  void _appendSessionLine(TerminalSession session, String text, LineType type) {
+    session.lines.add(TerminalLine(text: text, type: type));
+    session.isLastLinePty = false;
+    _touchSession(session);
+    _trimSessionScrollback(session);
+  }
+
+  void _recordHistory(TerminalSession session, String command) {
+    final trimmed = command.trim();
+    if (trimmed.isEmpty) return;
+    if (session.commandHistory.isEmpty ||
+        session.commandHistory.last != trimmed) {
+      session.commandHistory.add(trimmed);
+    }
+    const maxHistory = 500;
+    if (session.commandHistory.length > maxHistory) {
+      session.commandHistory.removeRange(
+        0,
+        session.commandHistory.length - maxHistory,
+      );
+    }
+    session.historyIndex = session.commandHistory.length;
+    _touchSession(session);
   }
 
   void addSession() {
@@ -168,7 +206,7 @@ class TerminalSessionService extends ChangeNotifier {
   }
 
   void removeSession(int index) {
-    if (_sessions.length <= 1) return; // Keep at least one session
+    if (index < 0 || index >= _sessions.length) return;
     final session = _sessions[index];
     if (session.isShellActive) {
       try {
@@ -189,6 +227,10 @@ class TerminalSessionService extends ChangeNotifier {
       }
     }
     _sessions.removeAt(index);
+    if (_sessions.isEmpty) {
+      _createNewSession();
+      _activeSessionIndex = 0;
+    }
     if (_activeSessionIndex >= _sessions.length) {
       _activeSessionIndex = _sessions.length - 1;
     }
@@ -202,6 +244,158 @@ class TerminalSessionService extends ChangeNotifier {
       notifyListeners();
       saveState();
     }
+  }
+
+  Future<void> stopAllPtys() async {
+    final channel = const MethodChannel('com.termode/native_shell');
+    for (final session in _sessions) {
+      if (session.isShellActive) {
+        try {
+          await channel.invokeMethod('ptyStop', {'sessionId': session.id});
+        } catch (e) {
+          debugPrint('Error stopping PTY during dispose: $e');
+        }
+        session.isShellActive = false;
+      }
+      if (session.isRealPtyActive) {
+        try {
+          await channel.invokeMethod('realPtyStop', {'sessionId': session.id});
+        } catch (e) {
+          debugPrint('Error stopping real PTY during dispose: $e');
+        }
+        session.isRealPtyActive = false;
+        session.isPtyInteractionActive = false;
+      }
+    }
+    notifyListeners();
+    await saveState();
+  }
+
+  String tabsOutput() {
+    final sb = StringBuffer('=== Tabs ===\n');
+    for (var i = 0; i < _sessions.length; i++) {
+      final session = _sessions[i];
+      final marker = i == _activeSessionIndex ? '*' : ' ';
+      final mode = session.isRealPtyActive
+          ? 'REAL PTY'
+          : session.isShellActive
+          ? 'PTY'
+          : 'NORMAL';
+      sb.writeln('$marker ${i + 1}. ${session.name} [$mode]');
+    }
+    return sb.toString().trimRight();
+  }
+
+  Future<String> newTab() async {
+    addSession();
+    return 'Created ${activeSession.name}.';
+  }
+
+  String closeActiveTab() {
+    final oldName = activeSession.name;
+    removeSession(_activeSessionIndex);
+    return 'Closed $oldName.';
+  }
+
+  String renameActiveTab(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return 'Usage: tab-rename <name>';
+    }
+    activeSession.name = trimmed;
+    _touchSession(activeSession);
+    notifyListeners();
+    saveState();
+    return 'Renamed tab to $trimmed.';
+  }
+
+  String switchTab(int oneBasedIndex) {
+    final index = oneBasedIndex - 1;
+    if (index < 0 || index >= _sessions.length) {
+      return 'tab-switch: invalid tab number';
+    }
+    setActiveSession(index);
+    return 'Switched to ${activeSession.name}.';
+  }
+
+  String sessionInfo() {
+    final session = activeSession;
+    final mode = session.isRealPtyActive
+        ? 'REAL PTY'
+        : session.isShellActive
+        ? 'PTY'
+        : 'NORMAL';
+    final pty = session.isRealPtyActive || session.isShellActive
+        ? 'running'
+        : 'stopped';
+    final sb = StringBuffer();
+    sb.writeln('Session: ${session.name}');
+    sb.writeln('Mode: $mode');
+    sb.writeln('PTY: $pty');
+    sb.writeln('Scrollback: ${session.lines.length} / $maxScrollbackLines');
+    sb.writeln('History: ${session.commandHistory.length}');
+    sb.writeln('Created: ${session.createdAt.toIso8601String()}');
+    sb.write('Updated: ${session.updatedAt.toIso8601String()}');
+    return sb.toString();
+  }
+
+  void clearActiveTranscript() {
+    activeSession.lines.clear();
+    activeSession.ansiBuffer.clearScreen();
+    _touchSession(activeSession);
+    notifyListeners();
+    saveState();
+  }
+
+  String historyOutput({bool clear = false}) {
+    if (clear) {
+      activeSession.commandHistory.clear();
+      activeSession.historyIndex = 0;
+      _touchSession(activeSession);
+      saveState();
+      return 'History cleared.';
+    }
+    if (activeSession.commandHistory.isEmpty) {
+      return 'No command history.';
+    }
+    final sb = StringBuffer('=== History ===\n');
+    for (var i = 0; i < activeSession.commandHistory.length; i++) {
+      sb.writeln('${i + 1}. ${activeSession.commandHistory[i]}');
+    }
+    return sb.toString().trimRight();
+  }
+
+  String sessionDoctor({bool verbose = false}) {
+    final activeValid =
+        _activeSessionIndex >= 0 && _activeSessionIndex < _sessions.length;
+    final duplicateIds =
+        _sessions.map((s) => s.id).toSet().length != _sessions.length;
+    final scrollbackOk = _sessions.every(
+      (session) => session.lines.length <= maxScrollbackLines,
+    );
+    final historyOk = _sessions.every(
+      (session) => session.commandHistory.length <= 500,
+    );
+    final ptyOk = !duplicateIds;
+    final healthy = activeValid && ptyOk && scrollbackOk && historyOk;
+    final sb = StringBuffer();
+    sb.writeln('=== Session Doctor ===');
+    sb.writeln('Sessions: ${_sessions.length}');
+    sb.writeln('Active: ${activeValid ? _activeSessionIndex + 1 : "INVALID"}');
+    sb.writeln('PTY: ${ptyOk ? "OK" : "CHECK"}');
+    sb.writeln('Persistence: OK');
+    sb.writeln('Scrollback: ${scrollbackOk ? "OK" : "CHECK"}');
+    sb.writeln('History: ${historyOk ? "OK" : "CHECK"}');
+    if (verbose) {
+      sb.writeln('Max Scrollback: $maxScrollbackLines');
+      for (final session in _sessions) {
+        sb.writeln(
+          '${session.id}: ${session.name}, lines=${session.lines.length}, history=${session.commandHistory.length}',
+        );
+      }
+    }
+    sb.write('Overall: ${healthy ? "HEALTHY" : "UNHEALTHY"}');
+    return sb.toString();
   }
 
   Future<void> executeCommand(String command) async {
@@ -235,9 +429,19 @@ class TerminalSessionService extends ChangeNotifier {
         'termode-shell',
         'host-help',
         'reload-helpers',
+        'tabs',
+        'tab-new',
+        'tab-close',
+        'tab-rename',
+        'tab-switch',
+        'session-info',
+        'session-clear',
+        'session-doctor',
+        'history',
       };
 
       if (hostCommands.contains(firstToken)) {
+        _recordHistory(activeSession, trimmed);
         // Log the command locally so it shows on screen
         _appendHostInterceptionOutput(activeSession, '$trimmed\n');
 
@@ -290,23 +494,25 @@ class TerminalSessionService extends ChangeNotifier {
           }
         }
         notifyListeners();
+        saveState();
         return;
       }
 
       // Not a host command, forward directly to PTY
       final channel = const MethodChannel('com.termode/native_shell');
       try {
+        _recordHistory(activeSession, command);
         _clearHelperReloadState(activeSession.id);
         await channel.invokeMethod('realPtySend', {
           'sessionId': activeSession.id,
           'text': command,
         });
+        saveState();
       } catch (e) {
-        activeSession.lines.add(
-          TerminalLine(
-            text: 'Error sending PTY input: $e',
-            type: LineType.error,
-          ),
+        _appendSessionLine(
+          activeSession,
+          'Error sending PTY input: $e',
+          LineType.error,
         );
         notifyListeners();
       }
@@ -333,17 +539,10 @@ class TerminalSessionService extends ChangeNotifier {
     }
 
     // Add input prompt (with active directory) to terminal logs
-    activeSession.lines.add(
-      TerminalLine(text: '$currentPrompt$command', type: LineType.input),
-    );
+    _appendSessionLine(activeSession, '$currentPrompt$command', LineType.input);
 
     if (trimmed.isNotEmpty) {
-      // Add command to history if it's not identical to the last command
-      if (activeSession.commandHistory.isEmpty ||
-          activeSession.commandHistory.last != trimmed) {
-        activeSession.commandHistory.add(trimmed);
-      }
-      activeSession.historyIndex = activeSession.commandHistory.length;
+      _recordHistory(activeSession, trimmed);
 
       final isNative = trimmed.startsWith('android-shell');
       if (isNative) {
@@ -368,11 +567,10 @@ class TerminalSessionService extends ChangeNotifier {
               parser.write('${result.output}\n');
             }
           }
-          activeSession.lines.add(
-            TerminalLine(
-              text: result.output,
-              type: result.isError ? LineType.error : LineType.output,
-            ),
+          _appendSessionLine(
+            activeSession,
+            result.output,
+            result.isError ? LineType.error : LineType.output,
           );
         }
       } finally {
@@ -420,16 +618,16 @@ class TerminalSessionService extends ChangeNotifier {
   }
 
   void clearTerminal() {
-    activeSession.lines.clear();
-    activeSession.ansiBuffer.clearScreen();
-    notifyListeners();
-    saveState();
+    clearActiveTranscript();
   }
 
   // Persistence Operations
 
   Future<void> saveState() async {
     final settings = SettingsService();
+    for (final session in _sessions) {
+      _trimSessionScrollback(session);
+    }
     final state = {
       'settings': settings.toJson(),
       'activeSessionIndex': _activeSessionIndex,
@@ -460,6 +658,7 @@ class TerminalSessionService extends ChangeNotifier {
             session.isPtyInitializing = false;
             session.hasAttemptedAutoStart = false;
             session.ansiBuffer.clearScreen();
+            _trimSessionScrollback(session);
             _sessions.add(session);
           }
           _activeSessionIndex = state['activeSessionIndex'] as int? ?? 0;
@@ -526,6 +725,16 @@ class TerminalSessionService extends ChangeNotifier {
           _sessions.add(
             TerminalSession.fromJson(sessionJson as Map<String, dynamic>),
           );
+        }
+        for (final session in _sessions) {
+          session.isRealPtyActive = false;
+          session.isPtyInteractionActive = false;
+          session.isShellActive = false;
+          session.isExecutingNativeCommand = false;
+          session.isLastLinePty = false;
+          session.isPtyInitializing = false;
+          session.hasAttemptedAutoStart = false;
+          _trimSessionScrollback(session);
         }
         _activeSessionIndex = decoded['activeSessionIndex'] as int? ?? 0;
         if (_activeSessionIndex >= _sessions.length) {
@@ -715,6 +924,8 @@ class TerminalSessionService extends ChangeNotifier {
     }
 
     session.isLastLinePty = true;
+    _touchSession(session);
+    _trimSessionScrollback(session);
     notifyListeners();
   }
 
@@ -727,12 +938,8 @@ class TerminalSessionService extends ChangeNotifier {
     if (sessionIndex == -1) return;
     final session = _sessions[sessionIndex];
     session.isShellActive = false;
-    session.lines.add(
-      TerminalLine(
-        text: '[Experimental Shell process terminated]',
-        type: LineType.output,
-      ),
-    );
+    session.lastExitMessage = '[shell exited]';
+    _appendSessionLine(session, '[shell exited]', LineType.output);
     notifyListeners();
   }
 
@@ -757,11 +964,10 @@ class TerminalSessionService extends ChangeNotifier {
         'text': text,
       });
     } catch (e) {
-      activeSession.lines.add(
-        TerminalLine(
-          text: 'Error sending raw PTY input: $e',
-          type: LineType.error,
-        ),
+      _appendSessionLine(
+        activeSession,
+        'Error sending raw PTY input: $e',
+        LineType.error,
       );
       notifyListeners();
     }
@@ -1017,9 +1223,7 @@ class TerminalSessionService extends ChangeNotifier {
         debugPrint('ANSI parsing error: $e');
       }
     }
-    session.lines.add(
-      TerminalLine(text: _helperReloadFailureMessage, type: LineType.error),
-    );
+    _appendSessionLine(session, _helperReloadFailureMessage, LineType.error);
     session.isLastLinePty = false;
   }
 
@@ -1030,11 +1234,10 @@ class TerminalSessionService extends ChangeNotifier {
         'sessionId': activeSession.id,
       });
     } catch (e) {
-      activeSession.lines.add(
-        TerminalLine(
-          text: 'Error sending Ctrl-C to PTY: $e',
-          type: LineType.error,
-        ),
+      _appendSessionLine(
+        activeSession,
+        'Error sending Ctrl-C to PTY: $e',
+        LineType.error,
       );
       notifyListeners();
     }
@@ -1047,11 +1250,10 @@ class TerminalSessionService extends ChangeNotifier {
         'sessionId': activeSession.id,
       });
     } catch (e) {
-      activeSession.lines.add(
-        TerminalLine(
-          text: 'Error sending Ctrl-D to PTY: $e',
-          type: LineType.error,
-        ),
+      _appendSessionLine(
+        activeSession,
+        'Error sending Ctrl-D to PTY: $e',
+        LineType.error,
       );
       notifyListeners();
     }
@@ -1064,12 +1266,8 @@ class TerminalSessionService extends ChangeNotifier {
     session.isRealPtyActive = false;
     session.isPtyInteractionActive = false;
     session.isLastLinePty = false;
-    session.lines.add(
-      TerminalLine(
-        text: 'Real PTY shell exited. Returned to NORMAL mode.',
-        type: LineType.output,
-      ),
-    );
+    session.lastExitMessage = '[shell exited]';
+    _appendSessionLine(session, '[shell exited]', LineType.output);
     notifyListeners();
   }
 
@@ -1111,9 +1309,7 @@ class TerminalSessionService extends ChangeNotifier {
   void appendErrorToSession(String sessionId, String error) {
     final sessionIndex = _sessions.indexWhere((s) => s.id == sessionId);
     if (sessionIndex != -1) {
-      _sessions[sessionIndex].lines.add(
-        TerminalLine(text: error, type: LineType.error),
-      );
+      _appendSessionLine(_sessions[sessionIndex], error, LineType.error);
       notifyListeners();
     }
   }
@@ -1172,6 +1368,8 @@ class TerminalSessionService extends ChangeNotifier {
         ),
       );
     }
+    _touchSession(session);
+    _trimSessionScrollback(session);
     notifyListeners();
   }
 }

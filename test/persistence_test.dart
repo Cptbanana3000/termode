@@ -5,6 +5,7 @@ import 'package:termode/services/persistence_service.dart';
 import 'package:termode/services/settings_service.dart';
 import 'package:termode/services/terminal_session_service.dart';
 import 'package:termode/services/virtual_filesystem.dart';
+import 'package:termode/models/terminal_line.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -25,7 +26,7 @@ void main() {
 
       // Restore VFS from JSON
       final restoredVfs = VirtualFileSystem.fromJson(jsonMap);
-      
+
       // Verify initial directory before cd is /
       expect(restoredVfs.getAbsolutePath(), '/');
 
@@ -94,7 +95,7 @@ void main() {
 
       // 3. Reset memory session state (mimic app restart) and trigger loadState
       sessionService.clearMemoryStateForTesting();
-      
+
       // Verify it is reset back to session 1 index 0
       expect(sessionService.activeSessionIndex, 0);
 
@@ -110,6 +111,59 @@ void main() {
       expect(sessionService.currentPrompt, contains('~/docs'));
       expect(sessionService.vfs.ls(), contains('text.txt'));
       expect(sessionService.vfs.cat('text.txt'), 'file content');
+      expect(sessionService.activeSession.createdAt, isNotNull);
+      expect(sessionService.activeSession.updatedAt, isNotNull);
+      expect(sessionService.activeSession.isRealPtyActive, isFalse);
+    });
+
+    test('Scrollback trimming and command history persist safely', () async {
+      SettingsService().loadFromJson({
+        'startInRealShell': false,
+        'maxScrollbackLines': 500,
+      });
+      final sessionService = TerminalSessionService();
+      sessionService.persistenceService = testPersistence;
+      sessionService.clearMemoryStateForTesting();
+
+      for (var i = 0; i < 510; i++) {
+        sessionService.activeSession.lines.add(
+          TerminalLine(text: 'line $i', type: LineType.output),
+        );
+      }
+      await sessionService.executeCommand('echo one');
+      await sessionService.executeCommand('echo one');
+      await sessionService.executeCommand('echo two');
+      await sessionService.saveState();
+
+      sessionService.clearMemoryStateForTesting();
+      await sessionService.loadPersistedState();
+
+      expect(sessionService.activeSession.lines.length, lessThanOrEqualTo(500));
+      expect(sessionService.activeSession.commandHistory, [
+        'echo one',
+        'echo two',
+      ]);
+      expect(SettingsService().maxScrollbackLines, 500);
+    });
+
+    test('Cold restore marks old PTY sessions ended, not running', () async {
+      SettingsService().loadFromJson({'startInRealShell': false});
+      final sessionService = TerminalSessionService();
+      sessionService.persistenceService = testPersistence;
+      sessionService.clearMemoryStateForTesting();
+      sessionService.activeSession.isRealPtyActive = true;
+      sessionService.activeSession.isPtyInteractionActive = true;
+      await sessionService.saveState();
+
+      sessionService.clearMemoryStateForTesting();
+      await sessionService.loadPersistedState();
+
+      expect(sessionService.activeSession.isRealPtyActive, isFalse);
+      expect(sessionService.activeSession.isPtyInteractionActive, isFalse);
+      expect(
+        sessionService.activeSession.lines.map((line) => line.text),
+        contains('[previous shell session ended]'),
+      );
     });
   });
 }

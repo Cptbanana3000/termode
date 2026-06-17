@@ -35,6 +35,9 @@ class SettingsService extends ChangeNotifier {
   bool _startInRealShell = true;
   bool get startInRealShell => _startInRealShell;
 
+  int _maxScrollbackLines = 2000;
+  int get maxScrollbackLines => _maxScrollbackLines;
+
   void setFontSize(double size) {
     _fontSize = size;
     notifyListeners();
@@ -85,6 +88,12 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setMaxScrollbackLines(int value) {
+    const allowed = {500, 1000, 2000, 5000, 10000};
+    _maxScrollbackLines = allowed.contains(value) ? value : 2000;
+    notifyListeners();
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'fontSize': _fontSize,
@@ -97,6 +106,7 @@ class SettingsService extends ChangeNotifier {
       'cursorStyle': _cursorStyle,
       'blinkingCursor': _blinkingCursor,
       'startInRealShell': _startInRealShell,
+      'maxScrollbackLines': _maxScrollbackLines,
     };
   }
 
@@ -112,6 +122,7 @@ class SettingsService extends ChangeNotifier {
       _cursorStyle = 'block';
       _blinkingCursor = true;
       _startInRealShell = true;
+      _maxScrollbackLines = 2000;
       notifyListeners();
       return;
     }
@@ -125,6 +136,11 @@ class SettingsService extends ChangeNotifier {
     _cursorStyle = json['cursorStyle'] as String? ?? 'block';
     _blinkingCursor = json['blinkingCursor'] as bool? ?? true;
     _startInRealShell = json['startInRealShell'] as bool? ?? true;
+    final maxScrollback = json['maxScrollbackLines'] as int? ?? 2000;
+    const allowedScrollback = {500, 1000, 2000, 5000, 10000};
+    _maxScrollbackLines = allowedScrollback.contains(maxScrollback)
+        ? maxScrollback
+        : 2000;
     notifyListeners();
   }
 
