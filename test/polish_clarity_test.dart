@@ -83,6 +83,10 @@ void main() {
       expect(result.output, contains('android-shell-env'));
       expect(result.output, contains('android-shell-diag'));
       expect(result.output, contains('termode-runtime status'));
+      expect(result.output, contains('runtime-doctor'));
+      expect(result.output, contains('runtime-capabilities'));
+      expect(result.output, contains('runtime-exec-test'));
+      expect(result.output, contains('runtime-plan'));
       expect(result.output, contains('toybox [args...]'));
       expect(result.output, contains('runtime-pwd'));
       expect(result.output, contains('runtime-ls'));

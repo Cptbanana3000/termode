@@ -312,11 +312,13 @@ esac
       'files': {
         'usr/bin/path-lite': r'''#!/system/bin/sh
 echo "HOME=${HOME:-}"
+echo "TERMODE_HOME=${TERMODE_HOME:-${HOME:-}}"
 echo "TERMODE_USR=${TERMODE_USR:-}"
 echo "TERMODE_BIN=${TERMODE_BIN:-}"
 echo "TERMODE_PROJECTS=${TERMODE_PROJECTS:-${TERMODE_HOME:-$HOME}/projects}"
 echo "TMPDIR=${TMPDIR:-}"
 echo "PWD=$(pwd)"
+echo "PREFERRED_CWD=${TERMODE_PREFERRED_CWD:-$(pwd)}"
 projects="${TERMODE_PROJECTS:-${TERMODE_HOME:-$HOME}/projects}"
 case "$(pwd)" in
   "$projects"/*) ws="$(pwd)"; ws="${ws#$projects/}"; ws="${ws%%/*}"; echo "WORKSPACE=$ws" ;;

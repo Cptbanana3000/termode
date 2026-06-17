@@ -129,6 +129,7 @@ class MainActivity: FlutterActivity() {
                                 env["TERMODE_HOME"] = homeDir.absolutePath
                                 env["TERMODE_USR"] = usrDir.absolutePath
                                 env["TERMODE_BIN"] = binDir.absolutePath
+                                env["TERMODE_PREFERRED_CWD"] = homeDir.absolutePath
                                 env["TMPDIR"] = tmpDir.absolutePath
                                 env["PATH"] = "${binDir.absolutePath}:/system/bin:/system/xbin:/vendor/bin:/product/bin"
                                 env["TERM"] = "xterm-256color"
@@ -281,6 +282,9 @@ class MainActivity: FlutterActivity() {
 
                             val response = mapOf(
                                 "userDir" to userDir,
+                                "cwd" to userDir,
+                                "pid" to android.os.Process.myPid(),
+                                "abi" to android.os.Build.SUPPORTED_ABIS.firstOrNull().orEmpty(),
                                 "pathEnv" to pathEnv,
                                 "uid" to uid,
                                 "fileChecks" to fileChecks,
@@ -330,6 +334,7 @@ class MainActivity: FlutterActivity() {
                                 "TERMODE_HOME" to homeDir,
                                 "TERMODE_USR" to usrDir,
                                 "TERMODE_BIN" to binDir,
+                                "TERMODE_PREFERRED_CWD" to pwdVal,
                                 "TMPDIR" to tmpDir,
                                 "PATH" to pathVal,
                                 "workingDirectory" to pwdVal
@@ -984,11 +989,12 @@ class MainActivity: FlutterActivity() {
                             binDir.absolutePath,
                             tmpDir.absolutePath,
                             pathEnv,
-                            arrayOf("PS1", "ENV", "TERMODE_PROJECTS"),
+                            arrayOf("PS1", "ENV", "TERMODE_PROJECTS", "TERMODE_PREFERRED_CWD"),
                             arrayOf(
                                 "termode:\$ ",
                                 java.io.File(usrDir, "termode-shell-helpers.sh").absolutePath,
-                                java.io.File(homeDir, "projects").absolutePath
+                                java.io.File(homeDir, "projects").absolutePath,
+                                workingDir.absolutePath
                             ),
                             cols,
                             rows

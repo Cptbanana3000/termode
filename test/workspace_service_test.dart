@@ -309,6 +309,7 @@ void main() {
       final script = File('${paths['usr']}/bin/path-lite').readAsStringSync();
       expect(script, contains('TERMODE_PROJECTS'));
       expect(script, contains('WORKSPACE='));
+      expect(script, contains('PREFERRED_CWD'));
     });
   });
 }

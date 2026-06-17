@@ -608,6 +608,10 @@ class TerminalSessionService extends ChangeNotifier {
       const hostCommands = {
         'pkg',
         'runtime-tools',
+        'runtime-doctor',
+        'runtime-capabilities',
+        'runtime-exec-test',
+        'runtime-plan',
         'storage-status',
         'storage',
         'storage-link',

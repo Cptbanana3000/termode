@@ -8,6 +8,7 @@ import 'storage_access_service.dart';
 import 'terminal_session_service.dart';
 import 'settings_service.dart';
 import 'runtime_tool_service.dart';
+import 'runtime_capability_service.dart';
 import 'package_manager_service.dart';
 import 'workspace_service.dart';
 
@@ -144,6 +145,11 @@ class CommandService {
               '  stop-shell  - Kill the PTY shell process and return to NORMAL mode\n'
               '  host-help   - Show list of intercepted app management commands\n'
               '  whereami    - View active sandbox directories\n\n'
+              'Runtime Strategy Commands:\n'
+              '  runtime-doctor - Probe current runtime support\n'
+              '  runtime-capabilities - Show supported and unsupported runtimes\n'
+              '  runtime-exec-test - Run shell/script/native bridge probes\n'
+              '  runtime-plan - Show staged runtime roadmap\n\n'
               'Session Commands:\n'
               '  tabs        - List open tabs\n'
               '  tab-new     - Create a new tab\n'
@@ -881,6 +887,10 @@ class CommandService {
               '  termode-runtime path   - Show native absolute paths\n'
               '  termode-runtime reset  - Wipe and rebuild sandbox layout\n'
               '  runtime-tools [cmd]    - Manage Termode runtime tools\n'
+              '  runtime-doctor         - Probe current runtime support\n'
+              '  runtime-capabilities   - List supported and unsupported runtimes\n'
+              '  runtime-exec-test      - Run runtime execution probes\n'
+              '  runtime-plan           - Show native/runtime proof roadmap\n'
               '  run-tool [t] [args...] - Run a sandboxed tool script\n'
               '  pkg [cmd] [args...]    - Manage Termode script packages\n'
               '  toybox [args...]       - Run Toybox system command\n'
@@ -895,6 +905,34 @@ class CommandService {
               '  - Use "pkg list" to see available packages.\n'
               '  - Packages are installed to files/usr/bin and sourced via shell helpers.',
         );
+
+      case 'runtime-doctor':
+        final verbose = args.contains('--verbose');
+        final output = await RuntimeCapabilityService().doctor(
+          sessionId,
+          verbose: verbose,
+        );
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: UNHEALTHY'),
+        );
+
+      case 'runtime-capabilities':
+        return CommandResult(output: RuntimeCapabilityService().capabilities());
+
+      case 'runtime-exec-test':
+        final verbose = args.contains('--verbose');
+        final output = await RuntimeCapabilityService().execTest(
+          sessionId,
+          verbose: verbose,
+        );
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: UNHEALTHY'),
+        );
+
+      case 'runtime-plan':
+        return CommandResult(output: RuntimeCapabilityService().plan());
 
       case 'storage-link':
         final storageService = StorageAccessService();
@@ -2802,6 +2840,9 @@ class CommandService {
         );
         sb.writeln(
           '  runtime-tools  - Manage Termode runtime tools (status, install-test, test-run)',
+        );
+        sb.writeln(
+          '  runtime-*      - Probe and explain Termode runtime capabilities',
         );
         sb.writeln(
           '  storage-*      - Access user-linked Android storage (storage-link, storage-list, etc.)',
