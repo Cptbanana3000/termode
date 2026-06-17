@@ -11,12 +11,14 @@ class PackageOperationResult {
   final bool isError;
   final bool changedHelpers;
   final String? executable;
+  final String? example;
 
   const PackageOperationResult({
     required this.output,
     this.isError = false,
     this.changedHelpers = false,
     this.executable,
+    this.example,
   });
 }
 
@@ -142,6 +144,8 @@ class PackageManagerService {
       'type': 'script',
       'description': 'Prints a hello message from Termode package manager.',
       'executable': 'hello',
+      'category': 'fun',
+      'tags': ['hello', 'demo', 'test'],
       'files': {
         'usr/bin/hello':
             '#!/system/bin/sh\necho "Hello from Termode package manager!"\n',
@@ -153,6 +157,9 @@ class PackageManagerService {
       'type': 'script',
       'description': 'Prints text in a simple ASCII speech bubble.',
       'executable': 'cowsay-lite',
+      'category': 'fun',
+      'tags': ['ascii', 'fun', 'text'],
+      'example': 'cowsay-lite "Termode is alive"',
       'files': {
         'usr/bin/cowsay-lite':
             '#!/system/bin/sh\n'
@@ -178,6 +185,9 @@ class PackageManagerService {
       'description':
           'Prints basic Android/system information using shell commands.',
       'executable': 'sysinfo-lite',
+      'category': 'system',
+      'tags': ['android', 'device', 'system'],
+      'example': 'sysinfo-lite',
       'files': {
         'usr/bin/sysinfo-lite':
             '#!/system/bin/sh\n'
@@ -189,6 +199,155 @@ class PackageManagerService {
             'echo "Brand: \$(getprop ro.product.brand 2>/dev/null || echo Unknown)"\n'
             'echo "Android Version: \$(getprop ro.build.version.release 2>/dev/null || echo Unknown)"\n'
             'echo "CPU Architecture: \$(getprop ro.product.cpu.abi 2>/dev/null || echo Unknown)"\n',
+      },
+    },
+    'note-lite': {
+      'name': 'note-lite',
+      'version': '1.0.0',
+      'type': 'script',
+      'description': 'Stores small notes in a Termode-local text file.',
+      'executable': 'note-lite',
+      'category': 'utility',
+      'tags': ['notes', 'storage', 'utility'],
+      'example': 'note-lite add "my first note"',
+      'files': {
+        'usr/bin/note-lite': r'''#!/system/bin/sh
+notes_file="${TERMODE_USR:-$HOME}/note-lite.txt"
+cmd="${1:-list}"
+case "$cmd" in
+  add)
+    shift
+    if [ $# -eq 0 ]; then echo "Usage: note-lite add \"text\""; exit 1; fi
+    mkdir -p "$(dirname "$notes_file")" 2>/dev/null
+    printf "%s\n" "$*" >> "$notes_file"
+    echo "Note added."
+    ;;
+  list)
+    if [ ! -s "$notes_file" ]; then echo "No notes."; exit 0; fi
+    n=1
+    while IFS= read -r line; do
+      printf "%s. %s\n" "$n" "$line"
+      n=$((n + 1))
+    done < "$notes_file"
+    ;;
+  clear)
+    : > "$notes_file"
+    echo "Notes cleared."
+    ;;
+  *) echo "Usage: note-lite add|list|clear"; exit 1 ;;
+esac
+''',
+      },
+    },
+    'timer-lite': {
+      'name': 'timer-lite',
+      'version': '1.0.0',
+      'type': 'script',
+      'description': 'Runs a compact countdown timer in seconds.',
+      'executable': 'timer-lite',
+      'category': 'utility',
+      'tags': ['timer', 'countdown', 'utility'],
+      'example': 'timer-lite 10',
+      'files': {
+        'usr/bin/timer-lite': r'''#!/system/bin/sh
+seconds="${1:-}"
+case "$seconds" in ""|*[!0-9]*) echo "Usage: timer-lite <seconds>"; exit 1 ;; esac
+if [ "$seconds" -gt 3600 ]; then echo "Max timer is 3600 seconds."; exit 1; fi
+echo "Timer: $seconds seconds"
+remaining="$seconds"
+while [ "$remaining" -gt 0 ]; do
+  if [ "$remaining" -le 10 ] || [ $((remaining % 10)) -eq 0 ]; then echo "$remaining"; fi
+  sleep 1
+  remaining=$((remaining - 1))
+done
+echo "Done."
+''',
+      },
+    },
+    'calc-lite': {
+      'name': 'calc-lite',
+      'version': '1.0.0',
+      'type': 'script',
+      'description': 'Calculates basic arithmetic without shell eval.',
+      'executable': 'calc-lite',
+      'category': 'utility',
+      'tags': ['calculator', 'math', 'utility'],
+      'example': 'calc-lite 2 + 2',
+      'files': {
+        'usr/bin/calc-lite': r'''#!/system/bin/sh
+if [ $# -ne 3 ]; then echo "Usage: calc-lite <number> <+|-|*|/> <number>"; exit 1; fi
+a="$1"; op="$2"; b="$3"
+case "$a" in *[!0-9.-]*|"") echo "Invalid number: $a"; exit 1 ;; esac
+case "$b" in *[!0-9.-]*|"") echo "Invalid number: $b"; exit 1 ;; esac
+case "$op" in +|-|"*"|/) ;; *) echo "Invalid operator: $op"; exit 1 ;; esac
+case "$a$b" in *.*)
+  if command -v awk >/dev/null 2>&1; then
+    awk "BEGIN { if (\"$op\" == \"/\" && $b == 0) { print \"division by zero\"; exit 1 } print $a $op $b }"
+  else
+    echo "Decimal math needs awk on this device."; exit 1
+  fi
+  ;;
+*)
+  if [ "$op" = "/" ] && [ "$b" -eq 0 ]; then echo "division by zero"; exit 1; fi
+  case "$op" in
+    +) echo $((a + b)) ;;
+    -) echo $((a - b)) ;;
+    "*") echo $((a * b)) ;;
+    /) echo $((a / b)) ;;
+  esac
+  ;;
+esac
+''',
+      },
+    },
+    'path-lite': {
+      'name': 'path-lite',
+      'version': '1.0.0',
+      'type': 'script',
+      'description': 'Prints useful Termode runtime paths.',
+      'executable': 'path-lite',
+      'category': 'system',
+      'tags': ['paths', 'environment', 'system'],
+      'example': 'path-lite',
+      'files': {
+        'usr/bin/path-lite': r'''#!/system/bin/sh
+echo "HOME=${HOME:-}"
+echo "TERMODE_USR=${TERMODE_USR:-}"
+echo "TERMODE_BIN=${TERMODE_BIN:-}"
+echo "TMPDIR=${TMPDIR:-}"
+echo "PWD=$(pwd)"
+''',
+      },
+    },
+    'text-lite': {
+      'name': 'text-lite',
+      'version': '1.0.0',
+      'type': 'script',
+      'description': 'Performs small text transformations.',
+      'executable': 'text-lite',
+      'category': 'text',
+      'tags': ['text', 'strings', 'utility'],
+      'example': 'text-lite upper "hello"',
+      'files': {
+        'usr/bin/text-lite': r'''#!/system/bin/sh
+cmd="${1:-}"; shift 2>/dev/null || true
+text="$*"
+case "$cmd" in
+  upper) printf "%s\n" "$text" | tr "[:lower:]" "[:upper:]" ;;
+  lower) printf "%s\n" "$text" | tr "[:upper:]" "[:lower:]" ;;
+  count) printf "chars: %s\nwords: %s\n" "${#text}" "$(set -- $text; echo $#)" ;;
+  reverse)
+    out=""
+    while [ -n "$text" ]; do
+      last="${text#"${text%?}"}"
+      out="$out$last"
+      text="${text%?}"
+    done
+    printf "%s\n" "$out"
+    ;;
+  *) echo "Usage: text-lite upper|lower|count|reverse \"text\""; exit 1 ;;
+esac
+''',
       },
     },
   };
@@ -748,7 +907,7 @@ class PackageManagerService {
     String? installedAt,
   }) {
     final now = DateTime.now().toIso8601String();
-    return {
+    final metadata = {
       'name': pkg['name'] ?? pkgName,
       'version': pkg['version'],
       'type': pkg['type'],
@@ -761,6 +920,18 @@ class PackageManagerService {
       'checksums': checksums,
       'managedBy': managedBy,
     };
+    for (final field in [
+      'category',
+      'tags',
+      'example',
+      'homepage',
+      'minTermodeVersion',
+    ]) {
+      if (pkg.containsKey(field)) {
+        metadata[field] = pkg[field];
+      }
+    }
+    return metadata;
   }
 
   Future<String?> _writePackageFiles(
@@ -843,6 +1014,7 @@ class PackageManagerService {
       output: '$successVerb package $pkgName',
       changedHelpers: true,
       executable: pkg['executable'] as String? ?? pkgName,
+      example: pkg['example'] as String?,
     );
   }
 
@@ -967,6 +1139,17 @@ class PackageManagerService {
         'packageUrl': repoUrl,
         'managedBy': managedBy,
       };
+      for (final field in [
+        'category',
+        'tags',
+        'example',
+        'homepage',
+        'minTermodeVersion',
+      ]) {
+        if (pkg.containsKey(field)) {
+          packages[pkgName][field] = pkg[field];
+        }
+      }
 
       await _writeMetadata(data);
       await updateShellHelpers();
@@ -974,6 +1157,7 @@ class PackageManagerService {
         output: '$successVerb package $pkgName',
         changedHelpers: true,
         executable: pkg['executable'] as String? ?? pkgName,
+        example: pkg['example'] as String?,
       );
     } catch (e) {
       return failInstall('Error: package file download failed: $e');

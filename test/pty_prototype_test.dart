@@ -1699,7 +1699,7 @@ void main() {
         expect(res.output, contains('Loaded local Termode package index.'));
         expect(
           res.output,
-          contains('Success: Index updated (3 packages available).'),
+          contains('Success: Index updated (8 packages available).'),
         );
       });
 
@@ -1856,7 +1856,7 @@ void main() {
                   )
                   as Map<String, dynamic>;
           expect(indexData['schemaVersion'], 1);
-          expect(indexData['packages'], hasLength(3));
+          expect(indexData['packages'], hasLength(5));
 
           await enableTestRepo(commandService);
           final update = await commandService.execute('pkg update');
@@ -1867,14 +1867,14 @@ void main() {
           );
           expect(
             update.output,
-            contains('Success: Index updated (3 packages available).'),
+            contains('Success: Index updated (5 packages available).'),
           );
 
           final status = await commandService.execute('pkg repo status');
           expect(status.output, contains('Remote enabled: yes'));
           expect(status.output, contains('Repo trusted: yes'));
           expect(status.output, contains('Repo URL: configured'));
-          expect(status.output, contains('Cached packages: 3'));
+          expect(status.output, contains('Cached packages: 5'));
 
           final statusVerbose = await commandService.execute(
             'pkg repo status --verbose',
@@ -1887,11 +1887,11 @@ void main() {
             ),
           );
           expect(statusVerbose.output, contains('Active Index Source: remote'));
-          expect(statusVerbose.output, contains('Cached Remote Count: 3'));
+          expect(statusVerbose.output, contains('Cached Remote Count: 5'));
 
           final sources = await commandService.execute('pkg sources');
-          expect(sources.output, contains('Local packages: 3'));
-          expect(sources.output, contains('Remote cached: 3'));
+          expect(sources.output, contains('Local packages: 8'));
+          expect(sources.output, contains('Remote cached: 5'));
           expect(sources.output, contains('Active source: remote'));
           expect(sources.output, contains('Remote enabled: yes'));
 
@@ -1900,12 +1900,15 @@ void main() {
           expect(list.output, contains('hello-remote'));
           expect(list.output, contains('quote-lite'));
           expect(list.output, contains('device-note'));
+          expect(list.output, contains('note-lite'));
+          expect(list.output, contains('timer-lite'));
           expect(list.output, contains('remote'));
           expect(list.output, contains('available'));
           expect(list.output, isNot(contains('Prints a hello message')));
 
           final info = await commandService.execute('pkg info hello-remote');
           expect(info.output, contains('Source:      remote'));
+          expect(info.output, contains('Category:    fun'));
           expect(info.output, contains('Repo:        configured'));
           expect(info.output, contains('Checksum:    available'));
           expect(info.output, isNot(contains('https://repo.test')));
@@ -1915,8 +1918,20 @@ void main() {
             'pkg info hello-remote --verbose',
           );
           expect(verboseInfo.output, contains('Repo URL:'));
+          expect(verboseInfo.output, contains('Tags:        hello, remote'));
+          expect(verboseInfo.output, contains('Example:     hello-remote'));
           expect(verboseInfo.output, contains('usr/bin/hello-remote'));
           expect(verboseInfo.output, contains('SHA-256: b0b66727'));
+
+          final remoteNoteInfo = await commandService.execute(
+            'pkg info note-lite --verbose',
+          );
+          expect(remoteNoteInfo.output, contains('Source:      remote'));
+          expect(remoteNoteInfo.output, contains('Category:    utility'));
+          expect(
+            remoteNoteInfo.output,
+            contains('Example:     note-lite add "my first note"'),
+          );
 
           final install = await commandService.execute(
             'pkg install hello-remote',
@@ -1928,6 +1943,29 @@ void main() {
           );
           expect(install.output, contains('Try: hello-remote'));
 
+          final noteInstall = await commandService.execute(
+            'pkg install note-lite',
+          );
+          expect(noteInstall.isError, isFalse);
+          expect(
+            noteInstall.output,
+            contains('Success: Installed package note-lite'),
+          );
+          expect(
+            noteInstall.output,
+            contains('Try: note-lite add "my first note"'),
+          );
+
+          final timerInstall = await commandService.execute(
+            'pkg install timer-lite',
+          );
+          expect(timerInstall.isError, isFalse);
+          expect(
+            timerInstall.output,
+            contains('Success: Installed package timer-lite'),
+          );
+          expect(timerInstall.output, contains('Try: timer-lite 10'));
+
           final paths = await bootstrapService.getPaths();
           final installedFile = File('${paths['usr']!}/bin/hello-remote');
           expect(await installedFile.exists(), isTrue);
@@ -1938,9 +1976,13 @@ void main() {
 
           final helperFile = File('${paths['usr']!}/termode-shell-helpers.sh');
           expect(await helperFile.readAsString(), contains('hello-remote()'));
+          expect(await helperFile.readAsString(), contains('note-lite()'));
+          expect(await helperFile.readAsString(), contains('timer-lite()'));
 
           final installed = await commandService.execute('pkg installed');
           expect(installed.output, contains('hello-remote [1.1.0] (remote)'));
+          expect(installed.output, contains('note-lite [1.0.0] (remote)'));
+          expect(installed.output, contains('timer-lite [1.0.0] (remote)'));
 
           final verify = await commandService.execute(
             'pkg verify hello-remote',
@@ -1956,6 +1998,12 @@ void main() {
               'file URL: https://repo.test/termode-test-repo/packages/hello-remote.sh',
             ),
           );
+
+          final noteVerify = await commandService.execute(
+            'pkg verify note-lite',
+          );
+          expect(noteVerify.isError, isFalse);
+          expect(noteVerify.output, contains('Result: PASS'));
 
           final remove = await commandService.execute(
             'pkg remove hello-remote',
@@ -2006,7 +2054,7 @@ void main() {
         );
         expect(
           update.output,
-          contains('Success: Index updated (3 packages available).'),
+          contains('Success: Index updated (8 packages available).'),
         );
       });
 
@@ -2052,7 +2100,7 @@ void main() {
           );
           expect(
             update.output,
-            contains('Success: Index updated (3 packages available).'),
+            contains('Success: Index updated (8 packages available).'),
             reason: entry.key,
           );
 
@@ -2872,6 +2920,38 @@ void main() {
         expect(resEmpty.output, contains('No matching packages found.'));
       });
 
+      test('pkg categories and metadata-aware discovery output', () async {
+        final vfs = VirtualFileSystem();
+        final commandService = CommandService(vfs, 'session_pkg');
+
+        final categories = await commandService.execute('pkg categories');
+        expect(categories.isError, isFalse);
+        expect(categories.output, contains('=== Categories ==='));
+        expect(categories.output, contains('fun'));
+        expect(categories.output, contains('system'));
+        expect(categories.output, contains('text'));
+        expect(categories.output, contains('utility'));
+
+        final byName = await commandService.execute('pkg search note');
+        expect(byName.output, contains('note-lite [1.0.0]'));
+
+        final byTag = await commandService.execute('pkg search countdown');
+        expect(byTag.output, contains('timer-lite [1.0.0]'));
+
+        final byCategory = await commandService.execute('pkg search utility');
+        expect(byCategory.output, contains('calc-lite [1.0.0]'));
+        expect(byCategory.output, contains('note-lite [1.0.0]'));
+
+        final utilityList = await commandService.execute(
+          'pkg list --category utility',
+        );
+        expect(utilityList.isError, isFalse);
+        expect(utilityList.output, contains('note-lite'));
+        expect(utilityList.output, contains('timer-lite'));
+        expect(utilityList.output, contains('calc-lite'));
+        expect(utilityList.output, isNot(contains('cowsay-lite')));
+      });
+
       test('pkg info output', () async {
         final vfs = VirtualFileSystem();
         final commandService = CommandService(vfs, 'session_pkg');
@@ -2882,6 +2962,7 @@ void main() {
         expect(res.output, contains('Version:     1.0.0'));
         expect(res.output, contains('Source:      local'));
         expect(res.output, contains('Status:      Not Installed'));
+        expect(res.output, contains('Category:    fun'));
         expect(
           res.output,
           contains(
@@ -2895,8 +2976,22 @@ void main() {
           'pkg info hello --verbose',
         );
         expect(verbose.output, contains('Type:        script'));
+        expect(verbose.output, contains('Tags:'));
         expect(verbose.output, contains('Files:'));
         expect(verbose.output, contains('- usr/bin/hello'));
+
+        final note = await commandService.execute('pkg info note-lite');
+        expect(note.output, contains('Category:    utility'));
+        expect(note.output, contains('Executable:  note-lite'));
+
+        final noteVerbose = await commandService.execute(
+          'pkg info note-lite --verbose',
+        );
+        expect(noteVerbose.output, contains('Tags:        notes, storage'));
+        expect(
+          noteVerbose.output,
+          contains('Example:     note-lite add "my first note"'),
+        );
 
         final resError = await commandService.execute('pkg info non_existent');
         expect(resError.isError, isTrue);
@@ -2905,6 +3000,60 @@ void main() {
           contains('Package "non_existent" not found in index.'),
         );
       });
+
+      test(
+        'new local packages install and generate helper functions',
+        () async {
+          final vfs = VirtualFileSystem();
+          final commandService = CommandService(vfs, 'session_pkg');
+          final newPackages = {
+            'note-lite': 'note-lite add "my first note"',
+            'timer-lite': 'timer-lite 10',
+            'calc-lite': 'calc-lite 2 + 2',
+            'path-lite': 'path-lite',
+            'text-lite': 'text-lite upper "hello"',
+          };
+
+          for (final entry in newPackages.entries) {
+            final install = await commandService.execute(
+              'pkg install ${entry.key}',
+            );
+            expect(install.isError, isFalse, reason: entry.key);
+            expect(
+              install.output,
+              contains('Success: Installed package ${entry.key}'),
+              reason: entry.key,
+            );
+            expect(install.output, contains('Try: ${entry.value}'));
+          }
+
+          final paths = await bootstrapService.getPaths();
+          final helperFile = File('${paths['usr']!}/termode-shell-helpers.sh');
+          final helperContent = await helperFile.readAsString();
+          for (final pkgName in newPackages.keys) {
+            expect(helperContent, contains('$pkgName()'), reason: pkgName);
+            expect(
+              await File('${paths['usr']!}/bin/$pkgName').exists(),
+              isTrue,
+              reason: pkgName,
+            );
+          }
+
+          final metadata =
+              jsonDecode(
+                    await File(
+                      '${paths['usr']!}/termode-packages.json',
+                    ).readAsString(),
+                  )
+                  as Map<String, dynamic>;
+          expect(metadata['packages']['note-lite']['category'], 'utility');
+          expect(metadata['packages']['note-lite']['tags'], contains('notes'));
+          expect(
+            metadata['packages']['note-lite']['example'],
+            'note-lite add "my first note"',
+          );
+        },
+      );
 
       test('pkg install, installed, and double-install validation', () async {
         final vfs = VirtualFileSystem();

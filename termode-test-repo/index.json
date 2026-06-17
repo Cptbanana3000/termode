@@ -9,6 +9,9 @@
       "type": "script",
       "description": "Prints a hello message from the Termode test remote repository.",
       "executable": "hello-remote",
+      "category": "fun",
+      "tags": ["hello", "remote", "demo"],
+      "example": "hello-remote",
       "files": [
         {
           "path": "usr/bin/hello-remote",
@@ -23,6 +26,9 @@
       "type": "script",
       "description": "Prints a small POSIX-shell friendly quote.",
       "executable": "quote-lite",
+      "category": "fun",
+      "tags": ["quote", "text", "fun"],
+      "example": "quote-lite",
       "files": [
         {
           "path": "usr/bin/quote-lite",
@@ -37,11 +43,48 @@
       "type": "script",
       "description": "Prints a remote execution note and optional device uname details.",
       "executable": "device-note",
+      "category": "system",
+      "tags": ["device", "system", "remote"],
+      "example": "device-note",
       "files": [
         {
           "path": "usr/bin/device-note",
           "url": "packages/device-note.sh",
           "sha256": "c3891c00b53ce8048c986362c02e23c6da48a4485c5319318f71fd82ebe078d8"
+        }
+      ]
+    },
+    {
+      "name": "note-lite",
+      "version": "1.0.0",
+      "type": "script",
+      "description": "Stores small notes in a Termode-local text file.",
+      "executable": "note-lite",
+      "category": "utility",
+      "tags": ["notes", "storage", "utility"],
+      "example": "note-lite add \"my first note\"",
+      "files": [
+        {
+          "path": "usr/bin/note-lite",
+          "url": "packages/note-lite.sh",
+          "sha256": "2226eb7a7bf8ceec0289238734cae8d4764cbf3346a1f9bcba17504a411f1de6"
+        }
+      ]
+    },
+    {
+      "name": "timer-lite",
+      "version": "1.0.0",
+      "type": "script",
+      "description": "Runs a compact countdown timer in seconds.",
+      "executable": "timer-lite",
+      "category": "utility",
+      "tags": ["timer", "countdown", "utility"],
+      "example": "timer-lite 10",
+      "files": [
+        {
+          "path": "usr/bin/timer-lite",
+          "url": "packages/timer-lite.sh",
+          "sha256": "a7cb43a5b7a249fe2a43f37e4985ea1ade70b6911bb68b4dd40989986b335e4a"
         }
       ]
     }

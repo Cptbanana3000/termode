@@ -34,6 +34,14 @@ class CommandService {
 
   CommandService(this.vfs, this.sessionId);
 
+  String _packageTryLine(PackageOperationResult result, String pkgName) {
+    final example = result.example;
+    if (example != null && example.trim().isNotEmpty) {
+      return 'Try: ${example.trim()}';
+    }
+    return 'Tip: Command is available now. Try: ${result.executable ?? pkgName}';
+  }
+
   String _formatStorageError(PlatformException e) {
     switch (e.code) {
       case 'NOT_LINKED':
@@ -1909,6 +1917,7 @@ class CommandService {
                   '  pkg repo [cmd]           - Configure/trust remote package repository\n'
                   '  pkg sources              - Show local/remote source summary\n'
                   '  pkg list [--long]        - List packages in index with status\n'
+                  '  pkg categories           - List package categories\n'
                   '  pkg search <term>        - Search packages in index\n'
                   '  pkg info <name> [--verbose] - Show package information\n'
                   '  pkg install <name>       - Install a package\n'
@@ -2010,6 +2019,11 @@ class CommandService {
             final installed = await _getInstalledPackages(pUsrDir);
             final available = await pmService.availablePackages();
             final longMode = args.contains('--long');
+            String? category;
+            final categoryIndex = args.indexOf('--category');
+            if (categoryIndex >= 0 && categoryIndex + 1 < args.length) {
+              category = args[categoryIndex + 1].toLowerCase();
+            }
             final sb = StringBuffer();
             sb.writeln(
               longMode ? '=== Packages (Long) ===' : '=== Packages ===',
@@ -2017,6 +2031,11 @@ class CommandService {
             for (final entry in available.entries) {
               final name = entry.key;
               final pkg = entry.value;
+              final pkgCategory =
+                  pkg['category']?.toString().toLowerCase() ?? 'utility';
+              if (category != null && pkgCategory != category) {
+                continue;
+              }
               final status = installed.containsKey(name)
                   ? 'installed'
                   : 'available';
@@ -2031,6 +2050,20 @@ class CommandService {
                 final paddedSource = source.padRight(6);
                 sb.writeln('$paddedName $version $paddedSource $status');
               }
+            }
+            return CommandResult(output: sb.toString().trimRight());
+
+          case 'categories':
+            final available = await pmService.availablePackages();
+            final counts = <String, int>{};
+            for (final pkg in available.values) {
+              final category = pkg['category']?.toString() ?? 'utility';
+              counts[category] = (counts[category] ?? 0) + 1;
+            }
+            final names = counts.keys.toList()..sort();
+            final sb = StringBuffer('=== Categories ===\n');
+            for (final name in names) {
+              sb.writeln('${name.padRight(10)} ${counts[name]}');
             }
             return CommandResult(output: sb.toString().trimRight());
 
@@ -2051,7 +2084,14 @@ class CommandService {
               final name = entry.key;
               final pkg = entry.value;
               final desc = (pkg['description'] as String).toLowerCase();
-              if (name.toLowerCase().contains(query) || desc.contains(query)) {
+              final category = pkg['category']?.toString().toLowerCase() ?? '';
+              final tags = (pkg['tags'] as List<dynamic>? ?? [])
+                  .map((tag) => tag.toString().toLowerCase())
+                  .join(' ');
+              if (name.toLowerCase().contains(query) ||
+                  desc.contains(query) ||
+                  category.contains(query) ||
+                  tags.contains(query)) {
                 count++;
                 final status = installed.containsKey(name)
                     ? 'Installed'
@@ -2095,6 +2135,7 @@ class CommandService {
             sb.writeln(
               'Status:      ${isInst ? "Installed" : "Not Installed"}',
             );
+            sb.writeln('Category:    ${pkg['category'] ?? "utility"}');
             sb.writeln('Description: ${pkg['description']}');
             sb.writeln('Executable:  ${pkg['executable'] ?? pkgName}');
             if (source == 'remote') {
@@ -2105,6 +2146,21 @@ class CommandService {
               sb.writeln('Type:        ${pkg['type']}');
               if (pkg['repoUrl'] != null) {
                 sb.writeln('Repo URL:    ${pkg['repoUrl']}');
+              }
+              final tags = (pkg['tags'] as List<dynamic>? ?? [])
+                  .map((tag) => tag.toString())
+                  .join(', ');
+              if (tags.isNotEmpty) {
+                sb.writeln('Tags:        $tags');
+              }
+              if (pkg['example'] != null) {
+                sb.writeln('Example:     ${pkg['example']}');
+              }
+              if (pkg['homepage'] != null) {
+                sb.writeln('Homepage:    ${pkg['homepage']}');
+              }
+              if (pkg['minTermodeVersion'] != null) {
+                sb.writeln('Min Termode: ${pkg['minTermodeVersion']}');
               }
               sb.writeln('Files:');
               if (pkg['files'] is Map) {
@@ -2141,8 +2197,7 @@ class CommandService {
               return CommandResult(output: result.output, isError: true);
             }
             return CommandResult(
-              output:
-                  '${result.output}\nTip: Command is available now. Try: ${result.executable ?? pkgName}',
+              output: '${result.output}\n${_packageTryLine(result, pkgName)}',
               shouldReloadShellHelpers: result.changedHelpers,
               helperReloadFailureMessage:
                   'Package installed, but helper reload failed. Run: reload-helpers',
@@ -2164,8 +2219,7 @@ class CommandService {
               return CommandResult(output: result.output, isError: true);
             }
             return CommandResult(
-              output:
-                  '${result.output}\nTip: Command is available now. Try: ${result.executable ?? pkgName}',
+              output: '${result.output}\n${_packageTryLine(result, pkgName)}',
               shouldReloadShellHelpers: result.changedHelpers,
               helperReloadFailureMessage:
                   'Package reinstalled, but helper reload failed. Run: reload-helpers',
