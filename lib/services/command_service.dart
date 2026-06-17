@@ -9,6 +9,7 @@ import 'terminal_session_service.dart';
 import 'settings_service.dart';
 import 'runtime_tool_service.dart';
 import 'runtime_capability_service.dart';
+import 'localhost_service.dart';
 import 'package_manager_service.dart';
 import 'workspace_service.dart';
 
@@ -150,6 +151,13 @@ class CommandService {
               '  runtime-capabilities - Show supported and unsupported runtimes\n'
               '  runtime-exec-test - Run shell/script/native bridge probes\n'
               '  runtime-plan - Show staged runtime roadmap\n\n'
+              'Dev Server Commands:\n'
+              '  localhost-doctor - Check localhost readiness\n'
+              '  localhost-capabilities - Show localhost support\n'
+              '  port-check <port> - Check a local TCP port\n'
+              '  http-test <port-or-url> - Test a local HTTP URL\n'
+              '  preview-url <port> - Print a preview URL\n'
+              '  devserver-help - Show localhost command help\n\n'
               'Session Commands:\n'
               '  tabs        - List open tabs\n'
               '  tab-new     - Create a new tab\n'
@@ -891,6 +899,12 @@ class CommandService {
               '  runtime-capabilities   - List supported and unsupported runtimes\n'
               '  runtime-exec-test      - Run runtime execution probes\n'
               '  runtime-plan           - Show native/runtime proof roadmap\n'
+              '  localhost-doctor       - Check localhost readiness\n'
+              '  localhost-capabilities - Show dev server readiness support\n'
+              '  port-check <port>      - Check 127.0.0.1 port status\n'
+              '  http-test <port|url>   - Test HTTP localhost reachability\n'
+              '  preview-url <port>     - Print a clean preview URL\n'
+              '  devserver-help         - Show localhost/dev server help\n'
               '  run-tool [t] [args...] - Run a sandboxed tool script\n'
               '  pkg [cmd] [args...]    - Manage Termode script packages\n'
               '  toybox [args...]       - Run Toybox system command\n'
@@ -933,6 +947,80 @@ class CommandService {
 
       case 'runtime-plan':
         return CommandResult(output: RuntimeCapabilityService().plan());
+
+      case 'localhost-doctor':
+        final verbose = args.contains('--verbose');
+        final output = await LocalhostService().doctor(verbose: verbose);
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: UNHEALTHY'),
+        );
+
+      case 'localhost-capabilities':
+        return CommandResult(output: LocalhostService().capabilities());
+
+      case 'port-check':
+        final portArg = args.isNotEmpty && !args[0].startsWith('--')
+            ? args[0]
+            : null;
+        final validation = LocalhostService().validatePortArg(portArg);
+        if (validation != null) {
+          return CommandResult(output: validation, isError: true);
+        }
+        final port = LocalhostService().parsePort(portArg!)!;
+        final result = await LocalhostService().checkPort(port);
+        return CommandResult(
+          output: LocalhostService().portCheckOutput(
+            result,
+            verbose: args.contains('--verbose'),
+          ),
+        );
+
+      case 'http-test':
+        final targetArg = args.isNotEmpty && !args[0].startsWith('--')
+            ? args[0]
+            : null;
+        if (targetArg == null || targetArg.trim().isEmpty) {
+          return CommandResult(
+            output:
+                'Error: Missing URL or port.\nUsage: http-test <url-or-port>',
+            isError: true,
+          );
+        }
+        final uri = LocalhostService().normalizeHttpTarget(targetArg);
+        if (!uri.hasAuthority || uri.host.isEmpty) {
+          return CommandResult(
+            output: 'Error: Invalid HTTP target: $targetArg',
+            isError: true,
+          );
+        }
+        final httpResult = await LocalhostService().testHttp(uri);
+        return CommandResult(
+          output: LocalhostService().httpTestOutput(
+            httpResult,
+            headers: args.contains('--headers'),
+          ),
+          isError: !httpResult.reached,
+        );
+
+      case 'preview-url':
+        final portArg = args.isNotEmpty && !args[0].startsWith('--')
+            ? args[0]
+            : null;
+        final validation = LocalhostService().validatePortArg(portArg);
+        if (validation != null) {
+          return CommandResult(output: validation, isError: true);
+        }
+        final port = LocalhostService().parsePort(portArg!)!;
+        return CommandResult(
+          output: await LocalhostService().previewUrlOutput(
+            port,
+            copy: args.contains('--copy'),
+          ),
+        );
+
+      case 'devserver-help':
+        return CommandResult(output: LocalhostService().help());
 
       case 'storage-link':
         final storageService = StorageAccessService();
@@ -2844,6 +2932,13 @@ class CommandService {
         sb.writeln(
           '  runtime-*      - Probe and explain Termode runtime capabilities',
         );
+        sb.writeln(
+          '  localhost-*    - Check local ports and future dev server readiness',
+        );
+        sb.writeln('  port-check     - Check a 127.0.0.1 TCP port');
+        sb.writeln('  http-test      - Test a localhost HTTP URL');
+        sb.writeln('  preview-url    - Print a localhost preview URL');
+        sb.writeln('  devserver-help - Show dev server diagnostics help');
         sb.writeln(
           '  storage-*      - Access user-linked Android storage (storage-link, storage-list, etc.)',
         );

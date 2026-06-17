@@ -42,12 +42,14 @@ management proofs before they become package types.
 ## Future Strategies
 
 1. Keep script packages stable and source-locked.
-2. Add one bundled native runtime proof binary to validate ABI and execution.
-3. Add a Node runtime proof after native execution behavior is understood.
-4. Prove npm install/cache behavior inside app storage.
-5. Prove a minimal Vite dev server.
-6. Connect localhost preview once server lifecycle is reliable.
-7. Integrate CalypsoIDE workflows after runtime support is proven.
+2. Keep runtime diagnostics visible for shell, Toybox, and script probes.
+3. Prove localhost and port diagnostics before adding any dev server runtime.
+4. Add one bundled native runtime proof binary to validate ABI and execution.
+5. Add a Node runtime proof after native execution behavior is understood.
+6. Prove npm install/cache behavior inside app storage.
+7. Prove a minimal Vite dev server.
+8. Connect localhost preview once server lifecycle is reliable.
+9. Integrate CalypsoIDE workflows after runtime support is proven.
 
 ## Risks
 

@@ -136,10 +136,7 @@ void main() {
           result.output,
           contains('Script packages through /system/bin/sh'),
         );
-        expect(
-          result.output,
-          contains('Localhost preview readiness: unknown/not tested'),
-        );
+        expect(result.output, contains('Localhost diagnostics'));
         expect(result.output, contains('Native binary packages'));
         expect(result.output, contains('Node.js'));
         expect(result.output, contains('npm'));
@@ -155,9 +152,10 @@ void main() {
 
       expect(result.isError, isFalse);
       expect(result.output, contains('1. Script packages'));
-      expect(result.output, contains('2. Bundled native runtime proof'));
-      expect(result.output, contains('5. Vite proof'));
-      expect(result.output, contains('7. CalypsoIDE integration later'));
+      expect(result.output, contains('3. Localhost/port probes'));
+      expect(result.output, contains('4. Bundled native runtime proof'));
+      expect(result.output, contains('7. Vite proof'));
+      expect(result.output, contains('9. CalypsoIDE integration later'));
     });
 
     test('runtime commands are intercepted inside REAL PTY mode', () async {

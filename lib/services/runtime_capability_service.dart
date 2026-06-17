@@ -199,7 +199,7 @@ class RuntimeCapabilityService {
         '  - Script packages through /system/bin/sh\n'
         '  - Remote script packages after repo trust/source checks\n'
         '  - Workspace folders under files/home/projects\n'
-        '  - Localhost preview readiness: unknown/not tested\n\n'
+        '  - Localhost diagnostics for ports, HTTP checks, and preview URLs\n\n'
         'Not supported yet:\n'
         '  - Native binary packages\n'
         '  - Node.js\n'
@@ -211,12 +211,14 @@ class RuntimeCapabilityService {
   String plan() {
     return '=== Runtime Plan ===\n'
         '1. Script packages - keep package helpers reliable and source-locked.\n'
-        '2. Bundled native runtime proof - add one tiny audited binary later.\n'
-        '3. Node runtime proof - test ABI, extraction, and execution constraints.\n'
-        '4. npm basic proof - prove package install/cache behavior in app storage.\n'
-        '5. Vite proof - run a minimal dev server inside the sandbox.\n'
-        '6. localhost preview - connect runtime server output to in-app/browser preview.\n'
-        '7. CalypsoIDE integration later - wire editor workflows only after runtime proof.';
+        '2. Runtime diagnostics - keep shell, Toybox, and script probes visible.\n'
+        '3. Localhost/port probes - prove dev server readiness without Node yet.\n'
+        '4. Bundled native runtime proof - add one tiny audited binary later.\n'
+        '5. Node proof - test ABI, extraction, and execution constraints.\n'
+        '6. npm proof - prove package install/cache behavior in app storage.\n'
+        '7. Vite proof - run a minimal dev server inside the sandbox.\n'
+        '8. Preview panel - connect localhost output to an in-app/browser preview.\n'
+        '9. CalypsoIDE integration later - wire editor workflows only after runtime proof.';
   }
 
   String _directExecStatus(NativeCommandResult result) {
