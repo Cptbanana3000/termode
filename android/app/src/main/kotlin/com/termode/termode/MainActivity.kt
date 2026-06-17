@@ -960,6 +960,18 @@ class MainActivity: FlutterActivity() {
                         if (!tmpDir.exists()) {
                             tmpDir.mkdirs()
                         }
+                        val requestedWorkingDir = call.argument<String>("workingDirectory")
+                        val workingDir = if (requestedWorkingDir != null) {
+                            val candidate = java.io.File(requestedWorkingDir).canonicalFile
+                            val homeCanonical = homeDir.canonicalFile
+                            if (candidate.exists() && candidate.isDirectory && candidate.path.startsWith(homeCanonical.path)) {
+                                candidate
+                            } else {
+                                homeDir
+                            }
+                        } else {
+                            homeDir
+                        }
                         val pathEnv = "${binDir.absolutePath}:/system/bin:/system/xbin:/vendor/bin:/product/bin"
 
                         val cols = call.argument<Int>("cols") ?: 80
@@ -967,12 +979,17 @@ class MainActivity: FlutterActivity() {
 
                         val ptyInfo = nativeStartPty(
                             homeDir.absolutePath,
+                            workingDir.absolutePath,
                             usrDir.absolutePath,
                             binDir.absolutePath,
                             tmpDir.absolutePath,
                             pathEnv,
-                            arrayOf("PS1", "ENV"),
-                            arrayOf("termode:\$ ", java.io.File(usrDir, "termode-shell-helpers.sh").absolutePath),
+                            arrayOf("PS1", "ENV", "TERMODE_PROJECTS"),
+                            arrayOf(
+                                "termode:\$ ",
+                                java.io.File(usrDir, "termode-shell-helpers.sh").absolutePath,
+                                java.io.File(homeDir, "projects").absolutePath
+                            ),
                             cols,
                             rows
                         )
@@ -1280,6 +1297,7 @@ class MainActivity: FlutterActivity() {
 
     private external fun nativeStartPty(
         homeDir: String,
+        workingDir: String,
         usrDir: String,
         binDir: String,
         tmpDir: String,

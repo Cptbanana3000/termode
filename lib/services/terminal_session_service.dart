@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/terminal_line.dart';
@@ -10,6 +11,7 @@ import 'virtual_filesystem.dart';
 import 'persistence_service.dart';
 import 'settings_service.dart';
 import 'ansi_parser.dart';
+import 'runtime_bootstrap_service.dart';
 
 class _HelperReloadState {
   final StringBuffer buffer = StringBuffer();
@@ -334,9 +336,88 @@ class TerminalSessionService extends ChangeNotifier {
     sb.writeln('PTY: $pty');
     sb.writeln('Scrollback: ${session.lines.length} / $maxScrollbackLines');
     sb.writeln('History: ${session.commandHistory.length}');
+    sb.writeln(
+      'Preferred cwd: ${session.preferredWorkingDirectory ?? "(home)"}',
+    );
+    sb.writeln(
+      'Tracked cwd: ${session.lastKnownWorkingDirectory ?? "(unknown)"}',
+    );
     sb.writeln('Created: ${session.createdAt.toIso8601String()}');
     sb.write('Updated: ${session.updatedAt.toIso8601String()}');
     return sb.toString();
+  }
+
+  void setPreferredWorkingDirectory(String directory) {
+    activeSession.preferredWorkingDirectory = directory;
+    activeSession.lastKnownWorkingDirectory = directory;
+    _touchSession(activeSession);
+    notifyListeners();
+    saveState();
+  }
+
+  Future<String> _safeInitialWorkingDirectory(TerminalSession session) async {
+    final home = Directory(await _runtimeHomePath()).absolute;
+    if (!home.existsSync()) {
+      home.createSync(recursive: true);
+    }
+    final preferred = session.preferredWorkingDirectory;
+    if (preferred == null || preferred.trim().isEmpty) {
+      return home.path;
+    }
+    final dir = Directory(preferred).absolute;
+    final dirPath = _normalizeHostPath(dir.path);
+    final homePath = _normalizeHostPath(home.path);
+    final safe =
+        dirPath == homePath ||
+        dirPath.startsWith('$homePath${Platform.pathSeparator}');
+    if (safe && dir.existsSync()) {
+      return dir.path;
+    }
+    session.preferredWorkingDirectory = home.path;
+    session.lastKnownWorkingDirectory = home.path;
+    return home.path;
+  }
+
+  Future<String> _runtimeHomePath() async {
+    const channel = MethodChannel('com.termode/native_shell');
+    try {
+      final Map<dynamic, dynamic>? paths = await channel.invokeMethod(
+        'getPaths',
+      );
+      final home = paths?['home']?.toString();
+      if (home != null && home.isNotEmpty) return home;
+    } catch (_) {
+      // Fall back to Dart runtime paths below.
+    }
+    try {
+      final paths = await RuntimeBootstrapService().getPaths();
+      return paths['home']!;
+    } catch (_) {
+      return Directory.current.path;
+    }
+  }
+
+  Future<void> sendCdToRealPty(String directory) async {
+    final channel = const MethodChannel('com.termode/native_shell');
+    final quoted = _shellQuote(directory);
+    await channel.invokeMethod('realPtySend', {
+      'sessionId': activeSession.id,
+      'text': 'cd $quoted\n',
+    });
+    activeSession.lastKnownWorkingDirectory = directory;
+    _touchSession(activeSession);
+    await saveState();
+  }
+
+  String _shellQuote(String value) {
+    return "'${value.replaceAll("'", "'\"'\"'")}'";
+  }
+
+  String _normalizeHostPath(String path) {
+    if (Platform.pathSeparator == r'\') {
+      return path.replaceAll('/', r'\');
+    }
+    return path.replaceAll(r'\', '/');
   }
 
   void clearActiveTranscript() {
@@ -409,6 +490,7 @@ class TerminalSessionService extends ChangeNotifier {
         'pkg',
         'runtime-tools',
         'storage-status',
+        'storage',
         'storage-link',
         'storage-unlink',
         'storage-list',
@@ -416,8 +498,27 @@ class TerminalSessionService extends ChangeNotifier {
         'storage-write',
         'storage-delete',
         'storage-mkdir',
+        'storage-projects',
         'storage-test',
         'storage-help',
+        'workspace',
+        'workspace-info',
+        'workspace-init',
+        'workspace-list',
+        'workspace-cd',
+        'workspace-open',
+        'workspace-remove',
+        'workspace-doctor',
+        'workspace-import-storage',
+        'workspace-export-storage',
+        'pwd-host',
+        'host-pwd',
+        'host-ls',
+        'host-cat',
+        'host-write',
+        'host-touch',
+        'host-mkdir',
+        'host-rm',
         'shell-doctor',
         'keyboard-help',
         'real-pty-help',
@@ -1291,8 +1392,12 @@ class TerminalSessionService extends ChangeNotifier {
         'sessionId': sessionId,
         'cols': cols,
         'rows': rows,
+        'workingDirectory': await _safeInitialWorkingDirectory(session),
       });
       if (started == true) {
+        session.lastKnownWorkingDirectory = await _safeInitialWorkingDirectory(
+          session,
+        );
         setRealPtyActive(sessionId, true);
         setPtyInteractionActive(sessionId, true);
         return true;

@@ -9,6 +9,7 @@ import 'terminal_session_service.dart';
 import 'settings_service.dart';
 import 'runtime_tool_service.dart';
 import 'package_manager_service.dart';
+import 'workspace_service.dart';
 
 class CommandResult {
   final String output;
@@ -152,7 +153,14 @@ class CommandService {
               '  session-info - Show active session info\n'
               '  session-doctor - Check session health\n'
               '  history     - Show command history\n\n'
+              'Workspace Commands:\n'
+              '  workspace   - Show workspace status\n'
+              '  workspace-init [n] - Create project workspace\n'
+              '  workspace-list - List workspaces\n'
+              '  workspace-cd [n] - Select/cd to workspace\n'
+              '  host-*      - Real file commands for Termode home\n\n'
               'Termode VFS Commands:\n'
+              '  NOTE: VFS commands are legacy sandbox demo commands.\n'
               '  help        - Show VFS help\n'
               '  clear       - Clear screen\n'
               '  echo [text] - Print arguments\n'
@@ -213,6 +221,120 @@ class CommandService {
         final clear = args.isNotEmpty && args[0] == 'clear';
         return CommandResult(
           output: TerminalSessionService().historyOutput(clear: clear),
+        );
+      case 'workspace':
+        return CommandResult(
+          output: await WorkspaceService().workspaceStatus(),
+        );
+      case 'workspace-info':
+        return CommandResult(output: await WorkspaceService().workspaceInfo());
+      case 'workspace-init':
+        if (args.isEmpty) {
+          return CommandResult(
+            output: 'Usage: workspace-init <name>',
+            isError: true,
+          );
+        }
+        final init = await WorkspaceService().initWorkspace(args[0]);
+        return CommandResult(
+          output: init,
+          isError: init.startsWith('workspace-init:'),
+        );
+      case 'workspace-list':
+        return CommandResult(output: await WorkspaceService().listWorkspaces());
+      case 'workspace-cd':
+      case 'workspace-open':
+        if (args.isEmpty) {
+          return CommandResult(
+            output: 'Usage: workspace-cd <name>',
+            isError: true,
+          );
+        }
+        final result = await WorkspaceService().setWorkspace(args[0]);
+        return CommandResult(output: result.$2, isError: !result.$1);
+      case 'workspace-remove':
+        if (args.isEmpty) {
+          return CommandResult(
+            output: 'Usage: workspace-remove <name> --confirm',
+            isError: true,
+          );
+        }
+        final output = await WorkspaceService().removeWorkspace(
+          args[0],
+          confirmed: args.contains('--confirm'),
+        );
+        return CommandResult(
+          output: output,
+          isError: output.startsWith('workspace-remove:'),
+        );
+      case 'workspace-doctor':
+        final output = await WorkspaceService().doctor(
+          verbose: args.contains('--verbose'),
+        );
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: UNHEALTHY'),
+        );
+      case 'pwd-host':
+      case 'host-pwd':
+        return _workspaceFileCommand(
+          'host-pwd',
+          () => WorkspaceService().hostPwd(),
+        );
+      case 'host-ls':
+        return _workspaceFileCommand(
+          'host-ls',
+          () => WorkspaceService().hostLs(args.isEmpty ? '.' : args[0]),
+        );
+      case 'host-cat':
+        if (args.isEmpty) {
+          return CommandResult(output: 'Usage: host-cat <file>', isError: true);
+        }
+        return _workspaceFileCommand(
+          'host-cat',
+          () => WorkspaceService().hostCat(args[0]),
+        );
+      case 'host-write':
+        if (args.length < 2) {
+          return CommandResult(
+            output: 'Usage: host-write <file> <text>',
+            isError: true,
+          );
+        }
+        return _workspaceFileCommand(
+          'host-write',
+          () =>
+              WorkspaceService().hostWrite(args[0], args.sublist(1).join(' ')),
+        );
+      case 'host-touch':
+        if (args.isEmpty) {
+          return CommandResult(
+            output: 'Usage: host-touch <file>',
+            isError: true,
+          );
+        }
+        return _workspaceFileCommand(
+          'host-touch',
+          () => WorkspaceService().hostTouch(args[0]),
+        );
+      case 'host-mkdir':
+        if (args.isEmpty) {
+          return CommandResult(
+            output: 'Usage: host-mkdir <dir>',
+            isError: true,
+          );
+        }
+        return _workspaceFileCommand(
+          'host-mkdir',
+          () => WorkspaceService().hostMkdir(args[0]),
+        );
+      case 'host-rm':
+        if (args.isEmpty) {
+          return CommandResult(output: 'Usage: host-rm <file>', isError: true);
+        }
+        return _workspaceFileCommand(
+          'host-rm',
+          () => WorkspaceService().hostRm(args[0]),
         );
       case 'echo':
         return CommandResult(output: args.join(' '));
@@ -678,13 +800,18 @@ class CommandService {
         sb.writeln('  Home: ${paths['home']}');
         sb.writeln('  Bin:  ${paths['bin']}');
         sb.writeln('  Tmp:  ${paths['tmp']}');
+        sb.writeln('Real Workspace Files:');
+        sb.writeln('  Projects: ${paths['home']}/projects');
+        sb.writeln(
+          '  Tracked CWD: ${WorkspaceService().trackedWorkingDirectory()}',
+        );
         sb.writeln(
           '  State: ${isHealthy ? "HEALTHY" : "UNHEALTHY (corrupted folders)"}',
         );
         sb.writeln('User-Linked Android Storage:');
         sb.writeln('  Status: $storageStatusStr');
         sb.write(
-          'NOTE: Dart VFS, native runtime, and user-linked Android storage are currently separate.',
+          'NOTE: VFS is legacy demo storage. workspace/host-* commands use real Termode files. SAF storage remains user-linked Android storage.',
         );
         return CommandResult(output: sb.toString());
 
@@ -707,7 +834,9 @@ class CommandService {
               '  runtime-pwd            - Print sandbox home directory\n'
               '  runtime-ls             - List sandbox home contents\n'
               '  runtime-cat [file]     - Read sandbox home file\n'
-              '  runtime-write [fl] [t] - Write text to sandbox file\n\n'
+              '  runtime-write [fl] [t] - Write text to sandbox file\n'
+              '  workspace-*            - Manage real files/home/projects folders\n'
+              '  host-*                 - Work with real Termode home files\n\n'
               'Packages Guidance:\n'
               '  - Use "pkg list" to see available packages.\n'
               '  - Packages are installed to files/usr/bin and sourced via shell helpers.',
@@ -729,20 +858,68 @@ class CommandService {
           return CommandResult(output: _formatStorageError(e), isError: true);
         }
 
+      case 'storage':
       case 'storage-status':
         final storageService = StorageAccessService();
         try {
           final status = await storageService.getStatus();
           if (status != null) {
-            final uri = status['uri'];
-            final name = status['displayName'];
-            final namePart = name != null ? ' (Name: $name)' : '';
+            final name = status['displayName'] ?? '(unknown)';
             return CommandResult(
-              output: 'Linked storage folder: $uri$namePart',
+              output:
+                  'Storage linked: yes\nName: $name\nPermissions: read/write\nTip: storage-list',
             );
           } else {
-            return CommandResult(output: 'No folder is currently linked.');
+            return CommandResult(
+              output:
+                  'Storage linked: no\nName: (none)\nPermissions: none\nTip: storage-link',
+            );
           }
+        } on PlatformException catch (e) {
+          return CommandResult(output: _formatStorageError(e), isError: true);
+        }
+
+      case 'storage-projects':
+        try {
+          return CommandResult(
+            output: await WorkspaceService().storageProjects(),
+          );
+        } on PlatformException catch (e) {
+          return CommandResult(output: _formatStorageError(e), isError: true);
+        }
+
+      case 'workspace-import-storage':
+        if (args.length < 2) {
+          return CommandResult(
+            output:
+                'Usage: workspace-import-storage <storage-folder-name> <workspace-name>',
+            isError: true,
+          );
+        }
+        try {
+          return CommandResult(
+            output: await WorkspaceService().importStorage(args[0], args[1]),
+          );
+        } on PlatformException catch (e) {
+          return CommandResult(output: _formatStorageError(e), isError: true);
+        }
+
+      case 'workspace-export-storage':
+        if (args.length < 2) {
+          return CommandResult(
+            output:
+                'Usage: workspace-export-storage <workspace-name> <storage-folder-name> [--overwrite]',
+            isError: true,
+          );
+        }
+        try {
+          return CommandResult(
+            output: await WorkspaceService().exportStorage(
+              args[0],
+              args[1],
+              overwrite: args.contains('--overwrite'),
+            ),
+          );
         } on PlatformException catch (e) {
           return CommandResult(output: _formatStorageError(e), isError: true);
         }
@@ -997,6 +1174,7 @@ class CommandService {
               'Android security limits direct storage access. Termode uses the Android Storage Access Framework (SAF) to let you approve access to a specific folder.\n\n'
               'Commands:\n'
               '  storage-link       - Open picker to link an Android folder\n'
+              '  storage            - Compact linked-storage status\n'
               '  storage-status     - Show whether a folder is currently linked\n'
               '  storage-unlink     - Unlink the folder (access revoked)\n'
               '  storage-list       - List files in the linked folder\n'
@@ -1004,6 +1182,7 @@ class CommandService {
               '  storage-write [f] [t] - Write text file into the linked folder\n'
               '  storage-mkdir [d]  - Create a subdirectory in the linked folder\n'
               '  storage-delete [f] - Delete a file/directory from the linked folder\n'
+              '  storage-projects   - List top-level project-like folders\n'
               '  storage-test       - Run storage integration diagnostics test\n\n'
               'Limitations:\n'
               '  - You must select a folder. Android blocks access to root storage and some system folders.\n'
@@ -1201,33 +1380,15 @@ class CommandService {
         );
 
       case 'real-pty-start':
-        final channel = const MethodChannel('com.termode/native_shell');
-        try {
-          final bool? started = await channel.invokeMethod('realPtyStart', {
-            'sessionId': sessionId,
-          });
-          if (started == true) {
-            TerminalSessionService().setRealPtyActive(sessionId, true);
-            return CommandResult(
-              output:
-                  'Warning: Experimental PTY prototype. Real PTY started.\n'
-                  'Use enter-pty-mode or termode-shell to interact.',
-            );
-          } else {
-            return CommandResult(
-              output: 'Real PTY session is already running.',
-              isError: true,
-            );
-          }
-        } on PlatformException catch (e) {
-          if (e.code == 'LIMIT_EXCEEDED') {
-            return CommandResult(output: 'Error: ${e.message}', isError: true);
-          }
+        final started = await TerminalSessionService().startRealPty(sessionId);
+        if (started) {
           return CommandResult(
-            output: 'Error starting real PTY: ${e.message}',
-            isError: true,
+            output:
+                'Warning: Experimental PTY prototype. Real PTY started.\n'
+                'Use enter-pty-mode or termode-shell to interact.',
           );
         }
+        return CommandResult(output: 'Error starting real PTY.', isError: true);
 
       case 'real-pty-status':
         final channel = const MethodChannel('com.termode/native_shell');
@@ -2583,6 +2744,13 @@ class CommandService {
           '  storage-*      - Access user-linked Android storage (storage-link, storage-list, etc.)',
         );
         sb.writeln(
+          '  workspace-*    - Manage real files/home/projects workspaces',
+        );
+        sb.writeln(
+          '  host-*         - Read/write real Termode home files safely',
+        );
+        sb.writeln('  pwd-host       - Show Termode tracked working directory');
+        sb.writeln(
           '  shell-doctor   - Audit PTY shell configuration and status',
         );
         sb.writeln('  keyboard-help  - Show keyboard shortcuts reference');
@@ -2597,7 +2765,7 @@ class CommandService {
           '  mode           - Display active mode and environment settings',
         );
         sb.writeln(
-          '  whereami       - Show directory layouts of VFS, runtime, and linked storage',
+          '  whereami       - Show VFS, workspace, runtime, and linked storage',
         );
         sb.writeln(
           '  reload-helpers - Source package helper functions into the current shell',
@@ -2664,6 +2832,21 @@ class CommandService {
           output: 'termode: command not found: $command',
           isError: true,
         );
+    }
+  }
+
+  Future<CommandResult> _workspaceFileCommand(
+    String commandName,
+    Future<String> Function() action,
+  ) async {
+    try {
+      final output = await action();
+      return CommandResult(
+        output: output,
+        isError: output.startsWith('$commandName:'),
+      );
+    } on FileSystemException catch (e) {
+      return CommandResult(output: '$commandName: ${e.message}', isError: true);
     }
   }
 }

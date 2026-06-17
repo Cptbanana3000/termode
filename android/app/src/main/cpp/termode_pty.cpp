@@ -13,7 +13,7 @@ extern "C" {
 JNIEXPORT jintArray JNICALL
 Java_com_termode_termode_MainActivity_nativeStartPty(
     JNIEnv *env, jobject thiz,
-    jstring home_dir, jstring usr_dir, jstring bin_dir, jstring tmp_dir,
+    jstring home_dir, jstring working_dir, jstring usr_dir, jstring bin_dir, jstring tmp_dir,
     jstring path_env, jobjectArray env_keys, jobjectArray env_values,
     jint cols, jint rows) {
 
@@ -61,6 +61,7 @@ Java_com_termode_termode_MainActivity_nativeStartPty(
 
     // Convert parameters to UTF-8
     const char *c_home = env->GetStringUTFChars(home_dir, nullptr);
+    const char *c_working = env->GetStringUTFChars(working_dir, nullptr);
     const char *c_usr = env->GetStringUTFChars(usr_dir, nullptr);
     const char *c_bin = env->GetStringUTFChars(bin_dir, nullptr);
     const char *c_tmp = env->GetStringUTFChars(tmp_dir, nullptr);
@@ -98,6 +99,7 @@ Java_com_termode_termode_MainActivity_nativeStartPty(
         }
         free(envp);
         env->ReleaseStringUTFChars(home_dir, c_home);
+        env->ReleaseStringUTFChars(working_dir, c_working);
         env->ReleaseStringUTFChars(usr_dir, c_usr);
         env->ReleaseStringUTFChars(bin_dir, c_bin);
         env->ReleaseStringUTFChars(tmp_dir, c_tmp);
@@ -136,8 +138,8 @@ Java_com_termode_termode_MainActivity_nativeStartPty(
         }
         close(master_fd);
 
-        // Change directory to HOME
-        chdir(c_home);
+        // Start in requested directory while keeping HOME unchanged.
+        chdir(c_working);
 
         // Execute sh
         char *argv[] = {(char *)"/system/bin/sh", nullptr};
@@ -149,6 +151,7 @@ Java_com_termode_termode_MainActivity_nativeStartPty(
 
     // Parent Process
     env->ReleaseStringUTFChars(home_dir, c_home);
+    env->ReleaseStringUTFChars(working_dir, c_working);
     env->ReleaseStringUTFChars(usr_dir, c_usr);
     env->ReleaseStringUTFChars(bin_dir, c_bin);
     env->ReleaseStringUTFChars(tmp_dir, c_tmp);

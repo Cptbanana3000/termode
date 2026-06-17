@@ -314,8 +314,14 @@ esac
 echo "HOME=${HOME:-}"
 echo "TERMODE_USR=${TERMODE_USR:-}"
 echo "TERMODE_BIN=${TERMODE_BIN:-}"
+echo "TERMODE_PROJECTS=${TERMODE_PROJECTS:-${TERMODE_HOME:-$HOME}/projects}"
 echo "TMPDIR=${TMPDIR:-}"
 echo "PWD=$(pwd)"
+projects="${TERMODE_PROJECTS:-${TERMODE_HOME:-$HOME}/projects}"
+case "$(pwd)" in
+  "$projects"/*) ws="$(pwd)"; ws="${ws#$projects/}"; ws="${ws%%/*}"; echo "WORKSPACE=$ws" ;;
+  *) echo "WORKSPACE=(none)" ;;
+esac
 ''',
       },
     },

@@ -81,6 +81,13 @@ void main() {
                   return realPtyResizeValue;
                 case 'realPtySendRaw':
                   return realPtySendRawValue;
+                case 'getPaths':
+                  return {
+                    'home': '/data/user/0/com.termode.termode/files/home',
+                    'usr': '/data/user/0/com.termode.termode/files/usr',
+                    'bin': '/data/user/0/com.termode.termode/files/usr/bin',
+                    'tmp': '/data/user/0/com.termode.termode/files/tmp',
+                  };
               }
               return null;
             },
@@ -427,8 +434,14 @@ void main() {
         expect(result.output, contains('Real PTY started'));
         expect(sessionService.activeSession.isRealPtyActive, isTrue);
 
-        expect(methodCalls.length, 1);
-        expect(methodCalls[0].method, 'realPtyStart');
+        final startCalls = methodCalls
+            .where((call) => call.method == 'realPtyStart')
+            .toList();
+        expect(startCalls.length, 1);
+        expect(
+          startCalls.single.arguments['workingDirectory'],
+          contains('home'),
+        );
       },
     );
 

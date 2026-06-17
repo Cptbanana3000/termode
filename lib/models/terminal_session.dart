@@ -14,6 +14,8 @@ class TerminalSession {
   final VirtualFileSystem vfs;
   String currentInputDraft;
   String? lastExitMessage;
+  String? preferredWorkingDirectory;
+  String? lastKnownWorkingDirectory;
 
   // Transient execution state (not serialized to JSON)
   bool isExecutingNativeCommand = false;
@@ -38,6 +40,8 @@ class TerminalSession {
     required this.vfs,
     this.currentInputDraft = '',
     this.lastExitMessage,
+    this.preferredWorkingDirectory,
+    this.lastKnownWorkingDirectory,
     this.isShellActive = false,
     this.isRealPtyActive = false,
     this.isPtyInteractionActive = false,
@@ -62,6 +66,8 @@ class TerminalSession {
       'vfs': vfs.toJson(),
       'currentInputDraft': currentInputDraft,
       'lastExitMessage': lastExitMessage,
+      'preferredWorkingDirectory': preferredWorkingDirectory,
+      'lastKnownWorkingDirectory': lastKnownWorkingDirectory,
       'wasShellActive': isShellActive,
       'wasRealPtyActive': isRealPtyActive,
       'wasPtyInteractionActive': isPtyInteractionActive,
@@ -109,6 +115,8 @@ class TerminalSession {
       vfs: sessionVfs,
       currentInputDraft: json['currentInputDraft']?.toString() ?? '',
       lastExitMessage: json['lastExitMessage']?.toString(),
+      preferredWorkingDirectory: json['preferredWorkingDirectory']?.toString(),
+      lastKnownWorkingDirectory: json['lastKnownWorkingDirectory']?.toString(),
     );
   }
 }
