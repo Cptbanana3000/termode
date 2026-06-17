@@ -153,6 +153,14 @@ class CommandService {
               '  session-info - Show active session info\n'
               '  session-doctor - Check session health\n'
               '  history     - Show command history\n\n'
+              'Terminal UX Commands:\n'
+              '  keyboard-test/settings - Check keyboard controls\n'
+              '  ansi-test    - Print ANSI renderer sample\n'
+              '  input-test   - Show input checklist\n'
+              '  resize-info  - Show terminal size state\n'
+              '  scroll-test [n] - Print numbered test lines\n'
+              '  copy-last/copy-session - Copy transcript lines\n'
+              '  paste-force - Send last blocked large paste\n\n'
               'Workspace Commands:\n'
               '  workspace   - Show workspace status\n'
               '  workspace-init [n] - Create project workspace\n'
@@ -221,6 +229,52 @@ class CommandService {
         final clear = args.isNotEmpty && args[0] == 'clear';
         return CommandResult(
           output: TerminalSessionService().historyOutput(clear: clear),
+        );
+      case 'keyboard-test':
+        return CommandResult(
+          output: TerminalSessionService().keyboardTestOutput(),
+        );
+      case 'keyboard-settings':
+        return CommandResult(
+          output: TerminalSessionService().keyboardSettingsOutput(),
+        );
+      case 'terminal-settings':
+        return CommandResult(
+          output: TerminalSessionService().terminalSettingsOutput(),
+        );
+      case 'input-test':
+        return CommandResult(
+          output: TerminalSessionService().inputTestOutput(),
+        );
+      case 'ansi-test':
+        return CommandResult(output: TerminalSessionService().ansiTestOutput());
+      case 'resize-info':
+        return CommandResult(
+          output: TerminalSessionService().resizeInfoOutput(),
+        );
+      case 'scroll-test':
+        final count = args.isNotEmpty ? int.tryParse(args[0]) : null;
+        if (count == null) {
+          return CommandResult(
+            output: 'Usage: scroll-test <lines>',
+            isError: true,
+          );
+        }
+        return CommandResult(
+          output: TerminalSessionService().scrollTestOutput(count),
+        );
+      case 'copy-last':
+        return CommandResult(
+          output: await TerminalSessionService().copyLastOutputLine(),
+        );
+      case 'copy-session':
+        final count = args.isNotEmpty ? int.tryParse(args[0]) : null;
+        return CommandResult(
+          output: await TerminalSessionService().copySessionLines(count),
+        );
+      case 'paste-force':
+        return CommandResult(
+          output: await TerminalSessionService().pasteForce(),
         );
       case 'workspace':
         return CommandResult(
@@ -1573,6 +1627,10 @@ class CommandService {
                 (s) => s.id == sessionId,
               );
               session.ansiBuffer.resize(cols, rows);
+              session.lastResizeAt = DateTime.now();
+              session.lastResizeCols = cols;
+              session.lastResizeRows = rows;
+              session.lastResizeNotified = true;
             } catch (_) {
               // Ignore if session not found or fails
             }
@@ -1624,7 +1682,8 @@ class CommandService {
               '  real-pty-send-ctrl-d   - Send Ctrl-D (EOF) to the process\n'
               '  real-pty-send [text]   - Write text to PTY master file descriptor\n'
               '  real-pty-mode-status   - Query PTY mode status\n'
-              '  keyboard-help          - Show keyboard & shortcut helper\n\n'
+              '  keyboard-help          - Show keyboard & shortcut helper\n'
+              '  resize-info            - Show tracked terminal size\n\n'
               'Packages Notice:\n'
               '  - Packages installed via "pkg install" will automatically register shell helper functions\n'
               '    which can be invoked directly inside default-shell.\n'
@@ -1738,6 +1797,10 @@ class CommandService {
               'Control Shortcuts:\n'
               '  CTRL+C - Sends SIGINT (interrupt current process)\n'
               '  CTRL+D - Sends EOF (closes input stream/exits shell)\n\n'
+              'Diagnostics:\n'
+              '  keyboard-test      - Check keyboard routing availability\n'
+              '  keyboard-settings  - Show paste/keyboard limits\n'
+              '  paste-force        - Send last blocked large paste\n\n'
               'Limitations:\n'
               '  - Some complex full-screen programs (e.g. interactive text editors) may have display issues until the renderer matures.',
         );
@@ -2754,6 +2817,11 @@ class CommandService {
           '  shell-doctor   - Audit PTY shell configuration and status',
         );
         sb.writeln('  keyboard-help  - Show keyboard shortcuts reference');
+        sb.writeln('  keyboard-test  - Check keyboard routing state');
+        sb.writeln('  ansi-test      - Print ANSI renderer sample');
+        sb.writeln('  resize-info    - Show PTY resize state');
+        sb.writeln('  copy-*         - Copy last line or transcript lines');
+        sb.writeln('  paste-force    - Send last blocked large paste');
         sb.writeln('  real-pty-help  - Show PTY prototype help reference');
         sb.writeln(
           '  normal-mode    - Exit PTY interaction mode to return to classic Termode prompt',

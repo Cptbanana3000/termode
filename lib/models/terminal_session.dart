@@ -16,6 +16,11 @@ class TerminalSession {
   String? lastExitMessage;
   String? preferredWorkingDirectory;
   String? lastKnownWorkingDirectory;
+  String? blockedPasteText;
+  DateTime? lastResizeAt;
+  int? lastResizeCols;
+  int? lastResizeRows;
+  bool lastResizeNotified;
 
   // Transient execution state (not serialized to JSON)
   bool isExecutingNativeCommand = false;
@@ -42,6 +47,11 @@ class TerminalSession {
     this.lastExitMessage,
     this.preferredWorkingDirectory,
     this.lastKnownWorkingDirectory,
+    this.blockedPasteText,
+    this.lastResizeAt,
+    this.lastResizeCols,
+    this.lastResizeRows,
+    this.lastResizeNotified = false,
     this.isShellActive = false,
     this.isRealPtyActive = false,
     this.isPtyInteractionActive = false,
@@ -68,6 +78,10 @@ class TerminalSession {
       'lastExitMessage': lastExitMessage,
       'preferredWorkingDirectory': preferredWorkingDirectory,
       'lastKnownWorkingDirectory': lastKnownWorkingDirectory,
+      'lastResizeAt': lastResizeAt?.toIso8601String(),
+      'lastResizeCols': lastResizeCols,
+      'lastResizeRows': lastResizeRows,
+      'lastResizeNotified': lastResizeNotified,
       'wasShellActive': isShellActive,
       'wasRealPtyActive': isRealPtyActive,
       'wasPtyInteractionActive': isPtyInteractionActive,
@@ -117,6 +131,10 @@ class TerminalSession {
       lastExitMessage: json['lastExitMessage']?.toString(),
       preferredWorkingDirectory: json['preferredWorkingDirectory']?.toString(),
       lastKnownWorkingDirectory: json['lastKnownWorkingDirectory']?.toString(),
+      lastResizeAt: DateTime.tryParse(json['lastResizeAt']?.toString() ?? ''),
+      lastResizeCols: json['lastResizeCols'] as int?,
+      lastResizeRows: json['lastResizeRows'] as int?,
+      lastResizeNotified: json['lastResizeNotified'] as bool? ?? false,
     );
   }
 }

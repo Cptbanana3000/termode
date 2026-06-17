@@ -26,24 +26,36 @@ class TerminalStyle {
   final Color? foregroundColor;
   final Color? backgroundColor;
   final bool bold;
+  final bool dim;
+  final bool underline;
 
   const TerminalStyle({
     this.foregroundColor,
     this.backgroundColor,
     this.bold = false,
+    this.dim = false,
+    this.underline = false,
   });
 
   TerminalStyle copyWith({
     Color? foregroundColor,
     Color? backgroundColor,
     bool? bold,
+    bool? dim,
+    bool? underline,
     bool clearForeground = false,
     bool clearBackground = false,
   }) {
     return TerminalStyle(
-      foregroundColor: clearForeground ? null : (foregroundColor ?? this.foregroundColor),
-      backgroundColor: clearBackground ? null : (backgroundColor ?? this.backgroundColor),
+      foregroundColor: clearForeground
+          ? null
+          : (foregroundColor ?? this.foregroundColor),
+      backgroundColor: clearBackground
+          ? null
+          : (backgroundColor ?? this.backgroundColor),
       bold: bold ?? this.bold,
+      dim: dim ?? this.dim,
+      underline: underline ?? this.underline,
     );
   }
 
@@ -54,8 +66,11 @@ class TerminalStyle {
           runtimeType == other.runtimeType &&
           foregroundColor == other.foregroundColor &&
           backgroundColor == other.backgroundColor &&
-          bold == other.bold;
+          bold == other.bold &&
+          dim == other.dim &&
+          underline == other.underline;
 
   @override
-  int get hashCode => Object.hash(foregroundColor, backgroundColor, bold);
+  int get hashCode =>
+      Object.hash(foregroundColor, backgroundColor, bold, dim, underline);
 }

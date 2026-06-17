@@ -8,6 +8,9 @@ class SettingsService extends ChangeNotifier {
   double _fontSize = 14.0;
   double get fontSize => _fontSize;
 
+  double _lineHeight = 1.3;
+  double get lineHeight => _lineHeight;
+
   String _themeColor = 'Green'; // 'Green', 'Amber', 'White'
   String get themeColor => _themeColor;
 
@@ -26,6 +29,9 @@ class SettingsService extends ChangeNotifier {
   bool _enableAnsiRenderer = true;
   bool get enableAnsiRenderer => _enableAnsiRenderer;
 
+  bool _ansiDebugMode = false;
+  bool get ansiDebugMode => _ansiDebugMode;
+
   String _cursorStyle = 'block';
   String get cursorStyle => _cursorStyle;
 
@@ -38,8 +44,22 @@ class SettingsService extends ChangeNotifier {
   int _maxScrollbackLines = 2000;
   int get maxScrollbackLines => _maxScrollbackLines;
 
+  int _pasteWarningThreshold = 1000;
+  int get pasteWarningThreshold => _pasteWarningThreshold;
+
+  int _pasteHardLimit = 10000;
+  int get pasteHardLimit => _pasteHardLimit;
+
+  bool _keepScreenOn = false;
+  bool get keepScreenOn => _keepScreenOn;
+
   void setFontSize(double size) {
     _fontSize = size;
+    notifyListeners();
+  }
+
+  void setLineHeight(double value) {
+    _lineHeight = value.clamp(1.0, 2.0).toDouble();
     notifyListeners();
   }
 
@@ -73,6 +93,11 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setAnsiDebugMode(bool value) {
+    _ansiDebugMode = value;
+    notifyListeners();
+  }
+
   void setCursorStyle(String style) {
     _cursorStyle = style;
     notifyListeners();
@@ -94,45 +119,77 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setPasteWarningThreshold(int value) {
+    _pasteWarningThreshold = value.clamp(1, _pasteHardLimit).toInt();
+    notifyListeners();
+  }
+
+  void setPasteHardLimit(int value) {
+    _pasteHardLimit = value.clamp(1000, 50000).toInt();
+    if (_pasteWarningThreshold > _pasteHardLimit) {
+      _pasteWarningThreshold = _pasteHardLimit;
+    }
+    notifyListeners();
+  }
+
+  void setKeepScreenOn(bool value) {
+    _keepScreenOn = value;
+    notifyListeners();
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'fontSize': _fontSize,
+      'lineHeight': _lineHeight,
       'themeColor': _themeColor,
       'showWelcomeBanner': _showWelcomeBanner,
       'showLargeAsciiBanner': _showLargeAsciiBanner,
       'immersiveMode': _immersiveMode,
       'showControlCharsHex': _showControlCharsHex,
       'enableAnsiRenderer': _enableAnsiRenderer,
+      'ansiDebugMode': _ansiDebugMode,
       'cursorStyle': _cursorStyle,
       'blinkingCursor': _blinkingCursor,
       'startInRealShell': _startInRealShell,
       'maxScrollbackLines': _maxScrollbackLines,
+      'pasteWarningThreshold': _pasteWarningThreshold,
+      'pasteHardLimit': _pasteHardLimit,
+      'keepScreenOn': _keepScreenOn,
     };
   }
 
   void loadFromJson(Map<String, dynamic>? json) {
     if (json == null) {
       _fontSize = 14.0;
+      _lineHeight = 1.3;
       _themeColor = 'Green';
       _showWelcomeBanner = true;
       _showLargeAsciiBanner = false;
       _immersiveMode = false;
       _showControlCharsHex = false;
       _enableAnsiRenderer = true;
+      _ansiDebugMode = false;
       _cursorStyle = 'block';
       _blinkingCursor = true;
       _startInRealShell = true;
       _maxScrollbackLines = 2000;
+      _pasteWarningThreshold = 1000;
+      _pasteHardLimit = 10000;
+      _keepScreenOn = false;
       notifyListeners();
       return;
     }
     _fontSize = (json['fontSize'] as num?)?.toDouble() ?? 14.0;
+    _lineHeight = ((json['lineHeight'] as num?)?.toDouble() ?? 1.3)
+        .clamp(1.0, 2.0)
+        .toDouble();
     _themeColor = json['themeColor'] as String? ?? 'Green';
     _showWelcomeBanner = json['showWelcomeBanner'] as bool? ?? true;
     _showLargeAsciiBanner = json['showLargeAsciiBanner'] as bool? ?? false;
     _immersiveMode = json['immersiveMode'] as bool? ?? false;
     _showControlCharsHex = json['showControlCharsHex'] as bool? ?? false;
     _enableAnsiRenderer = json['enableAnsiRenderer'] as bool? ?? true;
+    _ansiDebugMode = json['ansiDebugMode'] as bool? ?? false;
     _cursorStyle = json['cursorStyle'] as String? ?? 'block';
     _blinkingCursor = json['blinkingCursor'] as bool? ?? true;
     _startInRealShell = json['startInRealShell'] as bool? ?? true;
@@ -141,6 +198,13 @@ class SettingsService extends ChangeNotifier {
     _maxScrollbackLines = allowedScrollback.contains(maxScrollback)
         ? maxScrollback
         : 2000;
+    _pasteHardLimit = ((json['pasteHardLimit'] as int?) ?? 10000)
+        .clamp(1000, 50000)
+        .toInt();
+    _pasteWarningThreshold = ((json['pasteWarningThreshold'] as int?) ?? 1000)
+        .clamp(1, _pasteHardLimit)
+        .toInt();
+    _keepScreenOn = json['keepScreenOn'] as bool? ?? false;
     notifyListeners();
   }
 

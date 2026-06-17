@@ -27,13 +27,14 @@ class TerminalView extends StatelessWidget {
     required this.onSubmit,
   });
 
-  Widget _buildAnsiRowText(List<TerminalCell> row, TextStyle baseStyle, SettingsService settings) {
+  Widget _buildAnsiRowText(
+    List<TerminalCell> row,
+    TextStyle baseStyle,
+    SettingsService settings,
+  ) {
     if (row.isEmpty) {
       return RichText(
-        text: TextSpan(
-          text: ' ',
-          style: baseStyle,
-        ),
+        text: TextSpan(text: ' ', style: baseStyle),
       );
     }
 
@@ -50,14 +51,16 @@ class TerminalView extends StatelessWidget {
       Color color = style.foregroundColor ?? settings.textColor;
       Color? bgColor = style.backgroundColor;
       FontWeight fontWeight = style.bold ? FontWeight.bold : FontWeight.normal;
+      final effectiveColor = style.dim ? color.withValues(alpha: 0.65) : color;
 
       spans.add(
         TextSpan(
           text: text,
           style: baseStyle.copyWith(
-            color: color,
+            color: effectiveColor,
             backgroundColor: bgColor,
             fontWeight: fontWeight,
+            decoration: style.underline ? TextDecoration.underline : null,
           ),
         ),
       );
@@ -66,10 +69,7 @@ class TerminalView extends StatelessWidget {
     }
 
     return RichText(
-      text: TextSpan(
-        style: baseStyle,
-        children: spans,
-      ),
+      text: TextSpan(style: baseStyle, children: spans),
     );
   }
 
@@ -83,7 +83,7 @@ class TerminalView extends StatelessWidget {
         final baseStyle = TextStyle(
           fontFamily: 'monospace',
           fontSize: settings.fontSize,
-          height: 1.3,
+          height: settings.lineHeight,
           color: settings.textColor,
         );
 
@@ -115,13 +115,18 @@ class TerminalView extends StatelessWidget {
                   while (lastNonSpace >= 0 && row[lastNonSpace].char == ' ') {
                     lastNonSpace--;
                   }
-                  final visibleCells = lastNonSpace >= 0 ? row.sublist(0, lastNonSpace + 1) : <TerminalCell>[];
+                  final visibleCells = lastNonSpace >= 0
+                      ? row.sublist(0, lastNonSpace + 1)
+                      : <TerminalCell>[];
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2.0),
                     child: GestureDetector(
                       onLongPress: () {
-                        final plainText = visibleCells.map((c) => c.char).join('').trimRight();
+                        final plainText = visibleCells
+                            .map((c) => c.char)
+                            .join('')
+                            .trimRight();
                         Clipboard.setData(ClipboardData(text: plainText));
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -136,7 +141,11 @@ class TerminalView extends StatelessWidget {
                           ),
                         );
                       },
-                      child: _buildAnsiRowText(visibleCells, baseStyle, settings),
+                      child: _buildAnsiRowText(
+                        visibleCells,
+                        baseStyle,
+                        settings,
+                      ),
                     ),
                   );
                 } else {
@@ -181,7 +190,8 @@ class TerminalView extends StatelessWidget {
     TextStyle baseStyle,
   ) {
     final sessionService = TerminalSessionService();
-    final isPty = sessionService.sessions.isNotEmpty &&
+    final isPty =
+        sessionService.sessions.isNotEmpty &&
         sessionService.activeSession.isPtyInteractionActive;
 
     if (isPty) {
@@ -195,7 +205,9 @@ class TerminalView extends StatelessWidget {
 
           String leftText = text;
           String rightText = '';
-          if (selection.isValid && selection.baseOffset >= 0 && selection.baseOffset <= text.length) {
+          if (selection.isValid &&
+              selection.baseOffset >= 0 &&
+              selection.baseOffset <= text.length) {
             leftText = text.substring(0, selection.baseOffset);
             rightText = text.substring(selection.baseOffset);
           }
@@ -318,7 +330,7 @@ class TerminalView extends StatelessWidget {
             TextSpan(
               text: part,
               style: TextStyle(
-                color: isDirectory 
+                color: isDirectory
                     ? const Color(0xFF62A0EA) // Accent blue for folders
                     : settings.textColor,
                 fontWeight: isDirectory ? FontWeight.bold : FontWeight.normal,
@@ -331,17 +343,11 @@ class TerminalView extends StatelessWidget {
           }
         }
         return RichText(
-          text: TextSpan(
-            style: baseStyle,
-            children: spans,
-          ),
+          text: TextSpan(style: baseStyle, children: spans),
         );
       }
     }
 
-    return Text(
-      line.text,
-      style: baseStyle.copyWith(color: color),
-    );
+    return Text(line.text, style: baseStyle.copyWith(color: color));
   }
 }

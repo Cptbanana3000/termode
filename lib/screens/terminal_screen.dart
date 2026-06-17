@@ -50,6 +50,8 @@ class _TerminalScreenState extends State<TerminalScreen> {
           _sessionService.sendRealPtyCtrlC();
         } else if (lastChar == 'd') {
           _sessionService.sendRealPtyCtrlD();
+        } else if (lastChar == 'l') {
+          _sessionService.sendRawRealPtyInput('\u000c');
         } else {
           _sessionService.sendRawRealPtyInput(lastChar);
         }
@@ -83,6 +85,15 @@ class _TerminalScreenState extends State<TerminalScreen> {
           }
           if (key == LogicalKeyboardKey.keyD) {
             _sessionService.sendRealPtyCtrlD();
+            if (_isCtrlActive) {
+              setState(() {
+                _isCtrlActive = false;
+              });
+            }
+            return KeyEventResult.handled;
+          }
+          if (key == LogicalKeyboardKey.keyL) {
+            _sessionService.sendRawRealPtyInput('\u000c');
             if (_isCtrlActive) {
               setState(() {
                 _isCtrlActive = false;
@@ -133,8 +144,14 @@ class _TerminalScreenState extends State<TerminalScreen> {
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_scrollController.hasClients) return;
+        final position = _scrollController.position;
+        final isNearBottom =
+            position.maxScrollExtent - position.pixels < 80 ||
+            _sessionService.activeSession.isPtyInteractionActive;
+        if (!isNearBottom) return;
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          position.maxScrollExtent,
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
         );
@@ -256,6 +273,16 @@ class _TerminalScreenState extends State<TerminalScreen> {
       'default-shell',
       'normal-mode',
       'keyboard-help',
+      'keyboard-test',
+      'keyboard-settings',
+      'terminal-settings',
+      'input-test',
+      'ansi-test',
+      'resize-info',
+      'scroll-test',
+      'copy-last',
+      'copy-session',
+      'paste-force',
       'shell-doctor',
       'reload-helpers',
       'runtime-tools',

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/terminal_session_service.dart';
 
 class ExtraKeyboardRow extends StatelessWidget {
   final TextEditingController controller;
@@ -49,24 +50,46 @@ class ExtraKeyboardRow extends StatelessWidget {
 
   void _moveCursorLeft() {
     final selection = controller.selection;
-    if (selection.isValid && selection.isCollapsed && selection.baseOffset > 0) {
-      controller.selection = TextSelection.collapsed(offset: selection.baseOffset - 1);
+    if (selection.isValid &&
+        selection.isCollapsed &&
+        selection.baseOffset > 0) {
+      controller.selection = TextSelection.collapsed(
+        offset: selection.baseOffset - 1,
+      );
     }
   }
 
   void _moveCursorRight() {
     final text = controller.text;
     final selection = controller.selection;
-    if (selection.isValid && selection.isCollapsed && selection.baseOffset < text.length) {
-      controller.selection = TextSelection.collapsed(offset: selection.baseOffset + 1);
+    if (selection.isValid &&
+        selection.isCollapsed &&
+        selection.baseOffset < text.length) {
+      controller.selection = TextSelection.collapsed(
+        offset: selection.baseOffset + 1,
+      );
     }
   }
 
-  void _pasteFromClipboard() async {
+  void _pasteFromClipboard(BuildContext context) async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
-    if (data != null && data.text != null) {
-      _insertText(data.text!);
+    final text = data?.text ?? '';
+    final message = TerminalSessionService().handlePasteText(text);
+    if (message.isNotEmpty) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: const TextStyle(fontFamily: 'monospace'),
+          ),
+          duration: const Duration(milliseconds: 1200),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
     }
+    _insertText(text);
   }
 
   void _showHistoryBottomSheet(BuildContext context) {
@@ -95,7 +118,7 @@ class ExtraKeyboardRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Text(
                   'Command History',
                   style: TextStyle(
@@ -123,10 +146,16 @@ class ExtraKeyboardRow extends StatelessWidget {
                           fontSize: 14,
                         ),
                       ),
-                      trailing: const Icon(Icons.keyboard_arrow_right, color: Colors.white24, size: 16),
+                      trailing: const Icon(
+                        Icons.keyboard_arrow_right,
+                        color: Colors.white24,
+                        size: 16,
+                      ),
                       onTap: () {
                         controller.text = cmd;
-                        controller.selection = TextSelection.collapsed(offset: cmd.length);
+                        controller.selection = TextSelection.collapsed(
+                          offset: cmd.length,
+                        );
                         Navigator.pop(context);
                         focusNode.requestFocus();
                       },
@@ -144,8 +173,8 @@ class ExtraKeyboardRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black, // Flat black background
-      height: 38, // Compact height
+      color: Colors.black,
+      height: 38,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -159,13 +188,12 @@ class ExtraKeyboardRow extends StatelessWidget {
           }),
           _buildButton(
             context,
-            'CTRL',
+            isCtrlActive ? 'CTRL*' : 'CTRL',
             onCtrlToggle,
             textColor: isCtrlActive ? const Color(0xFF5AF78E) : Colors.white,
+            backgroundColor: isCtrlActive ? const Color(0x223EEA7A) : null,
           ),
-          _buildButton(context, 'ALT', () {
-            // Visual feedback/indicator
-          }),
+          _buildButton(context, 'ALT', () {}),
           _buildButton(context, 'TAB', () {
             if (isPtyInteractionActive) {
               onSendRawPtyInput?.call('\t');
@@ -184,37 +212,39 @@ class ExtraKeyboardRow extends StatelessWidget {
             if (isPtyInteractionActive) {
               onSendRawPtyInput?.call('\u001B[F');
             } else {
-              controller.selection = TextSelection.collapsed(offset: controller.text.length);
+              controller.selection = TextSelection.collapsed(
+                offset: controller.text.length,
+              );
             }
           }),
           _buildButton(context, 'PGUP', onPageUp),
           _buildButton(context, 'PGDN', onPageDown),
-          _buildButton(context, 'PASTE', _pasteFromClipboard),
+          _buildButton(context, 'PASTE', () => _pasteFromClipboard(context)),
           _buildButton(context, 'HIST', () => _showHistoryBottomSheet(context)),
           _buildButton(context, '/', () => _insertText('/')),
           _buildButton(context, '-', () => _insertText('-')),
-          _buildButton(context, '▲', () {
+          _buildButton(context, 'UP', () {
             if (isPtyInteractionActive) {
               onSendRawPtyInput?.call('\u001B[A');
             } else {
               onHistoryUp();
             }
           }),
-          _buildButton(context, '▼', () {
+          _buildButton(context, 'DN', () {
             if (isPtyInteractionActive) {
               onSendRawPtyInput?.call('\u001B[B');
             } else {
               onHistoryDown();
             }
           }),
-          _buildButton(context, '◀', () {
+          _buildButton(context, 'LT', () {
             if (isPtyInteractionActive) {
               onSendRawPtyInput?.call('\u001B[D');
             } else {
               _moveCursorLeft();
             }
           }),
-          _buildButton(context, '▶', () {
+          _buildButton(context, 'RT', () {
             if (isPtyInteractionActive) {
               onSendRawPtyInput?.call('\u001B[C');
             } else {
@@ -226,15 +256,22 @@ class ExtraKeyboardRow extends StatelessWidget {
     );
   }
 
-  Widget _buildButton(BuildContext context, String label, VoidCallback onPressed, {Color textColor = Colors.white}) {
+  Widget _buildButton(
+    BuildContext context,
+    String label,
+    VoidCallback onPressed, {
+    Color textColor = Colors.white,
+    Color? backgroundColor,
+  }) {
     return InkWell(
       onTap: () {
         onPressed();
-        focusNode.requestFocus(); // Re-focus terminal textfield
+        focusNode.requestFocus();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         alignment: Alignment.center,
+        color: backgroundColor,
         child: Text(
           label,
           style: TextStyle(

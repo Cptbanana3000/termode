@@ -125,10 +125,10 @@ void main() {
       final parser = AnsiParser(buffer);
 
       parser.write('Hello \u001B[31');
-      expect(buffer.rows[0][6].char, equals('\u001B'));
-      expect(buffer.rows[0][7].char, equals('['));
-      expect(buffer.rows[0][8].char, equals('3'));
-      expect(buffer.rows[0][9].char, equals('1'));
+      expect(buffer.rows[0][6].char, equals(' '));
+      expect(buffer.rows[0][7].char, equals(' '));
+      expect(buffer.rows[0][8].char, equals(' '));
+      expect(buffer.rows[0][9].char, equals(' '));
     });
 
     test('crash recovery on style exception', () {
@@ -137,13 +137,8 @@ void main() {
 
       parser.write('A\u001B[31mBC');
       expect(buffer.rows[0][0].char, equals('A'));
-      expect(buffer.rows[0][1].char, equals('\u001B'));
-      expect(buffer.rows[0][2].char, equals('['));
-      expect(buffer.rows[0][3].char, equals('3'));
-      expect(buffer.rows[0][4].char, equals('1'));
-      expect(buffer.rows[0][5].char, equals('m'));
-      expect(buffer.rows[0][6].char, equals('B'));
-      expect(buffer.rows[0][7].char, equals('C'));
+      expect(buffer.rows[0][1].char, equals('B'));
+      expect(buffer.rows[0][2].char, equals('C'));
     });
 
     test('sanitizePtyOutput preserves backspaces', () {
@@ -203,13 +198,17 @@ void main() {
       final parser = AnsiParser(buffer);
 
       // Clear from cursor to end (ESC[K)
-      parser.write('12345\u001B[3D\u001B[K'); // Write 12345, back 3 to index 2, clear right
+      parser.write(
+        '12345\u001B[3D\u001B[K',
+      ); // Write 12345, back 3 to index 2, clear right
       expect(buffer.rows[0].map((c) => c.char).join(''), equals('12   '));
 
       buffer.clearScreen();
 
       // Clear from start to cursor (ESC[1K)
-      parser.write('12345\u001B[3D\u001B[1K'); // Write 12345, back 3 to index 2, clear left
+      parser.write(
+        '12345\u001B[3D\u001B[1K',
+      ); // Write 12345, back 3 to index 2, clear left
       expect(buffer.rows[0].map((c) => c.char).join(''), equals('   45'));
 
       buffer.clearScreen();

@@ -1,5 +1,8 @@
+import 'package:flutter/material.dart';
+
 import '../models/terminal_emulator_buffer.dart';
 import '../models/terminal_style.dart';
+import 'settings_service.dart';
 
 class AnsiParser {
   final TerminalEmulatorBuffer buffer;
@@ -31,7 +34,16 @@ class AnsiParser {
               i = end + 1;
               continue;
             }
+            if (!SettingsService().ansiDebugMode) {
+              i = text.length;
+              continue;
+            }
           }
+          if (SettingsService().ansiDebugMode) {
+            buffer.writeChar(char);
+          }
+          i++;
+          continue;
         }
 
         if (char == '\n') {
@@ -48,9 +60,26 @@ class AnsiParser {
         i++;
       }
     } catch (e) {
-      // Fallback: write remaining text as plain text
+      // Fallback: write remaining text as plain text, except hidden ANSI when
+      // debug is disabled.
       while (i < text.length) {
         final char = text[i];
+        if (char == '\u001B' && !SettingsService().ansiDebugMode) {
+          if (i + 1 < text.length && text[i + 1] == '[') {
+            i += 2;
+            while (i < text.length) {
+              final code = text.codeUnitAt(i);
+              if (code >= 0x40 && code <= 0x7E) {
+                i++;
+                break;
+              }
+              i++;
+            }
+          } else {
+            i++;
+          }
+          continue;
+        }
         if (char == '\n') {
           buffer.writeChar('\n');
         } else if (char == '\r') {
@@ -75,25 +104,41 @@ class AnsiParser {
   List<int> _parseMultiParams(String paramsStr, int defaultValue) {
     if (paramsStr.isEmpty) return [defaultValue, defaultValue];
     final parts = paramsStr.split(';');
-    final p1 = parts.isNotEmpty && parts[0].isNotEmpty ? (int.tryParse(parts[0]) ?? defaultValue) : defaultValue;
-    final p2 = parts.length > 1 && parts[1].isNotEmpty ? (int.tryParse(parts[1]) ?? defaultValue) : defaultValue;
+    final p1 = parts.isNotEmpty && parts[0].isNotEmpty
+        ? (int.tryParse(parts[0]) ?? defaultValue)
+        : defaultValue;
+    final p2 = parts.length > 1 && parts[1].isNotEmpty
+        ? (int.tryParse(parts[1]) ?? defaultValue)
+        : defaultValue;
     return [p1, p2];
   }
 
   void _handleSequence(String paramsStr, String command) {
     if (command == 'm') {
       // Style / Color sequence
-      final params = paramsStr.split(';').map((p) => int.tryParse(p) ?? 0).toList();
+      final params = paramsStr
+          .split(';')
+          .map((p) => int.tryParse(p) ?? 0)
+          .toList();
       if (params.isEmpty || (params.length == 1 && paramsStr.isEmpty)) {
         params.add(0); // Default to reset
       }
 
       TerminalStyle currentStyle = buffer.currentStyle;
-      for (final param in params) {
+      for (var idx = 0; idx < params.length; idx++) {
+        final param = params[idx];
         if (param == 0) {
           currentStyle = const TerminalStyle();
         } else if (param == 1) {
           currentStyle = currentStyle.copyWith(bold: true);
+        } else if (param == 2) {
+          currentStyle = currentStyle.copyWith(dim: true);
+        } else if (param == 4) {
+          currentStyle = currentStyle.copyWith(underline: true);
+        } else if (param == 22) {
+          currentStyle = currentStyle.copyWith(bold: false, dim: false);
+        } else if (param == 24) {
+          currentStyle = currentStyle.copyWith(underline: false);
         } else if (param >= 30 && param <= 37) {
           final colorCode = param - 30;
           currentStyle = currentStyle.copyWith(
@@ -122,6 +167,22 @@ class AnsiParser {
           currentStyle = currentStyle.copyWith(clearForeground: true);
         } else if (param == 49) {
           currentStyle = currentStyle.copyWith(clearBackground: true);
+        } else if ((param == 38 || param == 48) && idx + 1 < params.length) {
+          final color = _parseExtendedColor(params, idx + 1);
+          if (color != null) {
+            if (param == 38) {
+              currentStyle = currentStyle.copyWith(
+                foregroundColor: color.color,
+                clearForeground: false,
+              );
+            } else {
+              currentStyle = currentStyle.copyWith(
+                backgroundColor: color.color,
+                clearBackground: false,
+              );
+            }
+            idx += color.paramsConsumed;
+          }
         }
       }
       buffer.setStyle(currentStyle);
@@ -160,4 +221,46 @@ class AnsiParser {
       }
     }
   }
+
+  _ExtendedColor? _parseExtendedColor(List<int> params, int start) {
+    final mode = params[start];
+    if (mode == 5 && start + 1 < params.length) {
+      return _ExtendedColor(_xterm256Color(params[start + 1]), 2);
+    }
+    if (mode == 2 && start + 3 < params.length) {
+      return _ExtendedColor(
+        Color.fromARGB(
+          255,
+          params[start + 1].clamp(0, 255),
+          params[start + 2].clamp(0, 255),
+          params[start + 3].clamp(0, 255),
+        ),
+        4,
+      );
+    }
+    return null;
+  }
+
+  Color _xterm256Color(int value) {
+    final n = value.clamp(0, 255);
+    if (n < 8) return ansiColors[n] ?? Colors.white;
+    if (n < 16) return brightAnsiColors[n - 8] ?? Colors.white;
+    if (n >= 232) {
+      final level = 8 + (n - 232) * 10;
+      return Color.fromARGB(255, level, level, level);
+    }
+    final idx = n - 16;
+    final r = idx ~/ 36;
+    final g = (idx % 36) ~/ 6;
+    final b = idx % 6;
+    int channel(int v) => v == 0 ? 0 : 55 + v * 40;
+    return Color.fromARGB(255, channel(r), channel(g), channel(b));
+  }
+}
+
+class _ExtendedColor {
+  final Color color;
+  final int paramsConsumed;
+
+  _ExtendedColor(this.color, this.paramsConsumed);
 }

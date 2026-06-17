@@ -479,6 +479,125 @@ class TerminalSessionService extends ChangeNotifier {
     return sb.toString();
   }
 
+  String keyboardTestOutput() {
+    final mode = activeSession.isPtyInteractionActive ? 'REAL PTY' : 'NORMAL';
+    return '=== Keyboard Test ===\n'
+        'CTRL: available\n'
+        'ESC: available\n'
+        'TAB: available\n'
+        'Arrows: available\n'
+        'Paste: available\n'
+        'Mode: $mode';
+  }
+
+  String keyboardSettingsOutput() {
+    final settings = SettingsService();
+    return '=== Keyboard Settings ===\n'
+        'CTRL toggle: available\n'
+        'Paste warning: ${settings.pasteWarningThreshold}\n'
+        'Paste limit: ${settings.pasteHardLimit}\n'
+        'Mode: ${activeSession.isPtyInteractionActive ? "REAL PTY" : "NORMAL"}';
+  }
+
+  String terminalSettingsOutput() {
+    final settings = SettingsService();
+    return 'Font size: ${settings.fontSize.toStringAsFixed(1)}\n'
+        'Line height: ${settings.lineHeight.toStringAsFixed(2)}\n'
+        'Cursor: ${settings.cursorStyle}\n'
+        'Blink: ${settings.blinkingCursor ? "yes" : "no"}\n'
+        'Scrollback: ${settings.maxScrollbackLines}\n'
+        'ANSI renderer: ${settings.enableAnsiRenderer ? "on" : "off"}\n'
+        'ANSI debug: ${settings.ansiDebugMode ? "on" : "off"}';
+  }
+
+  String inputTestOutput() {
+    return '=== Input Test ===\n'
+        '- Type text\n'
+        '- Backspace\n'
+        '- Press Enter\n'
+        '- Try arrows\n'
+        '- Try Ctrl+C\n'
+        '- Try paste';
+  }
+
+  String ansiTestOutput() {
+    return '=== ANSI Test ===\n'
+        'normal text\n'
+        '\u001B[1mbold text\u001B[0m\n'
+        '\u001B[4munderline text\u001B[0m\n'
+        '\u001B[31mred\u001B[0m \u001B[32mgreen\u001B[0m \u001B[94mbright blue\u001B[0m\n'
+        '\u001B[43mbackground yellow\u001B[0m\n'
+        '\u001B[38;5;208m256-color orange\u001B[0m\n'
+        '\u001B[38;2;120;200;255mtruecolor sky\u001B[0m\n'
+        'wrap sample: abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz';
+  }
+
+  String resizeInfoOutput() {
+    final session = activeSession;
+    return 'Cols: ${session.lastResizeCols ?? session.ansiBuffer.cols}\n'
+        'Rows: ${session.lastResizeRows ?? session.ansiBuffer.visibleRows}\n'
+        'Last resize: ${session.lastResizeAt?.toIso8601String() ?? "never"}\n'
+        'PTY notified: ${session.lastResizeNotified ? "yes" : "no"}';
+  }
+
+  String scrollTestOutput(int requestedLines) {
+    final count = requestedLines.clamp(1, 5000).toInt();
+    final width = count < 1000 ? 3 : 4;
+    return List.generate(
+      count,
+      (index) => '${(index + 1).toString().padLeft(width, '0')} test line',
+    ).join('\n');
+  }
+
+  String handlePasteText(String text) {
+    final settings = SettingsService();
+    if (text.isEmpty) return 'Clipboard is empty.';
+    if (text.length > settings.pasteHardLimit) {
+      activeSession.blockedPasteText = null;
+      return 'Paste too large. Limit: ${settings.pasteHardLimit} chars.';
+    }
+    if (text.length > settings.pasteWarningThreshold) {
+      activeSession.blockedPasteText = text;
+      return 'Paste is large: ${text.length} chars.\nUse paste-force to send it.';
+    }
+    activeSession.blockedPasteText = null;
+    return '';
+  }
+
+  Future<String> pasteForce() async {
+    final text = activeSession.blockedPasteText;
+    if (text == null || text.isEmpty) return 'No blocked paste.';
+    activeSession.blockedPasteText = null;
+    if (activeSession.isPtyInteractionActive) {
+      await sendRawRealPtyInput(text);
+      return 'Pasted ${text.length} chars.';
+    }
+    return 'Paste ready: ${text.length} chars.';
+  }
+
+  Future<String> copyLastOutputLine() async {
+    for (final line in activeSession.lines.reversed) {
+      if (line.type != LineType.input && line.text.trim().isNotEmpty) {
+        await Clipboard.setData(ClipboardData(text: line.text));
+        return 'Copied 1 line.';
+      }
+    }
+    return 'No output line to copy.';
+  }
+
+  Future<String> copySessionLines([int? requested]) async {
+    final maxLines = requested == null ? 100 : requested.clamp(1, 5000).toInt();
+    final transcript = activeSession.lines
+        .map((line) => line.text)
+        .where((line) => line.trim().isNotEmpty)
+        .toList();
+    final selected = transcript.length > maxLines
+        ? transcript.sublist(transcript.length - maxLines)
+        : transcript;
+    await Clipboard.setData(ClipboardData(text: selected.join('\n')));
+    return 'Copied ${selected.length} lines.';
+  }
+
   Future<void> executeCommand(String command) async {
     final trimmed = command.trim();
 
@@ -539,6 +658,16 @@ class TerminalSessionService extends ChangeNotifier {
         'session-clear',
         'session-doctor',
         'history',
+        'keyboard-test',
+        'keyboard-settings',
+        'terminal-settings',
+        'input-test',
+        'ansi-test',
+        'resize-info',
+        'scroll-test',
+        'copy-last',
+        'copy-session',
+        'paste-force',
       };
 
       if (hostCommands.contains(firstToken)) {
