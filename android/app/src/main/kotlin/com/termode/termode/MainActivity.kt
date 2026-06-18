@@ -121,6 +121,15 @@ class MainActivity: FlutterActivity() {
                                 val usrDir = java.io.File(filesDir, "usr")
                                 val binDir = java.io.File(filesDir, "usr/bin")
                                 val tmpDir = java.io.File(filesDir, "tmp")
+                                val usrTmpDir = java.io.File(filesDir, "usr/tmp")
+                                val projectsDir = java.io.File(homeDir, "projects")
+                                val cacheDir = java.io.File(homeDir, "cache")
+                                val configDir = java.io.File(homeDir, "config")
+                                listOf(usrDir, binDir, tmpDir, usrTmpDir, projectsDir, cacheDir, configDir).forEach {
+                                    if (!it.exists()) {
+                                        it.mkdirs()
+                                    }
+                                }
 
                                 val pb = ProcessBuilder("/system/bin/sh", "-c", command)
                                 pb.directory(homeDir)
@@ -129,7 +138,12 @@ class MainActivity: FlutterActivity() {
                                 env["HOME"] = homeDir.absolutePath
                                 env["TERMODE_HOME"] = homeDir.absolutePath
                                 env["TERMODE_USR"] = usrDir.absolutePath
+                                env["TERMODE_PREFIX"] = usrDir.absolutePath
                                 env["TERMODE_BIN"] = binDir.absolutePath
+                                env["TERMODE_WORKSPACES"] = projectsDir.absolutePath
+                                env["TERMODE_TMPDIR"] = usrTmpDir.absolutePath
+                                env["TERMODE_CACHE"] = cacheDir.absolutePath
+                                env["TERMODE_CONFIG"] = configDir.absolutePath
                                 env["TERMODE_PREFERRED_CWD"] = homeDir.absolutePath
                                 env["TMPDIR"] = tmpDir.absolutePath
                                 env["PATH"] = "${binDir.absolutePath}:/system/bin:/system/xbin:/vendor/bin:/product/bin"
@@ -990,6 +1004,16 @@ class MainActivity: FlutterActivity() {
                         val usrDir = java.io.File(filesDir, "usr")
                         val binDir = java.io.File(filesDir, "usr/bin")
                         val tmpDir = java.io.File(filesDir, "tmp")
+                        val usrTmpDir = java.io.File(filesDir, "usr/tmp")
+                        val projectsDir = java.io.File(homeDir, "projects")
+                        val cacheDir = java.io.File(homeDir, "cache")
+                        val configDir = java.io.File(homeDir, "config")
+                        val etcDir = java.io.File(usrDir, "etc")
+                        listOf(usrDir, binDir, tmpDir, usrTmpDir, projectsDir, cacheDir, configDir, etcDir).forEach {
+                            if (!it.exists()) {
+                                it.mkdirs()
+                            }
+                        }
                         if (!tmpDir.exists()) {
                             tmpDir.mkdirs()
                         }
@@ -1000,7 +1024,12 @@ class MainActivity: FlutterActivity() {
                         env["HOME"] = homeDir.absolutePath
                         env["TERMODE_HOME"] = homeDir.absolutePath
                         env["TERMODE_USR"] = usrDir.absolutePath
+                        env["TERMODE_PREFIX"] = usrDir.absolutePath
                         env["TERMODE_BIN"] = binDir.absolutePath
+                        env["TERMODE_WORKSPACES"] = projectsDir.absolutePath
+                        env["TERMODE_TMPDIR"] = usrTmpDir.absolutePath
+                        env["TERMODE_CACHE"] = cacheDir.absolutePath
+                        env["TERMODE_CONFIG"] = configDir.absolutePath
                         env["TMPDIR"] = tmpDir.absolutePath
                         env["PATH"] = "${binDir.absolutePath}:/system/bin:/system/xbin:/vendor/bin:/product/bin"
                         env["TERM"] = "xterm-256color"
@@ -1247,8 +1276,14 @@ class MainActivity: FlutterActivity() {
                         val usrDir = java.io.File(filesDir, "usr")
                         val binDir = java.io.File(filesDir, "usr/bin")
                         val tmpDir = java.io.File(filesDir, "tmp")
-                        if (!tmpDir.exists()) {
-                            tmpDir.mkdirs()
+                        val usrTmpDir = java.io.File(filesDir, "usr/tmp")
+                        val projectsDir = java.io.File(homeDir, "projects")
+                        val cacheDir = java.io.File(homeDir, "cache")
+                        val configDir = java.io.File(homeDir, "config")
+                        listOf(usrDir, binDir, tmpDir, usrTmpDir, projectsDir, cacheDir, configDir).forEach {
+                            if (!it.exists()) {
+                                it.mkdirs()
+                            }
                         }
                         val requestedWorkingDir = call.argument<String>("workingDirectory")
                         val workingDir = if (requestedWorkingDir != null) {
@@ -1274,11 +1309,26 @@ class MainActivity: FlutterActivity() {
                             binDir.absolutePath,
                             tmpDir.absolutePath,
                             pathEnv,
-                            arrayOf("PS1", "ENV", "TERMODE_PROJECTS", "TERMODE_PREFERRED_CWD"),
+                            arrayOf(
+                                "PS1",
+                                "ENV",
+                                "TERMODE_PROJECTS",
+                                "TERMODE_PREFIX",
+                                "TERMODE_WORKSPACES",
+                                "TERMODE_TMPDIR",
+                                "TERMODE_CACHE",
+                                "TERMODE_CONFIG",
+                                "TERMODE_PREFERRED_CWD"
+                            ),
                             arrayOf(
                                 "termode:\$ ",
                                 java.io.File(usrDir, "termode-shell-helpers.sh").absolutePath,
                                 java.io.File(homeDir, "projects").absolutePath,
+                                usrDir.absolutePath,
+                                projectsDir.absolutePath,
+                                usrTmpDir.absolutePath,
+                                cacheDir.absolutePath,
+                                configDir.absolutePath,
                                 workingDir.absolutePath
                             ),
                             cols,
@@ -1630,12 +1680,21 @@ class MainActivity: FlutterActivity() {
         val usrDir = java.io.File(filesDir, "usr").absolutePath
         val binDir = java.io.File(filesDir, "usr/bin").absolutePath
         val tmpDir = java.io.File(filesDir, "tmp").absolutePath
+        val usrTmpDir = java.io.File(filesDir, "usr/tmp").absolutePath
+        val projectsDir = java.io.File(filesDir, "home/projects").absolutePath
+        val cacheDir = java.io.File(filesDir, "home/cache").absolutePath
+        val configDir = java.io.File(filesDir, "home/config").absolutePath
         return mapOf(
             "HOME" to (System.getenv("HOME") ?: homeDir),
             "TMPDIR" to (System.getenv("TMPDIR") ?: tmpDir),
             "TERMODE_HOME" to homeDir,
             "TERMODE_USR" to usrDir,
-            "TERMODE_BIN" to binDir
+            "TERMODE_PREFIX" to usrDir,
+            "TERMODE_BIN" to binDir,
+            "TERMODE_WORKSPACES" to projectsDir,
+            "TERMODE_TMPDIR" to usrTmpDir,
+            "TERMODE_CACHE" to cacheDir,
+            "TERMODE_CONFIG" to configDir
         )
     }
 

@@ -133,7 +133,12 @@ void main() {
       expect(result.output, contains('Session:'));
       expect(result.output, contains('Workspace: none'));
       expect(result.output, contains('Packages: healthy'));
-      expect(result.output, contains('Runtime: architecture phase'));
+      expect(
+        result.output,
+        contains('Runtime: environment architecture active'),
+      );
+      expect(result.output, contains('Prefix:'));
+      expect(result.output, contains('PATH overlay:'));
       expect(result.output, contains('Beta: ready with limitations'));
     });
 
@@ -176,25 +181,28 @@ void main() {
       expect(SettingsService().fontSize, 14.0);
     });
 
-    test('settings-reset-safe preserves shell preference and user data', () async {
-      // A workspace stands in for user data that must survive a settings reset.
-      await commandService.execute('workspace-init keepme');
-      SettingsService().setStartInRealShell(false);
-      SettingsService().setThemeColor('Amber');
+    test(
+      'settings-reset-safe preserves shell preference and user data',
+      () async {
+        // A workspace stands in for user data that must survive a settings reset.
+        await commandService.execute('workspace-init keepme');
+        SettingsService().setStartInRealShell(false);
+        SettingsService().setThemeColor('Amber');
 
-      final result = await commandService.execute(
-        'settings-reset-safe --confirm',
-      );
-      expect(result.output, contains('Kept: packages, workspaces, sessions'));
+        final result = await commandService.execute(
+          'settings-reset-safe --confirm',
+        );
+        expect(result.output, contains('Kept: packages, workspaces, sessions'));
 
-      // Visual setting reset to default.
-      expect(SettingsService().themeColor, 'Green');
-      // Shell preference preserved.
-      expect(SettingsService().startInRealShell, isFalse);
-      // Workspace data untouched.
-      final list = await commandService.execute('workspace-list');
-      expect(list.output, contains('keepme'));
-    });
+        // Visual setting reset to default.
+        expect(SettingsService().themeColor, 'Green');
+        // Shell preference preserved.
+        expect(SettingsService().startInRealShell, isFalse);
+        // Workspace data untouched.
+        final list = await commandService.execute('workspace-list');
+        expect(list.output, contains('keepme'));
+      },
+    );
 
     test('command catalog includes new v0.39 commands', () {
       for (final command in ['status', 'theme-test', 'settings-reset-safe']) {

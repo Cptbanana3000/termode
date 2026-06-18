@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(flutter --suppress-analytics analyze)",
+      "PowerShell(flutter --suppress-analytics test)",
+      "PowerShell(flutter --suppress-analytics build apk --debug 2>&1)",
+      "Read(//c/Users/joell/.claude/projects/d--Projects-termode/**)",
+      "Bash(ls -la)",
+      "Bash(cat MEMORY.md)",
+      "PowerShell(flutter --version)",
+      "Bash(python -c ' *)",
+      "Bash(grep -v '\\\\\\\\u001B')",
+      "PowerShell($adb = \"$env:LOCALAPPDATA\\\\Android\\\\sdk\\\\platform-tools\\\\adb.exe\"; if \\(Test-Path $adb\\) { & $adb devices } elseif \\(Get-Command adb -ErrorAction SilentlyContinue\\) { adb devices } else { Write-Output \"adb not found on PATH\" })",
+      "Bash(git check-ignore *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git tag *)"
+    ]
+  }
+}

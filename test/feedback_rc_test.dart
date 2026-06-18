@@ -126,7 +126,7 @@ void main() {
       final result = await commandService.execute('rc-status');
 
       expect(result.output, contains('=== Release Candidate Status ==='));
-      expect(result.output, contains('Version: v0.42'));
+      expect(result.output, contains('Version: v0.43'));
       expect(result.output, contains('Beta candidate: yes'));
       expect(result.output, contains('Core systems: OK'));
       expect(result.output, contains('Known limitations: intentional'));
@@ -144,9 +144,9 @@ void main() {
       final version = await commandService.execute('version');
       final build = await commandService.execute('build-info');
 
-      expect(version.output, contains('Termode v0.42'));
-      expect(build.output, contains('Version: v0.42'));
-      expect(build.output, contains('Artifact: Termode-v0.42-beta-debug.apk'));
+      expect(version.output, contains('Termode v0.43'));
+      expect(build.output, contains('Version: v0.43'));
+      expect(build.output, contains('Artifact: Termode-v0.43-env-debug.apk'));
     });
 
     test('settings-reset-safe stays protected by --confirm', () async {
@@ -179,24 +179,27 @@ void main() {
       expect(commands.output, contains('rc-status'));
     });
 
-    test('REAL PTY host interception includes feedback and rc commands', () async {
-      final sessionService = TerminalSessionService();
-      final session = sessionService.activeSession;
-      session.lines.clear();
-      session.isRealPtyActive = true;
-      session.isPtyInteractionActive = true;
+    test(
+      'REAL PTY host interception includes feedback and rc commands',
+      () async {
+        final sessionService = TerminalSessionService();
+        final session = sessionService.activeSession;
+        session.lines.clear();
+        session.isRealPtyActive = true;
+        session.isPtyInteractionActive = true;
 
-      await sessionService.executeCommand('feedback');
-      await sessionService.executeCommand('rc-status');
+        await sessionService.executeCommand('feedback');
+        await sessionService.executeCommand('rc-status');
 
-      final output = session.lines.map((line) => line.text).join('\n');
-      expect(output, contains('feedback'));
-      expect(output, contains('=== Beta Feedback ==='));
-      expect(output, contains('rc-status'));
-      expect(output, contains('=== Release Candidate Status ==='));
+        final output = session.lines.map((line) => line.text).join('\n');
+        expect(output, contains('feedback'));
+        expect(output, contains('=== Beta Feedback ==='));
+        expect(output, contains('rc-status'));
+        expect(output, contains('=== Release Candidate Status ==='));
 
-      session.isPtyInteractionActive = false;
-      session.isRealPtyActive = false;
-    });
+        session.isPtyInteractionActive = false;
+        session.isRealPtyActive = false;
+      },
+    );
   });
 }

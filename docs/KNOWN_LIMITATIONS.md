@@ -1,21 +1,24 @@
 # Known Limitations
 
-Termode is beta software. v0.42 builds the runtime expansion architecture: the
-foundation for future toolchains (Git, Node.js, npm, Python, editors). Those
-toolchains are **planned, not installed** — Termode does not run Node/npm/Git/
-Python yet. A `LIMITED` / `ARCHITECTURE PHASE` status is an intentional state
-(frozen runtime foundation, unlinked storage, planned toolchains) and does not
-mean Termode is broken.
+Termode is beta software. v0.43 provides the prefix/PATH/environment layer for
+future toolchains, but those toolchains are **planned, not installed**.
+
+Termode does not run Node.js, npm, Git, or Python yet. A `LIMITED` or
+`ARCHITECTURE PHASE` status is often intentional when it refers to frozen
+runtime work, unlinked Android storage, planned toolchains, or a prefix that has
+not been initialized yet.
 
 ## Runtime Freeze
 
-Runtime direction is frozen. Termode currently supports:
+Runtime direction is frozen for the current beta foundation. Termode currently
+supports:
 
 - REAL PTY shell sessions
 - script packages through `/system/bin/sh`
 - built-in JNI native tools
 - `js-proof` controlled evaluator
 - localhost/preview diagnostics
+- prefix/PATH/environment infrastructure for future tools
 
 ## Not Included Yet
 
@@ -26,23 +29,28 @@ Runtime direction is frozen. Termode currently supports:
 - native package manager
 - full Linux distribution compatibility
 
-QuickJS and Duktape are probe surfaces only. They are not production runtimes.
+QuickJS and Duktape remain probe surfaces only. They are not production
+runtimes.
 
-## Runtime Expansion (Planned, Not Installed)
+## Runtime Environment And Planned Toolchains
 
-Git, Node.js, npm, Python, curl/wget, and editors (nano/micro) are planned for
-future milestones. v0.42 adds only the planning/architecture surface — no real
+Git, Node.js, npm, Python, curl/wget, and editors are planned for future
+milestones. v0.43 adds safe prefix/PATH/env infrastructure but still no real
 installs, downloads, or native execution. Explore it with:
 
 ```sh
+prefix-status
+path-status
+env-status
+bin-list
+shim-info
 toolchain-status
-toolchain-list
-runtime-install list
+runtime-install status
 dev-doctor
-prefix-info
 ```
 
-See [Runtime Expansion Architecture](RUNTIME_EXPANSION_ARCHITECTURE.md).
+See [Prefix / PATH / Environment](PREFIX_PATH_ENVIRONMENT.md) and
+[Runtime Expansion Architecture](RUNTIME_EXPANSION_ARCHITECTURE.md).
 
 ## Android / Storage Limits
 
@@ -57,6 +65,9 @@ See [Runtime Expansion Architecture](RUNTIME_EXPANSION_ARCHITECTURE.md).
 beta-known-limits
 runtime-freeze status
 runtime-freeze why
+prefix-status
+path-status
+env-status
 toolchain-status
 runtime-install status
 doctor

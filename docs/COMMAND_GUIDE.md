@@ -100,19 +100,36 @@ Use `welcome`, `examples`, and `glossary` first if you are new.
 reports `RC CLEANUP READY` when core systems are healthy; the intentional frozen
 runtime and unlinked storage do not block it.
 
-## Runtime Expansion (Planning Only)
+## Runtime Environment
 
-These describe Termode's future runtime/toolchain layer. They do not install,
-download, or execute anything yet. See
+These describe Termode's prefix, PATH overlay, environment, bin discovery, and
+future runtime/toolchain layer. They do not install, download, or execute
+external runtimes yet. See
+[Prefix / PATH / Environment](PREFIX_PATH_ENVIRONMENT.md) and
 [Runtime Expansion Architecture](RUNTIME_EXPANSION_ARCHITECTURE.md).
 
 Prefix / environment:
 
 - `prefix-info`
 - `prefix-init`
+- `prefix-status`
 - `prefix-doctor`
 - `path-info`
+- `path-status`
+- `path-preview`
+- `path-doctor`
 - `env-info`
+- `env-status`
+- `env-preview`
+- `env-doctor`
+- `env-check`
+- `env-script`
+- `bin-list`
+- `bin-which <command>`
+- `bin-doctor`
+- `shim-info`
+- `shim-list`
+- `shim-doctor`
 
 Toolchains (planned):
 

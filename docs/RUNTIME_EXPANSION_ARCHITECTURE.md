@@ -1,5 +1,10 @@
 # Runtime Expansion Architecture (v0.42)
 
+Update: v0.43 implements the first runtime-environment layer from this plan.
+See [Prefix / PATH / Environment](PREFIX_PATH_ENVIRONMENT.md) for the current
+prefix, PATH overlay, environment injection, bin discovery, and shim planning
+commands.
+
 This document describes how Termode will grow from a strong standalone terminal
 into a guided dev environment with real toolchains (Git, Node.js, npm, Python,
 editors). v0.42 builds the **architecture and planning surface only** — it does

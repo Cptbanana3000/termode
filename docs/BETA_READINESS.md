@@ -152,3 +152,18 @@ Beta readiness is unaffected by planned-but-missing toolchains: `beta-candidate
 ready` only blocks on a genuinely `UNHEALTHY` core subsystem (packages,
 workspaces, sessions). Toolchain/runtime-install/dev doctors report
 `ARCHITECTURE PHASE` / `LIMITED`, never `UNHEALTHY`, for missing planned tools.
+
+v0.43 turns the prefix/PATH/environment layer into usable infrastructure:
+
+- version is `v0.43` (Android `versionName 0.43.0` / `versionCode 43`)
+- `TERMODE_PREFIX` is unified with the existing `files/usr` package prefix so
+  script packages and helper reload keep working
+- REAL PTY shells receive Termode environment variables and a safe PATH overlay
+- new checks: `prefix-status`, `path-status`, `path-preview`, `path-doctor`,
+  `env-status`, `env-preview`, `env-doctor`, `env-check`, `env-script`
+- bin/shim planning: `bin-list`, `bin-which`, `bin-doctor`, `shim-info`,
+  `shim-list`, `shim-doctor`
+- `runtime-install status` and `dev-doctor` now distinguish planning-only from
+  environment-ready state
+
+Git, Node.js, npm, and Python remain planned but not installed.

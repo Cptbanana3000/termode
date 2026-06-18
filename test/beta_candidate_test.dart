@@ -91,13 +91,19 @@ void main() {
       expect(result.isError, isFalse);
       expect(result.output, contains('=== Build Info ==='));
       expect(result.output, contains('App: Termode'));
-      expect(result.output, contains('Version: v0.42'));
+      expect(result.output, contains('Version: v0.43'));
       expect(result.output, contains('Build type:'));
-      expect(result.output, contains('Runtime: architecture phase'));
+      expect(
+        result.output,
+        contains('Runtime: environment architecture active'),
+      );
       expect(result.output, contains('Toolchains: planned'));
       expect(result.output, contains('Shell: REAL PTY'));
       expect(result.output, contains('Packages: script-only'));
-      expect(result.output, contains('Beta candidate: terminal foundation beta'));
+      expect(
+        result.output,
+        contains('Beta candidate: terminal foundation beta'),
+      );
     });
 
     test('beta-candidate default/help output', () async {
@@ -116,13 +122,15 @@ void main() {
       final result = await commandService.execute('beta-candidate status');
 
       expect(result.output, contains('=== Termode Beta Candidate ==='));
-      expect(result.output, contains('Version: v0.42'));
+      expect(result.output, contains('Version: v0.43'));
       expect(result.output, contains('Core shell: OK'));
       expect(result.output, contains('Packages: OK'));
       expect(result.output, contains('Workspaces: OK'));
       expect(result.output, contains('Sessions: OK'));
       expect(result.output, contains('Terminal UX: OK'));
       expect(result.output, contains('Runtime: FROZEN'));
+      expect(result.output, contains('Prefix:'));
+      expect(result.output, contains('PATH overlay:'));
       expect(result.output, contains('Known limitations: yes'));
       expect(result.output, contains('Overall: BETA CANDIDATE'));
       expect(result.isError, isFalse);
@@ -146,7 +154,7 @@ void main() {
     test('beta-candidate notes output', () async {
       final result = await commandService.execute('beta-candidate notes');
 
-      expect(result.output, contains('=== Termode v0.42 Beta Candidate ==='));
+      expect(result.output, contains('=== Termode v0.43 Beta Candidate ==='));
       expect(result.output, contains('REAL PTY shell'));
       expect(result.output, contains('script packages'));
       expect(result.output, contains('Runtime remains frozen'));
@@ -158,7 +166,10 @@ void main() {
       expect(result.output, contains('=== Beta Candidate Limits ==='));
       expect(result.output, contains('Node.js/npm are not included'));
       expect(result.output, contains('Python/Git are not included'));
-      expect(result.output, contains('Native binary packages are not supported'));
+      expect(
+        result.output,
+        contains('Native binary packages are not supported'),
+      );
       expect(result.output, contains('QuickJS/Duktape are deferred'));
       expect(result.output, contains('Beta software; bugs expected'));
     });
@@ -183,17 +194,24 @@ void main() {
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
 
-      expect(version.output, contains('Termode v0.42'));
+      expect(version.output, contains('Termode v0.43'));
+      expect(
+        notes.output,
+        contains('v0.43 Prefix / PATH / Environment System'),
+      );
       expect(notes.output, contains('v0.42 Runtime Expansion Architecture'));
-      expect(changelog.output, contains('v0.42 Runtime Expansion Architecture'));
+      expect(
+        changelog.output,
+        contains('v0.42 Runtime Expansion Architecture'),
+      );
     });
 
     test('bug-report and qa-report include v0.40', () async {
       final bug = await commandService.execute('bug-report');
       final qa = await commandService.execute('qa-report');
 
-      expect(bug.output, contains('Termode version: v0.42'));
-      expect(qa.output, contains('Termode v0.42'));
+      expect(bug.output, contains('Termode version: v0.43'));
+      expect(qa.output, contains('Termode v0.43'));
     });
 
     test('command catalog includes new v0.40 commands', () {

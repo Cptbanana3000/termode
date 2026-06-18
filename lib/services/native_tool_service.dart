@@ -20,7 +20,12 @@ class NativeToolService {
     'TMPDIR',
     'TERMODE_HOME',
     'TERMODE_USR',
+    'TERMODE_PREFIX',
     'TERMODE_BIN',
+    'TERMODE_WORKSPACES',
+    'TERMODE_TMPDIR',
+    'TERMODE_CACHE',
+    'TERMODE_CONFIG',
   ];
 
   static const String _unavailable =

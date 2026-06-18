@@ -3,7 +3,7 @@
 Termode is a standalone Android terminal project with a REAL PTY shell,
 script packages, workspace folders, and beta QA tooling.
 
-Current status: **v0.42 Runtime Expansion Architecture** (terminal foundation beta).
+Current status: **v0.43 Prefix / PATH / Environment System** (terminal foundation beta).
 
 Termode is not a full Linux distribution and is not a Termux replacement yet,
 and it is not a stable v1.0. It is building a complete standalone Android
@@ -13,7 +13,9 @@ integrating into CalypsoIDE.
 Termode has a strong terminal foundation today (REAL PTY, packages, workspaces,
 sessions, QA/beta tooling). It does **not** yet include Node.js, npm, Git,
 Python, compilers, or a full Linux package ecosystem — those are **planned, not
-installed**. v0.42 builds the architecture for them. See
+installed**. v0.43 makes the prefix, PATH overlay, environment variables, and
+REAL PTY environment injection usable for future toolchains. See
+[Prefix / PATH / Environment](docs/PREFIX_PATH_ENVIRONMENT.md),
 [Runtime Expansion Architecture](docs/RUNTIME_EXPANSION_ARCHITECTURE.md),
 [Beta Install](docs/BETA_INSTALL.md), and [Beta Testing](docs/BETA_TESTING.md).
 
@@ -34,6 +36,7 @@ installed**. v0.42 builds the architecture for them. See
 - beta QA commands and doctors
 - settings/theme/status readouts (`settings-summary`, `theme-test`, `status`)
 - data-safe visual reset via `settings-reset-safe --confirm`
+- safe Termode prefix, PATH overlay, env preview/doctor, and bin discovery
 
 ## Not Included Yet
 
@@ -57,6 +60,9 @@ commands
 status
 build-info
 beta-candidate status
+prefix-status
+path-status
+env-status
 doctor
 qa-status
 ```
@@ -76,7 +82,7 @@ hello
 Termode ships as a debug APK for beta testing:
 
 1. Enable "Install unknown apps" for your file manager or browser.
-2. Copy `Termode-v0.42-beta-debug.apk` to the device and tap to install.
+2. Copy `Termode-v0.43-env-debug.apk` to the device and tap to install.
 3. Launch Termode and run `welcome`, then `doctor` and `dev-doctor`.
 
 Full steps and how to clear app data are in
@@ -138,13 +144,29 @@ beta-score
 `READY WITH LIMITATIONS` is expected when limitations are known and documented,
 for example frozen runtime work or unlinked Android storage.
 
-## Runtime Freeze
+## Runtime Environment
 
 Termode is stabilizing the current app before adding larger runtime systems.
 Node/npm/Python/Git and native package managers are future work, not current
 features.
 
-See [docs/RUNTIME_DECISION_FREEZE.md](docs/RUNTIME_DECISION_FREEZE.md).
+v0.43 adds a safe environment layer for future tools:
+
+```sh
+prefix-init
+prefix-status
+path-preview
+env-preview
+env-check
+bin-list
+shim-info
+```
+
+REAL PTY shells receive `TERMODE_HOME`, `TERMODE_PREFIX`, `TERMODE_BIN`,
+`TERMODE_WORKSPACES`, `TERMODE_TMPDIR`, `PATH`, `TMPDIR`, and `TERM`.
+
+See [docs/PREFIX_PATH_ENVIRONMENT.md](docs/PREFIX_PATH_ENVIRONMENT.md) and
+[docs/RUNTIME_DECISION_FREEZE.md](docs/RUNTIME_DECISION_FREEZE.md).
 
 ## Screenshots
 
@@ -154,8 +176,8 @@ after the UI polish pass.
 ## Roadmap
 
 - v0.41 Beta Feedback Fixes / RC Cleanup
-- v0.42 Runtime Expansion Architecture (current)
-- v0.43 Prefix / PATH / Environment System
+- v0.42 Runtime Expansion Architecture
+- v0.43 Prefix / PATH / Environment System (current)
 - v0.44 Binary Package Installer Prototype
 - v0.45 Git · v0.46 Node.js · v0.47 npm · v0.48 Python
 - v0.49 Dev Stack Presets · v0.50 Full Terminal QA · v0.51 Complete Termode Beta
@@ -167,6 +189,7 @@ stabilizes.
 ## Docs
 
 - [Runtime Expansion Architecture](docs/RUNTIME_EXPANSION_ARCHITECTURE.md)
+- [Prefix / PATH / Environment](docs/PREFIX_PATH_ENVIRONMENT.md)
 - [Release Notes v0.41](docs/RELEASE_NOTES_v0.41.md)
 - [Release Notes v0.40](docs/RELEASE_NOTES_v0.40.md)
 - [Beta Install](docs/BETA_INSTALL.md)

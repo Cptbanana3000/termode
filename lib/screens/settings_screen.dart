@@ -46,14 +46,19 @@ class SettingsScreen extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white54),
+              ),
             ),
             TextButton(
               onPressed: () async {
                 final jsonString = controller.text.trim();
                 if (jsonString.isEmpty) return;
 
-                final success = await TerminalSessionService().importState(jsonString);
+                final success = await TerminalSessionService().importState(
+                  jsonString,
+                );
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -63,13 +68,18 @@ class SettingsScreen extends StatelessWidget {
                             ? 'State restored successfully!'
                             : 'Failed to restore state: Invalid JSON format',
                       ),
-                      backgroundColor: success ? settings.primaryColor : Colors.redAccent,
+                      backgroundColor: success
+                          ? settings.primaryColor
+                          : Colors.redAccent,
                       duration: const Duration(seconds: 2),
                     ),
                   );
                 }
               },
-              child: Text('Restore', style: TextStyle(color: settings.primaryColor)),
+              child: Text(
+                'Restore',
+                style: TextStyle(color: settings.primaryColor),
+              ),
             ),
           ],
         );
@@ -102,7 +112,10 @@ class SettingsScreen extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white54),
+              ),
             ),
             TextButton(
               onPressed: () async {
@@ -112,14 +125,19 @@ class SettingsScreen extends StatelessWidget {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('Visual settings restored to defaults'),
+                      content: const Text(
+                        'Visual settings restored to defaults',
+                      ),
                       backgroundColor: settings.primaryColor,
                       duration: const Duration(seconds: 2),
                     ),
                   );
                 }
               },
-              child: Text('Reset', style: TextStyle(color: settings.primaryColor)),
+              child: Text(
+                'Reset',
+                style: TextStyle(color: settings.primaryColor),
+              ),
             ),
           ],
         );
@@ -144,7 +162,10 @@ class SettingsScreen extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white54),
+              ),
             ),
             TextButton(
               onPressed: () async {
@@ -160,7 +181,10 @@ class SettingsScreen extends StatelessWidget {
                   );
                 }
               },
-              child: const Text('Reset', style: TextStyle(color: Colors.redAccent)),
+              child: const Text(
+                'Reset',
+                style: TextStyle(color: Colors.redAccent),
+              ),
             ),
           ],
         );
@@ -199,10 +223,16 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               const Divider(color: Color(0xFF2D2D2D), height: 30),
-              
+
               ListTile(
-                title: const Text('Font Size', style: TextStyle(color: Colors.white)),
-                subtitle: Text('${settings.fontSize.toInt()} px', style: const TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Font Size',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  '${settings.fontSize.toInt()} px',
+                  style: const TextStyle(color: Colors.white60),
+                ),
                 trailing: SizedBox(
                   width: 150,
                   child: Slider(
@@ -218,19 +248,24 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               ListTile(
-                title: const Text('Color Scheme', style: TextStyle(color: Colors.white)),
-                subtitle: Text(settings.themeColor, style: const TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Color Scheme',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  settings.themeColor,
+                  style: const TextStyle(color: Colors.white60),
+                ),
                 trailing: DropdownButton<String>(
                   value: settings.themeColor,
                   dropdownColor: const Color(0xFF1E1E1E),
                   style: const TextStyle(color: Colors.white),
-                  underline: Container(
-                    height: 2,
-                    color: settings.primaryColor,
-                  ),
-                  items: <String>['Green', 'Amber', 'White'].map((String value) {
+                  underline: Container(height: 2, color: settings.primaryColor),
+                  items: <String>['Green', 'Amber', 'White'].map((
+                    String value,
+                  ) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -246,19 +281,31 @@ class SettingsScreen extends StatelessWidget {
 
               const SizedBox(height: 10),
               SwitchListTile(
-                title: const Text('Show Welcome Message', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Display welcome text on new session tabs', style: TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Show Welcome Message',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Display welcome text on new session tabs',
+                  style: TextStyle(color: Colors.white60),
+                ),
                 value: settings.showWelcomeBanner,
                 activeThumbColor: settings.primaryColor,
                 onChanged: (value) {
                   settings.setShowWelcomeBanner(value);
                 },
               ),
-              
+
               if (settings.showWelcomeBanner)
                 SwitchListTile(
-                  title: const Text('Large ASCII Banner', style: TextStyle(color: Colors.white)),
-                  subtitle: const Text('Display giant retro ASCII logo', style: TextStyle(color: Colors.white60)),
+                  title: const Text(
+                    'Large ASCII Banner',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: const Text(
+                    'Display giant retro ASCII logo',
+                    style: TextStyle(color: Colors.white60),
+                  ),
                   value: settings.showLargeAsciiBanner,
                   activeThumbColor: settings.primaryColor,
                   onChanged: (value) {
@@ -267,8 +314,14 @@ class SettingsScreen extends StatelessWidget {
                 ),
 
               SwitchListTile(
-                title: const Text('Immersive Mode', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Hide title and tab bars in terminal canvas', style: TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Immersive Mode',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Hide title and tab bars in terminal canvas',
+                  style: TextStyle(color: Colors.white60),
+                ),
                 value: settings.immersiveMode,
                 activeThumbColor: settings.primaryColor,
                 onChanged: (value) {
@@ -277,8 +330,14 @@ class SettingsScreen extends StatelessWidget {
               ),
 
               SwitchListTile(
-                title: const Text('Show Control Characters as Hex', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Display non-printable codes as [0xXX] for debugging', style: TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Show Control Characters as Hex',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Display non-printable codes as [0xXX] for debugging',
+                  style: TextStyle(color: Colors.white60),
+                ),
                 value: settings.showControlCharsHex,
                 activeThumbColor: settings.primaryColor,
                 onChanged: (value) {
@@ -287,8 +346,14 @@ class SettingsScreen extends StatelessWidget {
               ),
 
               SwitchListTile(
-                title: const Text('Enable ANSI Renderer', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Render ANSI color codes and control sequences', style: TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Enable ANSI Renderer',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Render ANSI color codes and control sequences',
+                  style: TextStyle(color: Colors.white60),
+                ),
                 value: settings.enableAnsiRenderer,
                 activeThumbColor: settings.primaryColor,
                 onChanged: (value) {
@@ -297,17 +362,22 @@ class SettingsScreen extends StatelessWidget {
               ),
 
               ListTile(
-                title: const Text('Cursor Style', style: TextStyle(color: Colors.white)),
-                subtitle: Text(settings.cursorStyle, style: const TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Cursor Style',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  settings.cursorStyle,
+                  style: const TextStyle(color: Colors.white60),
+                ),
                 trailing: DropdownButton<String>(
                   value: settings.cursorStyle,
                   dropdownColor: const Color(0xFF1E1E1E),
                   style: const TextStyle(color: Colors.white),
-                  underline: Container(
-                    height: 2,
-                    color: settings.primaryColor,
-                  ),
-                  items: <String>['block', 'bar', 'underline'].map((String value) {
+                  underline: Container(height: 2, color: settings.primaryColor),
+                  items: <String>['block', 'bar', 'underline'].map((
+                    String value,
+                  ) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -322,8 +392,14 @@ class SettingsScreen extends StatelessWidget {
               ),
 
               SwitchListTile(
-                title: const Text('Blinking Cursor', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Animate cursor blinking', style: TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Blinking Cursor',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Animate cursor blinking',
+                  style: TextStyle(color: Colors.white60),
+                ),
                 value: settings.blinkingCursor,
                 activeThumbColor: settings.primaryColor,
                 onChanged: (value) {
@@ -332,8 +408,14 @@ class SettingsScreen extends StatelessWidget {
               ),
 
               SwitchListTile(
-                title: const Text('Start in Real Shell', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Automatically open native shell on new sessions', style: TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Start in Real Shell',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Automatically open native shell on new sessions',
+                  style: TextStyle(color: Colors.white60),
+                ),
                 value: settings.startInRealShell,
                 activeThumbColor: settings.primaryColor,
                 onChanged: (value) {
@@ -342,8 +424,14 @@ class SettingsScreen extends StatelessWidget {
               ),
 
               ListTile(
-                title: const Text('Line Height', style: TextStyle(color: Colors.white)),
-                subtitle: Text(settings.lineHeight.toStringAsFixed(2), style: const TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Line Height',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  settings.lineHeight.toStringAsFixed(2),
+                  style: const TextStyle(color: Colors.white60),
+                ),
                 trailing: SizedBox(
                   width: 150,
                   child: Slider(
@@ -361,14 +449,22 @@ class SettingsScreen extends StatelessWidget {
               ),
 
               ListTile(
-                title: const Text('Scrollback Lines', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Lines kept per session', style: TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Scrollback Lines',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Lines kept per session',
+                  style: TextStyle(color: Colors.white60),
+                ),
                 trailing: DropdownButton<int>(
                   value: settings.maxScrollbackLines,
                   dropdownColor: const Color(0xFF1E1E1E),
                   style: const TextStyle(color: Colors.white),
                   underline: Container(height: 2, color: settings.primaryColor),
-                  items: const <int>[500, 1000, 2000, 5000, 10000].map((int value) {
+                  items: const <int>[500, 1000, 2000, 5000, 10000].map((
+                    int value,
+                  ) {
                     return DropdownMenuItem<int>(
                       value: value,
                       child: Text('$value'),
@@ -383,8 +479,14 @@ class SettingsScreen extends StatelessWidget {
               ),
 
               SwitchListTile(
-                title: const Text('ANSI Debug Mode', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Show raw control codes for debugging (verbose)', style: TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'ANSI Debug Mode',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Show raw control codes for debugging (verbose)',
+                  style: TextStyle(color: Colors.white60),
+                ),
                 value: settings.ansiDebugMode,
                 activeThumbColor: settings.primaryColor,
                 onChanged: (value) {
@@ -393,8 +495,14 @@ class SettingsScreen extends StatelessWidget {
               ),
 
               SwitchListTile(
-                title: const Text('Keep Screen On', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Preference to discourage auto-sleep while in the terminal', style: TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Keep Screen On',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Preference to discourage auto-sleep while in the terminal',
+                  style: TextStyle(color: Colors.white60),
+                ),
                 value: settings.keepScreenOn,
                 activeThumbColor: settings.primaryColor,
                 onChanged: (value) {
@@ -414,8 +522,14 @@ class SettingsScreen extends StatelessWidget {
               ),
               const Divider(color: Color(0xFF2D2D2D), height: 30),
               ListTile(
-                title: const Text('Export Backup', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Copy configuration and files state to clipboard', style: TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Export Backup',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Copy configuration and files state to clipboard',
+                  style: TextStyle(color: Colors.white60),
+                ),
                 trailing: Icon(Icons.copy, color: settings.primaryColor),
                 onTap: () {
                   final stateStr = TerminalSessionService().exportState();
@@ -430,8 +544,14 @@ class SettingsScreen extends StatelessWidget {
                 },
               ),
               ListTile(
-                title: const Text('Import Backup', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Restore sessions and folders from backup string', style: TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Import Backup',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Restore sessions and folders from backup string',
+                  style: TextStyle(color: Colors.white60),
+                ),
                 trailing: Icon(Icons.paste, color: settings.primaryColor),
                 onTap: () {
                   _showImportDialog(context, settings);
@@ -450,17 +570,32 @@ class SettingsScreen extends StatelessWidget {
               ),
               const Divider(color: Color(0xFF2D2D2D), height: 30),
               ListTile(
-                title: const Text('Safe Reset (Visual Only)', style: TextStyle(color: Colors.white)),
-                subtitle: const Text('Restore theme and terminal display defaults. Keeps sessions, packages, workspaces, and files', style: TextStyle(color: Colors.white60)),
+                title: const Text(
+                  'Safe Reset (Visual Only)',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Restore theme and terminal display defaults. Keeps sessions, packages, workspaces, and files',
+                  style: TextStyle(color: Colors.white60),
+                ),
                 trailing: Icon(Icons.restart_alt, color: settings.primaryColor),
                 onTap: () {
                   _showSafeResetConfirmation(context, settings);
                 },
               ),
               ListTile(
-                title: const Text('Reset Termode', style: TextStyle(color: Colors.redAccent)),
-                subtitle: const Text('Wipe all sessions, folders, and settings permanently', style: TextStyle(color: Colors.white60)),
-                trailing: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                title: const Text(
+                  'Reset Termode',
+                  style: TextStyle(color: Colors.redAccent),
+                ),
+                subtitle: const Text(
+                  'Wipe all sessions, folders, and settings permanently',
+                  style: TextStyle(color: Colors.white60),
+                ),
+                trailing: const Icon(
+                  Icons.delete_forever,
+                  color: Colors.redAccent,
+                ),
                 onTap: () {
                   _showResetConfirmation(context, settings);
                 },
@@ -478,12 +613,21 @@ class SettingsScreen extends StatelessWidget {
               ),
               const Divider(color: Color(0xFF2D2D2D), height: 30),
               const ListTile(
-                title: Text('App Version', style: TextStyle(color: Colors.white)),
-                trailing: Text('v0.42 (Runtime Expansion Architecture)', style: TextStyle(color: Colors.white60)),
+                title: Text(
+                  'App Version',
+                  style: TextStyle(color: Colors.white),
+                ),
+                trailing: Text(
+                  'v0.43 (Prefix / PATH / Environment)',
+                  style: TextStyle(color: Colors.white60),
+                ),
               ),
               const ListTile(
                 title: Text('Developer', style: TextStyle(color: Colors.white)),
-                trailing: Text('Termode Team', style: TextStyle(color: Colors.white60)),
+                trailing: Text(
+                  'Termode Team',
+                  style: TextStyle(color: Colors.white60),
+                ),
               ),
             ],
           );

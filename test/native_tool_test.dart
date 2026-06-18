@@ -79,7 +79,12 @@ void main() {
                         'TMPDIR': '/t',
                         'TERMODE_HOME': '/th',
                         'TERMODE_USR': '/tu',
+                        'TERMODE_PREFIX': '/tu',
                         'TERMODE_BIN': '/tb',
+                        'TERMODE_WORKSPACES': '/tw',
+                        'TERMODE_TMPDIR': '/tt',
+                        'TERMODE_CACHE': '/tc',
+                        'TERMODE_CONFIG': '/tconf',
                         'SECRET': 'leak',
                         'PATH': '/bin:/system/bin',
                       },
@@ -207,7 +212,12 @@ void main() {
       expect(result.output, contains('=== Native Tool Env ==='));
       expect(result.output, contains('HOME=/h'));
       expect(result.output, contains('TERMODE_HOME=/th'));
+      expect(result.output, contains('TERMODE_PREFIX=/tu'));
       expect(result.output, contains('TERMODE_BIN=/tb'));
+      expect(result.output, contains('TERMODE_WORKSPACES=/tw'));
+      expect(result.output, contains('TERMODE_TMPDIR=/tt'));
+      expect(result.output, contains('TERMODE_CACHE=/tc'));
+      expect(result.output, contains('TERMODE_CONFIG=/tconf'));
       // Anything outside the whitelist must never be surfaced.
       expect(result.output, isNot(contains('SECRET')));
       expect(result.output, isNot(contains('leak')));

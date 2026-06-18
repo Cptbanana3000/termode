@@ -3,7 +3,7 @@ import 'dart:io';
 import 'runtime_capability_service.dart';
 
 class RuntimeFreezeService {
-  static const nextMilestone = 'v0.43 Prefix / PATH / Environment System';
+  static const nextMilestone = 'v0.44 Binary Package Installer Prototype';
 
   static const supportedRuntimeDirection = [
     'script packages through /system/bin/sh',
@@ -37,7 +37,7 @@ class RuntimeFreezeService {
   String status() {
     return '=== Runtime Freeze Status ===\n'
         'Runtime implementation: frozen for current beta foundation.\n'
-        'Expansion architecture: active in v0.42.\n'
+        'Expansion architecture: active in v0.43.\n'
         'Actual external runtimes: not installed yet.\n'
         'Decision: frozen\n'
         'Current JS path: js-proof\n'
@@ -45,7 +45,7 @@ class RuntimeFreezeService {
         'Duktape: deferred\n'
         'Node.js: planned (not installed)\n'
         'npm: planned (not installed)\n'
-        'Next focus: runtime expansion architecture\n'
+        'Next focus: binary package installer prototype\n'
         'Overall: FROZEN';
   }
 
@@ -89,8 +89,8 @@ class RuntimeFreezeService {
         'Recommended next milestone:\n'
         '$nextMilestone\n\n'
         'Focus:\n'
-        '  - prefix / PATH / environment system\n'
         '  - binary package installer prototype\n'
+        '  - prefix/PATH/env validation on device\n'
         '  - guided toolchain installs (git, node, python)\n'
         '  - package/workspace/terminal QA\n'
         'Runtime implementation stays frozen for now; runtime expansion is planned.';

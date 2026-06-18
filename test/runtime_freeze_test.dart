@@ -115,8 +115,12 @@ void main() {
     test('runtime-freeze next output', () async {
       final result = await commandService.execute('runtime-freeze next');
 
-      expect(result.output, contains('v0.43 Prefix / PATH / Environment System'));
-      expect(result.output, contains('prefix / PATH / environment system'));
+      expect(
+        result.output,
+        contains('v0.44 Binary Package Installer Prototype'),
+      );
+      expect(result.output, contains('binary package installer prototype'));
+      expect(result.output, contains('prefix/PATH/env validation on device'));
       expect(result.output, contains('guided toolchain installs'));
       expect(result.output, contains('runtime expansion is planned'));
     });

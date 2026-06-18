@@ -235,16 +235,24 @@ class CommandService {
   String _betaNextOutput() {
     return '=== Beta Next ===\n'
         'Recommended next milestone:\n'
-        'v0.43 Prefix / PATH / Environment System\n\n'
-        'Reason: v0.42 lays the runtime expansion architecture; next builds the prefix/PATH/environment system.';
+        'v0.44 Binary Package Installer Prototype\n\n'
+        'Reason: v0.43 makes the prefix/PATH/environment usable; next prototypes the binary package installer.';
   }
 
   /// Computes beta-candidate readiness. Intentional limitations (frozen
   /// runtime, deferred QuickJS/Duktape, unlinked storage) are NOT blockers.
   /// Only a genuinely UNHEALTHY core subsystem (packages, workspaces,
   /// sessions) blocks beta readiness.
-  Future<({bool ready, String reason, String packages, String workspaces,
-      String sessions})> _betaCandidateReadiness() async {
+  Future<
+    ({
+      bool ready,
+      String reason,
+      String packages,
+      String workspaces,
+      String sessions,
+    })
+  >
+  _betaCandidateReadiness() async {
     final packages = _statusFromDoctorOutput(
       (await execute('pkg doctor')).output,
     );
@@ -274,14 +282,17 @@ class CommandService {
   Future<String> _betaCandidateStatusOutput() async {
     final r = await _betaCandidateReadiness();
     String label(String s) => s == 'UNHEALTHY' ? 'UNHEALTHY' : 'OK';
+    final prefixReady = await RuntimePrefixService().isInitialized();
     return '=== Termode Beta Candidate ===\n'
-        'Version: v0.42\n'
+        'Version: v0.43\n'
         'Core shell: OK\n'
         'Packages: ${label(r.packages)}\n'
         'Workspaces: ${label(r.workspaces)}\n'
         'Sessions: ${label(r.sessions)}\n'
         'Terminal UX: OK\n'
-        'Runtime: FROZEN (architecture phase)\n'
+        'Runtime: FROZEN (environment architecture active)\n'
+        'Prefix: ${prefixReady ? 'initialized' : 'not initialized'}\n'
+        'PATH overlay: ${prefixReady ? 'ready' : 'limited'}\n'
         'Toolchains: planned (not installed)\n'
         'Known limitations: yes\n'
         'Overall: ${r.ready ? 'BETA CANDIDATE' : 'NEEDS FIXES'}';
@@ -311,7 +322,7 @@ class CommandService {
   }
 
   String _betaCandidateNotesOutput() {
-    return '=== Termode v0.42 Beta Candidate ===\n'
+    return '=== Termode v0.43 Beta Candidate ===\n'
         'Termode is a standalone Android terminal with a REAL PTY shell.\n\n'
         'Highlights:\n'
         '* REAL PTY shell with host command interception\n'
@@ -340,7 +351,7 @@ class CommandService {
 
   String _betaCandidateHelpOutput() {
     return '=== Termode Beta Candidate ===\n'
-        'Termode v0.42 is a terminal-foundation beta (runtime expansion architecture).\n\n'
+        'Termode v0.43 is a terminal-foundation beta (prefix / PATH / environment system).\n\n'
         'Subcommands:\n'
         '  beta-candidate status     - Show beta candidate readiness summary\n'
         '  beta-candidate checklist  - Show the beta candidate checklist\n'
@@ -415,7 +426,7 @@ class CommandService {
     ]);
     final coreLabel = coreSystems == 'HEALTHY' ? 'OK' : coreSystems;
     return '=== Release Candidate Status ===\n'
-        'Version: v0.42\n'
+        'Version: v0.43\n'
         'Beta candidate: yes\n'
         'Core systems: $coreLabel\n'
         'Known limitations: intentional\n'
@@ -564,6 +575,9 @@ class CommandService {
         'curl/wget: planned (not installed)\n'
         'Editors: planned (not installed)\n'
         'Prefix: ${initialized ? 'OK' : 'NOT INITIALIZED'}\n'
+        'PATH overlay: ${initialized ? 'ready' : 'limited'}\n'
+        'Env: ${initialized ? 'ready' : 'limited'}\n'
+        'Bin dir: ${initialized ? 'ready' : 'limited'}\n'
         'Note: missing toolchains are expected in this architecture phase.\n'
         'Overall: ARCHITECTURE PHASE';
   }
@@ -610,24 +624,32 @@ class CommandService {
   Future<String> _runtimeInstallStatusOutput() async {
     final initialized = await RuntimePrefixService().isInitialized();
     return '=== Runtime Install Status ===\n'
-        'Mode: planning only\n'
+        'Mode: ${initialized ? 'environment ready' : 'planning only'}\n'
         'Real installs: not enabled yet\n'
-        'Prefix: ${initialized ? 'initialized' : 'not initialized'}\n'
-        'Next milestone: v0.43 Prefix / PATH / Environment System';
+        'Prefix initialized: ${initialized ? 'yes' : 'no'}\n'
+        'PATH overlay ready: ${initialized ? 'yes' : 'no'}\n'
+        'Env ready: ${initialized ? 'yes' : 'no'}\n'
+        'Bin dir ready: ${initialized ? 'yes' : 'no'}\n'
+        'Next milestone: v0.44 Binary Package Installer Prototype';
   }
 
   Future<String> _runtimeInstallDoctorOutput() async {
-    final initialized = await RuntimePrefixService().isInitialized();
+    final prefix = RuntimePrefixService();
+    final initialized = await prefix.isInitialized();
+    final p = await prefix.paths();
+    final binReady = Directory(p['bin']!).existsSync();
     final diagnostics = await NativeCommandService().getDiagnostics();
     final abi = diagnostics?['abi']?.toString();
     return '=== Runtime Install Doctor ===\n'
-        'Mode: planning only\n'
-        'Prefix plan: ${initialized ? 'OK' : 'NOT INITIALIZED (run prefix-init)'}\n'
+        'Mode: ${initialized ? 'environment ready' : 'planning only'}\n'
+        'Prefix initialized: ${initialized ? 'yes' : 'no'}\n'
+        'PATH overlay ready: ${initialized ? 'yes' : 'no'}\n'
+        'Env ready: ${initialized ? 'yes' : 'no'}\n'
+        'Bin dir ready: ${binReady ? 'yes' : 'no'}\n'
         'Android ABI: ${abi == null || abi.isEmpty ? 'unknown' : abi}\n'
-        'Runtime decision: frozen foundation; expansion architecture active\n'
+        'Actual installs: not enabled yet\n'
         'Safety: no downloads, no native execution\n'
-        'Note: real installs are not enabled yet.\n'
-        'Overall: ARCHITECTURE PHASE';
+        'Overall: ${initialized ? 'ENVIRONMENT READY' : 'ARCHITECTURE PHASE'}';
   }
 
   String _devSetupHelpOutput() {
@@ -694,11 +716,13 @@ class CommandService {
         'Terminal: OK\n'
         'REAL PTY: OK\n'
         'Prefix: ${initialized ? 'OK' : 'LIMITED'}\n'
+        'PATH: ${initialized ? 'OK' : 'LIMITED'}\n'
+        'Env: ${initialized ? 'OK' : 'LIMITED'}\n'
         'Git: planned\n'
         'Node.js: planned\n'
         'npm: planned\n'
         'Python: planned\n'
-        'Overall: ${initialized ? 'FOUNDATION READY' : 'ARCHITECTURE PHASE'}';
+        'Overall: ${initialized ? 'ENVIRONMENT READY' : 'ARCHITECTURE PHASE'}';
   }
 
   Future<String> _termodeDoctor({bool verbose = false}) async {
@@ -825,8 +849,12 @@ class CommandService {
         '  build-info, beta-candidate status, beta-candidate ready\n'
         'Beta feedback / RC:\n'
         '  feedback, feedback template, rc-checklist, rc-status\n'
-        'Runtime expansion (planning):\n'
-        '  prefix-info, prefix-init, prefix-doctor, path-info, env-info\n'
+        'Runtime environment:\n'
+        '  prefix-info, prefix-init, prefix-status, prefix-doctor\n'
+        '  path-info, path-status, path-preview, path-doctor\n'
+        '  env-info, env-status, env-preview, env-doctor, env-check\n'
+        '  bin-list, bin-which, bin-doctor, shim-info, shim-doctor\n'
+        'Runtime install planning:\n'
         '  toolchain-status, toolchain-list, toolchain-info, toolchain-doctor\n'
         '  runtime-install list, dev-setup list, dev-doctor\n'
         'Advanced probes:\n'
@@ -931,7 +959,7 @@ class CommandService {
     final docsOk = repoDocsOk || embeddedDocsOk;
     final readmeOk =
         !File('README.md').existsSync() ||
-        File('README.md').readAsStringSync().contains('v0.42');
+        File('README.md').readAsStringSync().contains('v0.43');
     final healthy = docsOk && readmeOk;
     return '=== Onboarding Doctor ===\n'
         'Welcome: OK\n'
@@ -1010,6 +1038,7 @@ class CommandService {
 
   Future<String> _statusOutput() async {
     final session = TerminalSessionService().activeSession;
+    final prefixReady = await RuntimePrefixService().isInitialized();
     final mode = session.isPtyInteractionActive ? 'REAL PTY' : 'NORMAL';
     final shell = (session.isRealPtyActive || session.isShellActive)
         ? 'running'
@@ -1038,13 +1067,15 @@ class CommandService {
         'Session: ${session.name}\n'
         'Workspace: $workspace\n'
         'Packages: $packages\n'
-        'Runtime: architecture phase (frozen foundation)\n'
+        'Runtime: environment architecture active\n'
+        'Prefix: ${prefixReady ? 'initialized' : 'not initialized'}\n'
+        'PATH overlay: ${prefixReady ? 'ready' : 'limited'}\n'
         'Toolchains: planned (not installed)\n'
         'Beta: $beta';
   }
 
   String _versionOutput() {
-    return 'Termode v0.42\n'
+    return 'Termode v0.43\n'
         'Runtime: frozen\n'
         'Shell: REAL PTY\n'
         'Packages: script-only';
@@ -1060,18 +1091,19 @@ class CommandService {
   String _buildInfoOutput() {
     return '=== Build Info ===\n'
         'App: Termode\n'
-        'Version: v0.42\n'
+        'Version: v0.43\n'
         'Build type: ${_buildTypeName()}\n'
-        'Runtime: architecture phase (frozen foundation)\n'
+        'Runtime: environment architecture active\n'
         'Toolchains: planned (not installed)\n'
         'Shell: REAL PTY\n'
         'Packages: script-only\n'
         'Beta candidate: terminal foundation beta\n'
-        'Artifact: Termode-v0.42-beta-debug.apk';
+        'Artifact: Termode-v0.43-env-debug.apk';
   }
 
   String _releaseNotesOutput() {
     return '=== Termode Release Notes ===\n'
+        'v0.43 Prefix / PATH / Environment System\n'
         'v0.42 Runtime Expansion Architecture\n'
         'v0.41 Beta Feedback Fixes / RC Cleanup\n'
         'v0.40 Beta Candidate Packaging\n'
@@ -1107,7 +1139,7 @@ class CommandService {
         ? 'REAL PTY'
         : 'NORMAL';
     return '=== Termode Bug Report ===\n'
-        'Termode version: v0.42\n'
+        'Termode version: v0.43\n'
         'Android ABI: $abi\n'
         'Runtime status: $runtimeStatus\n'
         'Package doctor: $packageStatus\n'
@@ -1306,10 +1338,12 @@ class CommandService {
               '  beta-candidate ready\n'
               '  feedback\n'
               '  rc-status\n\n'
-              'Runtime expansion (planning):\n'
-              '  prefix-info\n'
+              'Runtime environment:\n'
+              '  prefix-status\n'
+              '  path-status\n'
+              '  env-status\n'
+              '  bin-list\n'
               '  toolchain-status\n'
-              '  runtime-install list\n'
               '  dev-doctor\n\n'
               'Sub-help:\n'
               '  pkg help\n'
@@ -2184,6 +2218,77 @@ class CommandService {
       case 'env-info':
         return CommandResult(output: await RuntimePrefixService().envInfo());
 
+      case 'prefix-status':
+        final output = await RuntimePrefixService().prefixStatus();
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: UNHEALTHY'),
+        );
+
+      case 'path-status':
+        return CommandResult(output: await RuntimePrefixService().pathStatus());
+
+      case 'path-preview':
+        return CommandResult(
+          output: await RuntimePrefixService().pathPreview(),
+        );
+
+      case 'path-doctor':
+        final output = await RuntimePrefixService().pathDoctor();
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: UNHEALTHY'),
+        );
+
+      case 'env-status':
+        return CommandResult(output: await RuntimePrefixService().envStatus());
+
+      case 'env-preview':
+        return CommandResult(output: await RuntimePrefixService().envPreview());
+
+      case 'env-doctor':
+        final output = await RuntimePrefixService().envDoctor();
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: UNHEALTHY'),
+        );
+
+      case 'env-check':
+        return CommandResult(output: await RuntimePrefixService().envCheck());
+
+      case 'env-script':
+        return CommandResult(
+          output: await RuntimePrefixService().envScriptInfo(),
+        );
+
+      case 'bin-list':
+        return CommandResult(output: await RuntimePrefixService().binList());
+
+      case 'bin-which':
+        if (args.isEmpty) {
+          return CommandResult(
+            output: 'Usage: bin-which <command>',
+            isError: true,
+          );
+        }
+        final output = await RuntimePrefixService().binWhich(args[0]);
+        return CommandResult(
+          output: output,
+          isError: output.startsWith('bin-which:'),
+        );
+
+      case 'bin-doctor':
+        return CommandResult(output: await RuntimePrefixService().binDoctor());
+
+      case 'shim-info':
+        return CommandResult(output: RuntimePrefixService().shimInfo());
+
+      case 'shim-list':
+        return CommandResult(output: await RuntimePrefixService().shimList());
+
+      case 'shim-doctor':
+        return CommandResult(output: await RuntimePrefixService().shimDoctor());
+
       case 'toolchain-status':
         return CommandResult(output: _toolchainStatusOutput());
 
@@ -2219,7 +2324,8 @@ class CommandService {
           case 'plan':
             if (args.length < 2) {
               return CommandResult(
-                output: 'Usage: runtime-install plan <tool>\n'
+                output:
+                    'Usage: runtime-install plan <tool>\n'
                     'Run: runtime-install list',
                 isError: true,
               );
