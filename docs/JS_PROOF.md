@@ -35,8 +35,9 @@ Tiny JS proof:
 - Supports only small expressions.
 
 Embedded JS engine:
-- A future possibility such as QuickJS, Duktape, JavaScriptCore, or V8.
-- Would need a new size, ABI, API, safety, and lifecycle review.
+- Tracked by the v0.32 `js-engine-*` decision commands.
+- QuickJS is the recommended next probe, with Duktape as fallback.
+- Would need a new size, ABI, API, timeout, safety, and lifecycle review.
 
 Node.js:
 - A later goal with much higher risk.
@@ -88,10 +89,14 @@ js-proof plan
 ## Future Path
 
 1. Tiny JS proof
-2. Real embedded JS engine research
-3. Node runtime strategy
-4. npm strategy
-5. dev server workflow
+2. Embedded JS engine decision/probe
+3. v0.33 QuickJS Probe if resource limits are practical
+4. Duktape fallback if QuickJS is too complex
+5. Node runtime strategy
+6. npm strategy
+7. dev server workflow
 
 Remote packages remain script-only. `js-proof` is built in, not an installable
 package. Node.js and npm are not available yet.
+
+See [JS_ENGINE_DECISION.md](JS_ENGINE_DECISION.md) for the v0.32 decision.

@@ -15,7 +15,9 @@ script packages executed through shell helper functions.
 - Workspace files live under `files/home/projects`.
 - Native tools are built into Termode and exposed through JNI; they are not
   installable packages.
-- Runtime candidate research is the current phase before attempting Node.js.
+- `js-proof` is the current safe JavaScript-like proof.
+- JS engine decision commands compare QuickJS, Duktape, JavaScriptCore, V8,
+  Node, and no-engine-yet before any real engine is added.
 
 ## Android Execution Restrictions
 
@@ -51,7 +53,7 @@ management proofs before they become package types.
 5. Keep tiny native tools as built-in audited capabilities, not packages.
 6. Research native runtime candidates.
 7. Prove a tiny JS/runtime path before Node with `js-proof`.
-8. Decide whether to ship a real embedded JS engine.
+8. Decide whether to ship a real embedded JS engine with `js-engine-*`.
 9. Add a Node runtime proof after native execution behavior is understood.
 10. Prove npm install/cache behavior inside app storage.
 11. Prove a minimal Vite dev server.
@@ -68,9 +70,10 @@ management proofs before they become package types.
 
 ## Recommended Next Proof
 
-The current runtime target is the tiny `js-proof` evaluator, not Node. It proves
-controlled JavaScript-style evaluation through the APK-native-library/JNI path.
-The next target should decide whether to add a real embedded JS engine.
+The current runtime target is still the tiny `js-proof` evaluator, not Node.
+v0.32 adds the JS engine decision/probe layer and intentionally does not add a
+real engine. The recommended next proof is a scoped QuickJS probe, with Duktape
+as fallback if QuickJS cannot stay small and resource-limited.
 
 ## Bundled Runtime Proof Findings (v0.28)
 
@@ -105,6 +108,5 @@ trying to drop and execute a binary in app storage. A future Node strategy
 should be evaluated as an APK-shipped native component driven through a native
 bridge.
 
-Recommended next step: embedded JS engine decision / real engine probe (still
-no Node), using the tiny `js-proof` results to decide whether a real engine is
-worth adding.
+Recommended next step: v0.33 QuickJS Probe (still no Node/npm), using the
+v0.32 decision criteria in [JS_ENGINE_DECISION.md](JS_ENGINE_DECISION.md).

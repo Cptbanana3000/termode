@@ -61,6 +61,7 @@ class JsProofService {
     sb.writeln('Node.js: not included');
     sb.writeln('npm: not included');
     sb.writeln('Shell execution: no');
+    sb.writeln('JS engine decision: available via js-engine-decision');
     sb.write('Status: ${r['status'] ?? 'PROOF'}');
     return sb.toString();
   }
@@ -134,10 +135,11 @@ class JsProofService {
   String plan() {
     return '=== JS Proof Plan ===\n'
         '1. Tiny JS proof\n'
-        '2. Embedded JS engine research\n'
-        '3. Real embedded JS engine proof\n'
-        '4. Node binary strategy later\n'
-        '5. npm later\n'
-        '6. Vite later';
+        '2. Embedded JS engine decision/probe\n'
+        '3. v0.33 QuickJS Probe if resource limits are practical\n'
+        '4. Duktape fallback if QuickJS is too complex\n'
+        '5. Node binary strategy later\n'
+        '6. npm later\n'
+        '7. Vite later';
   }
 }

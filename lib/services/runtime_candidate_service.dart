@@ -68,8 +68,7 @@ class RuntimeResearchDoctorResult {
 }
 
 class RuntimeCandidateService {
-  static const recommendedNextMilestone =
-      'v0.32 Embedded JS Engine Decision / Real Engine Probe';
+  static const recommendedNextMilestone = 'v0.33 QuickJS Probe';
 
   static const List<RuntimeCandidate> candidates = [
     RuntimeCandidate(
@@ -213,9 +212,10 @@ class RuntimeCandidateService {
       updateStrategy: 'App releases while the proof is small and audited.',
       securityNotes:
           'Must sandbox evaluation, limit exposed APIs, and avoid arbitrary native access.',
-      currentStatus: 'Research candidate, not added yet.',
+      currentStatus:
+          'v0.32 decision commands are available; no real engine is integrated yet.',
       recommendation:
-          'Tiny JS proof is available; use it to decide whether to embed a real engine next.',
+          'Tiny JS proof is available; use v0.32 js-engine-* commands and attempt a scoped QuickJS probe next.',
       recommendedNextStep: recommendedNextMilestone,
       docsReference: 'docs/NATIVE_RUNTIME_CANDIDATES.md',
     ),
@@ -358,8 +358,9 @@ class RuntimeCandidateService {
         '1. Keep script packages as stable package system.\n'
         '2. Keep JNI native tools for audited built-in capabilities.\n'
         '3. Research APK-native-library based runtime embedding.\n'
-        '4. Test tiny embedded JS engine before Node.\n'
-        '5. Only attempt Node after executable/runtime strategy is proven.\n\n'
+        '4. Use v0.32 JS engine decision commands before adding engine code.\n'
+        '5. Test a scoped QuickJS embedded engine proof before Node.\n'
+        '6. Only attempt Node after executable/runtime strategy is proven.\n\n'
         'Recommended path: script packages + JNI tools now, embedded JS engine next, Node later.';
   }
 
@@ -379,8 +380,9 @@ class RuntimeCandidateService {
   String next() {
     return '=== Runtime Next ===\n'
         'Recommended next milestone: $recommendedNextMilestone\n'
-        'Reason: js-proof proves controlled Dart -> Kotlin -> native evaluation without Node.js or npm; the next decision is whether to add a real embedded engine.\n'
-        'Fallback if real-engine scope is too large: v0.32 Native Runtime Candidate Narrowing.';
+        'Reason: v0.32 decided not to add a real engine yet; QuickJS is the strongest small real-engine candidate if it can stay isolated and resource-limited.\n'
+        'Fallback if QuickJS scope is too large: v0.33 Duktape Probe or keep current js-proof longer.\n'
+        'Node.js/npm: still not included.';
   }
 
   Future<String> researchDoctor(String sessionId) async {
@@ -410,6 +412,7 @@ class RuntimeCandidateService {
     sb.writeln(
       'Preview/localhost supported: ${result.previewLocalhostSupported ? 'YES' : 'NO'}',
     );
+    sb.writeln('JS engine decision/probe: available');
     sb.writeln('Recommended next proof: $recommendedNextMilestone');
     sb.writeln('Node.js included: NO');
     sb.write('Overall readiness: ${result.overall}');
@@ -424,6 +427,7 @@ class RuntimeCandidateService {
       'docs/PACKAGE_AUTHORING.md',
       'docs/NATIVE_RUNTIME_CANDIDATES.md',
       'docs/JS_PROOF.md',
+      'docs/JS_ENGINE_DECISION.md',
     ];
     return docs.every((path) => File(path).existsSync());
   }

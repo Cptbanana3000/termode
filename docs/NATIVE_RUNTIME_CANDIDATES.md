@@ -1,8 +1,8 @@
 # Native Runtime Candidates
 
-Termode v0.30 is a research milestone. It compares possible runtime strategies
-before attempting Node.js, npm, Python, Git, native package downloads, or any
-real runtime installation.
+Termode runtime research compares possible runtime strategies before attempting
+Node.js, npm, Python, Git, native package downloads, or any real runtime
+installation.
 
 ## 1. Script Packages Through /system/bin/sh
 
@@ -65,8 +65,8 @@ This path needs a tiny proof before it can be trusted.
 ## 5. Embedded JS Engine
 
 An embedded JavaScript engine is the recommended next feasibility step before
-Node. Candidate engines to research later include QuickJS, Duktape,
-JavaScriptCore, and V8.
+Node. v0.32 adds `js-engine-*` decision commands comparing QuickJS, Duktape,
+JavaScriptCore, V8, Node, the current proof, and no-engine-yet.
 
 Strengths:
 - Proves JavaScript evaluation without npm.
@@ -77,6 +77,7 @@ Limits:
 - Not Node-compatible by itself.
 - No npm, dev server, file watching, or child-process support yet.
 - Requires sandboxing and careful API exposure.
+- Requires timeout or interrupt behavior before broad script execution.
 
 ## 6. Node Binary
 
@@ -116,11 +117,17 @@ Short term:
 Current proof:
 - `v0.31 Tiny Embedded JS Engine Feasibility Probe` via `js-proof`
 
-Next proof:
-- `v0.32 Embedded JS Engine Decision / Real Engine Probe`
+Current decision:
+- `v0.32 Real Embedded JS Engine Decision / Probe` via `js-engine-*`
 
-Fallback proof if embedded JS blocks:
-- `v0.32 Native Runtime Candidate Narrowing`
+Next proof:
+- `v0.33 QuickJS Probe`
+
+Fallback proof if QuickJS blocks:
+- `v0.33 Duktape Probe` or keep the current `js-proof` longer
 
 Later:
 - Attempt Node only after the runtime strategy is proven.
+
+See [JS_ENGINE_DECISION.md](JS_ENGINE_DECISION.md) for the detailed engine
+comparison.

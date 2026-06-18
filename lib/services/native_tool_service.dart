@@ -224,6 +224,7 @@ class NativeToolService {
     sb.writeln('ABI: ${abiOk ? 'OK' : 'FAIL'}');
     sb.writeln('Hash: ${hashOk ? 'OK' : 'FAIL'}');
     sb.writeln('Tiny JS proof: available via js-proof');
+    sb.writeln('JS engine decision: available via js-engine-decision');
     sb.writeln('Runtime research: available via runtime-candidates');
     sb.writeln('Recommended next proof: runtime-next');
     sb.writeln('Node.js: not included');

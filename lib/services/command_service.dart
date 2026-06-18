@@ -15,6 +15,7 @@ import 'preview_service.dart';
 import 'bundled_runtime_service.dart';
 import 'native_tool_service.dart';
 import 'js_proof_service.dart';
+import 'js_engine_decision_service.dart';
 import 'package_manager_service.dart';
 import 'workspace_service.dart';
 
@@ -183,6 +184,13 @@ class CommandService {
               '  js-proof doctor - Diagnose the JS proof bridge\n'
               '  js-proof limits - Show safety limits\n'
               '  js-proof plan - Show staged JS/runtime plan\n\n'
+              'JS Engine Decision Commands:\n'
+              '  js-engine-candidates - Compare embedded JS engine options\n'
+              '  js-engine-candidate <name> - Show one JS engine candidate\n'
+              '  js-engine-decision - Show v0.32 JS engine decision\n'
+              '  js-engine-risks - List JS engine integration risks\n'
+              '  js-engine-next - Show recommended JS engine next step\n'
+              '  js-engine-doctor - Check JS engine decision readiness\n\n'
               'Dev Server Commands:\n'
               '  localhost-doctor - Check localhost readiness\n'
               '  localhost-capabilities - Show localhost support\n'
@@ -952,6 +960,7 @@ class CommandService {
               '  bundled-runtime-plan   - Show bundled runtime roadmap\n'
               '  native-tool [sub]      - Run a tiny native bridge tool\n'
               '  js-proof [sub]         - Run a tiny JS-like native bridge proof\n'
+              '  js-engine-*            - Show embedded JS engine decision/research\n'
               '  localhost-doctor       - Check localhost readiness\n'
               '  localhost-capabilities - Show dev server readiness support\n'
               '  port-check <port>      - Check 127.0.0.1 port status\n'
@@ -1155,6 +1164,40 @@ class CommandService {
               isError: true,
             );
         }
+
+      case 'js-engine-candidates':
+        return CommandResult(
+          output: JsEngineDecisionService().candidatesTable(),
+        );
+
+      case 'js-engine-candidate':
+        if (args.isEmpty) {
+          return CommandResult(
+            output: 'Usage: js-engine-candidate <name>',
+            isError: true,
+          );
+        }
+        final output = JsEngineDecisionService().candidateDetails(args[0]);
+        return CommandResult(
+          output: output,
+          isError: output.startsWith('Unknown JS engine candidate:'),
+        );
+
+      case 'js-engine-decision':
+        return CommandResult(output: JsEngineDecisionService().decision());
+
+      case 'js-engine-risks':
+        return CommandResult(output: JsEngineDecisionService().risks());
+
+      case 'js-engine-next':
+        return CommandResult(output: JsEngineDecisionService().next());
+
+      case 'js-engine-doctor':
+        final output = JsEngineDecisionService().doctor();
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: UNHEALTHY'),
+        );
 
       case 'localhost-doctor':
         final verbose = args.contains('--verbose');

@@ -226,9 +226,10 @@ void main() {
       final result = await commandService.execute('js-proof plan');
 
       expect(result.output, contains('1. Tiny JS proof'));
-      expect(result.output, contains('2. Embedded JS engine research'));
-      expect(result.output, contains('4. Node binary strategy later'));
-      expect(result.output, contains('6. Vite later'));
+      expect(result.output, contains('2. Embedded JS engine decision/probe'));
+      expect(result.output, contains('3. v0.33 QuickJS Probe'));
+      expect(result.output, contains('5. Node binary strategy later'));
+      expect(result.output, contains('7. Vite later'));
     });
 
     test('native bridge success mock', () async {
@@ -252,10 +253,13 @@ void main() {
       final next = await commandService.execute('runtime-next');
 
       expect(plan.output, contains('7. Tiny JS/runtime feasibility proof'));
-      expect(plan.output, contains('8. Real embedded JS engine proof'));
+      expect(
+        plan.output,
+        contains('8. Real embedded JS engine decision/probe'),
+      );
       expect(caps.output, contains('Tiny JS proof via native bridge'));
       expect(caps.output, contains('does not prove Node compatibility'));
-      expect(next.output, contains('v0.32 Embedded JS Engine Decision'));
+      expect(next.output, contains('v0.33 QuickJS Probe'));
     });
 
     test('help includes js-proof', () async {

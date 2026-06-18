@@ -128,7 +128,7 @@ void main() {
       expect(result.output, contains('Embedded JS Engine'));
       expect(result.output, contains('QuickJS'));
       expect(result.output, contains('Tiny JS proof is available'));
-      expect(result.output, contains('v0.32 Embedded JS Engine'));
+      expect(result.output, contains('v0.33 QuickJS Probe'));
     });
 
     test('runtime-candidate node-binary details', () async {
@@ -164,7 +164,7 @@ void main() {
       expect(result.output, contains('Keep JNI native tools'));
       expect(
         result.output,
-        contains('Test tiny embedded JS engine before Node'),
+        contains('Test a scoped QuickJS embedded engine proof before Node'),
       );
     });
 
@@ -182,9 +182,9 @@ void main() {
       final result = await commandService.execute('runtime-next');
 
       expect(result.isError, isFalse);
-      expect(result.output, contains('v0.32 Embedded JS Engine Decision'));
+      expect(result.output, contains('v0.33 QuickJS Probe'));
       expect(result.output, contains('Fallback'));
-      expect(result.output, contains('Native Runtime Candidate Narrowing'));
+      expect(result.output, contains('Duktape Probe'));
     });
 
     test('runtime-research-doctor output', () async {
@@ -208,7 +208,10 @@ void main() {
 
         expect(result.output, contains('6. Native runtime candidate research'));
         expect(result.output, contains('7. Tiny JS/runtime feasibility proof'));
-        expect(result.output, contains('8. Real embedded JS engine proof'));
+        expect(
+          result.output,
+          contains('8. Real embedded JS engine decision/probe'),
+        );
         expect(result.output, contains('12. CalypsoIDE integration later'));
       },
     );
@@ -266,7 +269,7 @@ void main() {
         expect(output, contains('runtime-candidates'));
         expect(output, contains('=== Runtime Candidates ==='));
         expect(output, contains('runtime-next'));
-        expect(output, contains('v0.32 Embedded JS Engine Decision'));
+        expect(output, contains('v0.33 QuickJS Probe'));
 
         session.isPtyInteractionActive = false;
         session.isRealPtyActive = false;
@@ -279,6 +282,7 @@ void main() {
       expect(File('docs/BUNDLED_RUNTIME_PROOF.md').existsSync(), isTrue);
       expect(File('docs/NATIVE_TOOL_PROOF.md').existsSync(), isTrue);
       expect(File('docs/PACKAGE_AUTHORING.md').existsSync(), isTrue);
+      expect(File('docs/JS_ENGINE_DECISION.md').existsSync(), isTrue);
     });
   });
 }
