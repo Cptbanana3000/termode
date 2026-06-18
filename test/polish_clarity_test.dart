@@ -96,33 +96,24 @@ void main() {
       expect(result.output, contains('host-*'));
     });
 
-    test(
-      'default help lists VFS commands in mobile-optimized layout',
-      () async {
-        final vfs = VirtualFileSystem();
-        final commandService = CommandService(vfs, 'session_polish');
+    test('default help is compact and points to discovery commands', () async {
+      final vfs = VirtualFileSystem();
+      final commandService = CommandService(vfs, 'session_polish');
 
-        final result = await commandService.execute('help');
-        expect(result.isError, isFalse);
-        expect(
-          result.output,
-          contains('Termode runs in a true native REAL PTY shell by default.'),
-        );
-        expect(
-          result.output,
-          contains('whereami    - View active sandbox directories'),
-        );
-        expect(result.output, contains('Termode VFS Commands:'));
-        expect(
-          result.output,
-          contains('pwd         - Print VFS working directory'),
-        );
-        expect(result.output, contains('ls [path]   - List VFS directory'));
-        expect(result.output, contains('rm [path]   - Remove VFS file/dir'));
-        // Ensure native commands are excluded from the main VFS list
-        expect(result.output, isNot(contains('android-shell [command]')));
-        expect(result.output, isNot(contains('toybox [args...]')));
-      },
-    );
+      final result = await commandService.execute('help');
+      expect(result.isError, isFalse);
+      expect(
+        result.output,
+        contains('Termode is a standalone Android terminal'),
+      );
+      expect(result.output, contains('Start:'));
+      expect(result.output, contains('welcome'));
+      expect(result.output, contains('examples'));
+      expect(result.output, contains('glossary'));
+      expect(result.output, contains('commands --all'));
+      // Ensure detailed native commands are excluded from the compact front door.
+      expect(result.output, isNot(contains('android-shell [command]')));
+      expect(result.output, isNot(contains('toybox [args...]')));
+    });
   });
 }

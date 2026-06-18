@@ -158,6 +158,49 @@ Remaining manual work:
 - confirm package helper reload remains silent on device
 - capture any bad wrapping/readability issue visible only on the handset
 
+## v0.38 Onboarding QA Additions
+
+Run:
+
+```sh
+welcome
+getting-started
+first-run
+help
+commands
+commands --all
+examples
+examples packages
+examples workspace
+examples preview
+examples runtime
+glossary
+beta-known-limits
+onboarding-doctor
+version
+release-notes
+beta-next
+runtime-freeze next
+```
+
+Expected:
+
+- first-run text is compact
+- examples are copy-friendly
+- limitations are clear
+- runtime remains frozen
+- onboarding-doctor is healthy
+
+Manual device result for v0.38:
+
+- debug APK installed successfully on a real Android device
+- `adb input text` was unreliable with the active terminal/key handling and
+  dropped characters, so the full typed checklist still needs a hand pass
+- a stale startup banner was found during device inspection and fixed from
+  `Termode v0.9.2` to `Termode v0.38`
+- startup hints now point to `welcome`, `commands`, and `beta-known-limits`
+- automated tests cover the new onboarding commands and REAL PTY interception
+
 ## Acceptable LIMITED Statuses
 
 - storage is LIMITED when no Android folder is linked

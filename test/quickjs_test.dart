@@ -323,10 +323,12 @@ void main() {
 
     test('help includes quickjs', () async {
       final help = await commandService.execute('help');
+      final quickjsHelp = await commandService.execute('quickjs help');
       final runtimeHelp = await commandService.execute('runtime-help');
 
-      expect(help.output, contains('QuickJS Probe Commands:'));
-      expect(help.output, contains('quickjs eval <code>'));
+      expect(help.output, contains('commands --all'));
+      expect(quickjsHelp.output, contains('=== QuickJS Probe ==='));
+      expect(quickjsHelp.output, contains('quickjs eval <code>'));
       expect(runtimeHelp.output, contains('quickjs [sub]'));
     });
 

@@ -319,10 +319,12 @@ void main() {
 
     test('help includes duktape', () async {
       final help = await commandService.execute('help');
+      final duktapeHelp = await commandService.execute('duktape help');
       final runtimeHelp = await commandService.execute('runtime-help');
 
-      expect(help.output, contains('Duktape Probe Commands:'));
-      expect(help.output, contains('duktape eval <code>'));
+      expect(help.output, contains('commands --all'));
+      expect(duktapeHelp.output, contains('=== Duktape Probe ==='));
+      expect(duktapeHelp.output, contains('duktape eval <code>'));
       expect(runtimeHelp.output, contains('duktape [sub]'));
     });
 

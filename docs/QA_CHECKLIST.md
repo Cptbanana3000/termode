@@ -21,6 +21,16 @@ v0.37.1 notes:
 - unified doctor now prefers explicit `Overall:` / `Status:` lines
 - package helper reload prompt refresh no longer merges into package output
 
+v0.38 onboarding checks:
+
+- run `welcome`
+- run `examples`
+- run `examples packages`
+- run `examples workspace`
+- run `glossary`
+- run `onboarding-doctor`
+- confirm README/docs match the in-app guidance
+
 ## App Launch
 
 - launch app
@@ -95,3 +105,10 @@ v0.37.1 notes:
 - workspace path escape or protected path deletion
 - package helper reload leak/regression
 - doctor reporting healthy while a critical subsystem is broken
+
+## v0.38 Device Note
+
+- debug APK install was verified on a real Android device
+- automated `adb input text` dropped characters in the active terminal, so the
+  command checklist still needs a human typed pass
+- stale startup banner text was fixed to `Termode v0.38`

@@ -271,10 +271,12 @@ void main() {
 
     test('help includes js-proof', () async {
       final help = await commandService.execute('help');
+      final jsProofHelp = await commandService.execute('js-proof help');
       final runtimeHelp = await commandService.execute('runtime-help');
 
-      expect(help.output, contains('JS Proof Commands:'));
-      expect(help.output, contains('js-proof eval <code>'));
+      expect(help.output, contains('js-proof help'));
+      expect(jsProofHelp.output, contains('=== JS Proof ==='));
+      expect(jsProofHelp.output, contains('js-proof eval <code>'));
       expect(runtimeHelp.output, contains('js-proof [sub]'));
     });
 

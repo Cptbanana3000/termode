@@ -3,8 +3,7 @@ import 'dart:io';
 import 'runtime_capability_service.dart';
 
 class RuntimeFreezeService {
-  static const nextMilestone =
-      'v0.36 Product Stabilization / Beta Readiness Pass';
+  static const nextMilestone = 'v0.39 UI Polish / Settings Polish';
 
   static const supportedRuntimeDirection = [
     'script packages through /system/bin/sh',
@@ -62,22 +61,22 @@ class RuntimeFreezeService {
   }
 
   String deferred() {
-    final sb = StringBuffer();
-    sb.writeln('=== Runtime Freeze Deferred ===');
-    for (final item in deferredItems) {
-      sb.writeln('  - $item');
-    }
-    sb.write('Remote packages remain script-only.');
-    return sb.toString();
+    return '=== Runtime Freeze Deferred ===\n'
+        '* Node.js/npm are not included yet.\n'
+        '* Python/Git are not included yet.\n'
+        '* Native binary packages are not supported.\n'
+        '* QuickJS/Duktape are probe surfaces only.\n'
+        '* Runtime research is frozen for now.\n'
+        '* Remote packages remain script-only.';
   }
 
   String why() {
     return '=== Runtime Freeze Why ===\n'
-        '  - No clean source/vendor policy exists yet for real embedded engines.\n'
-        '  - Engine sandboxing needs careful design.\n'
-        '  - Timeout and infinite-loop handling are unresolved.\n'
-        '  - Node/npm are significantly more complex than JS eval.\n'
-        '  - Product stability matters first.';
+        '* Termode is stabilizing the app users have today.\n'
+        '* Real runtimes need source, sandboxing, timeout, and update policies.\n'
+        '* Node/npm are much larger than the current script package model.\n'
+        '* QuickJS/Duktape probes stay available for research history.\n'
+        '* Product stability matters first.';
   }
 
   String next() {
@@ -85,14 +84,11 @@ class RuntimeFreezeService {
         'Recommended next milestone:\n'
         '$nextMilestone\n\n'
         'Focus:\n'
-        '  - docs/help cleanup\n'
-        '  - onboarding\n'
-        '  - command discoverability\n'
-        '  - device QA\n'
-        '  - bug bash\n'
-        '  - package polish\n'
-        '  - workspace polish\n'
-        '  - terminal UX polish';
+        '  - UI polish\n'
+        '  - settings polish\n'
+        '  - beta candidate cleanup\n'
+        '  - package/workspace/terminal QA\n'
+        'Runtime experiments stay deferred.';
   }
 
   String doctor() {

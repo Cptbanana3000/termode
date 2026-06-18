@@ -323,8 +323,10 @@ void main() {
 
     test('help and devserver-help include preview commands', () async {
       final help = await commandService.execute('help');
+      final all = await commandService.execute('commands --all');
       final devserverHelp = await commandService.execute('devserver-help');
-      for (final output in [help.output, devserverHelp.output]) {
+      expect(help.output, contains('preview-help'));
+      for (final output in [all.output, devserverHelp.output]) {
         expect(output, contains('preview-open'));
         expect(output, contains('preview-copy'));
         expect(output, contains('preview-doctor'));

@@ -295,8 +295,10 @@ void main() {
     });
 
     test('help lists native tool commands', () async {
-      final result = await commandService.execute('help');
-      expect(result.output, contains('Native Tool Commands:'));
+      final help = await commandService.execute('help');
+      final result = await commandService.execute('native-tool help');
+      expect(help.output, contains('native-tool help'));
+      expect(result.output, contains('=== Native Tool ==='));
       expect(result.output, contains('native-tool echo <text>'));
     });
 

@@ -135,17 +135,17 @@ class TerminalSessionService extends ChangeNotifier {
         ]);
       }
       lines.addAll([
-        TerminalLine(text: 'Termode v0.9.2', type: LineType.output),
+        TerminalLine(text: 'Termode v0.38', type: LineType.output),
         TerminalLine(
-          text: 'Type "help" to get started.',
+          text: 'Type "welcome" to get started.',
           type: LineType.output,
         ),
         TerminalLine(
-          text: 'Type "runtime-help" for native commands.',
+          text: 'Type "commands" to discover commands.',
           type: LineType.output,
         ),
         TerminalLine(
-          text: 'Type "storage-help" for storage commands.',
+          text: 'Type "beta-known-limits" for current limits.',
           type: LineType.output,
         ),
       ]);
@@ -611,6 +611,9 @@ class TerminalSessionService extends ChangeNotifier {
         'getting-started',
         'first-run',
         'commands',
+        'examples',
+        'glossary',
+        'onboarding-doctor',
         'doctor',
         'beta',
         'beta-status',

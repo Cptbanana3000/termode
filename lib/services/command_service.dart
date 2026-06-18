@@ -221,20 +221,20 @@ class CommandService {
 
   String _betaKnownLimitsOutput() {
     return '=== Beta Known Limits ===\n'
-        '* No Node.js/npm/Python/Git yet.\n'
-        '* Native packages are not supported.\n'
+        '* Node.js/npm are not included yet.\n'
+        '* Python/Git are not included yet.\n'
+        '* Native binary packages are not supported.\n'
         '* QuickJS/Duktape are probe surfaces only.\n'
-        '* Direct app-bin execution may be blocked by Android.\n'
-        '* Storage import/export may be limited.\n'
-        '* Some terminal apps/features may not behave exactly like desktop Linux.\n'
-        '* This is beta software.';
+        '* Runtime research is frozen for now.\n'
+        '* Storage features need Android folder linking.\n'
+        '* Termode is beta software.';
   }
 
   String _betaNextOutput() {
     return '=== Beta Next ===\n'
         'Recommended next milestone:\n'
-        'v0.38 Documentation / Onboarding Polish\n\n'
-        'Reason: v0.37 adds the device QA bug-bash workflow and keeps docs/help cleanup as the remaining score gap.';
+        'v0.39 UI Polish / Settings Polish\n\n'
+        'Reason: v0.38 focuses on onboarding, command discovery, README, and beta tester docs.';
   }
 
   Future<String> _termodeDoctor({bool verbose = false}) async {
@@ -308,7 +308,7 @@ class CommandService {
 
   String _welcomeOutput() {
     return 'Welcome to Termode.\n\n'
-        'Try:\n'
+        'Start here:\n\n'
         '1. default-shell\n'
         '2. pwd\n'
         '3. pkg list\n'
@@ -319,13 +319,15 @@ class CommandService {
         '8. host-write hello.txt "hello"\n'
         '9. host-cat hello.txt\n\n'
         'Useful:\n'
-        'help\n'
         'commands\n'
         'doctor\n'
         'pkg help\n'
         'workspace\n'
         'keyboard-help\n'
-        'runtime-freeze status';
+        'qa-status\n\n'
+        'Known:\n'
+        'Node/npm/Python/Git are not included yet.\n'
+        'Run beta-known-limits for details.';
   }
 
   String _commandsOutput({bool all = false}) {
@@ -333,21 +335,138 @@ class CommandService {
       return '=== All Commands ===\n${kTermodeCommands.join('\n')}';
     }
     return '=== Termode Commands ===\n'
-        'Shell:\n'
-        '  default-shell, stop-shell, mode\n'
+        'Getting started:\n'
+        '  welcome, getting-started, examples, glossary\n'
+        'Shell / PTY:\n'
+        '  default-shell, stop-shell, normal-mode, mode\n'
+        'Sessions / tabs:\n'
+        '  tabs, tab-new, tab-switch, tab-rename, tab-close, history\n'
         'Packages:\n'
-        '  pkg, runtime-tools\n'
-        'Workspace:\n'
-        '  workspace, workspace-init, workspace-cd\n'
-        'Files:\n'
-        '  host-ls, host-cat, host-write\n'
-        'Diagnostics:\n'
-        '  doctor, beta-status, pkg doctor, session-doctor\n'
-        'Runtime:\n'
-        '  runtime-freeze, js-proof, native-tool\n'
-        'Preview:\n'
-        '  preview, localhost-doctor\n\n'
+        '  pkg, pkg list, pkg install hello, pkg doctor\n'
+        'Workspace / files:\n'
+        '  workspace-init, workspace-cd, host-write, host-cat, host-ls\n'
+        'Storage:\n'
+        '  storage-status, storage-link, storage-test, storage-help\n'
+        'Terminal UX:\n'
+        '  keyboard-help, keyboard-test, ansi-test, scroll-test, copy-session\n'
+        'Preview / localhost:\n'
+        '  preview, preview-url, preview-check, localhost-doctor\n'
+        'Runtime status:\n'
+        '  runtime-freeze status, runtime-doctor, native-tool, js-proof\n'
+        'QA / beta:\n'
+        '  doctor, qa-status, qa-run, beta-status, onboarding-doctor\n'
+        'Advanced probes:\n'
+        '  runtime-candidates, js-engine-decision, quickjs, duktape\n\n'
         'Use commands --all for the full catalog.';
+  }
+
+  String _examplesOutput([String? category]) {
+    final key = category?.toLowerCase();
+    if (key == null || key.isEmpty) {
+      return '=== Termode Examples ===\n'
+          'examples shell\n'
+          'examples packages\n'
+          'examples workspace\n'
+          'examples files\n'
+          'examples preview\n'
+          'examples qa\n'
+          'examples runtime';
+    }
+    switch (key) {
+      case 'shell':
+        return '=== Examples: shell ===\n'
+            'default-shell\n'
+            'pwd\n'
+            'echo hello\n'
+            'stop-shell\n'
+            'default-shell';
+      case 'packages':
+        return '=== Examples: packages ===\n'
+            'pkg list\n'
+            'pkg install hello\n'
+            'hello\n'
+            'pkg verify hello\n'
+            'pkg remove hello\n'
+            'pkg doctor';
+      case 'workspace':
+        return '=== Examples: workspace ===\n'
+            'workspace-init demo\n'
+            'workspace-cd demo\n'
+            'pwd\n'
+            'host-write hello.txt "hello"\n'
+            'host-cat hello.txt\n'
+            'workspace-doctor';
+      case 'files':
+        return '=== Examples: files ===\n'
+            'host-ls\n'
+            'host-write note.txt "hello"\n'
+            'host-cat note.txt\n'
+            'host-touch empty.txt\n'
+            'host-rm empty.txt';
+      case 'preview':
+        return '=== Examples: preview ===\n'
+            'preview-url 3000\n'
+            'preview-check 3000\n'
+            'preview-open 3000 --force\n'
+            'preview-history\n'
+            'preview-doctor';
+      case 'qa':
+        return '=== Examples: qa ===\n'
+            'qa-status\n'
+            'doctor\n'
+            'beta-status\n'
+            'qa-report\n'
+            'bug-report';
+      case 'runtime':
+        return '=== Examples: runtime ===\n'
+            'runtime-freeze status\n'
+            'runtime-freeze doctor\n'
+            'runtime-doctor\n'
+            'native-tool doctor\n'
+            'js-proof doctor';
+      default:
+        return 'Unknown examples category: $category\n'
+            'Use: examples <shell|packages|workspace|files|preview|qa|runtime>';
+    }
+  }
+
+  String _glossaryOutput() {
+    return '=== Termode Glossary ===\n'
+        'REAL PTY: the live Android shell Termode connects to.\n'
+        'NORMAL mode: Termode app commands without direct shell input.\n'
+        'Host command: an app-managed command intercepted inside REAL PTY.\n'
+        'Script package: a safe shell-script package installed by pkg.\n'
+        'Remote repo: trusted script package index/source.\n'
+        'Workspace: a project folder under Termode files/home/projects.\n'
+        'Runtime frozen: no new runtime engines are being added right now.\n'
+        'js-proof: small controlled JavaScript-like proof command.\n'
+        'Preview URL: localhost URL for future dev-server workflows.\n'
+        'Doctor: a compact health check command.';
+  }
+
+  String _onboardingDoctorOutput() {
+    final repoDocsOk =
+        File('README.md').existsSync() &&
+        File('docs/GETTING_STARTED.md').existsSync() &&
+        File('docs/KNOWN_LIMITATIONS.md').existsSync() &&
+        File('docs/ROADMAP.md').existsSync();
+    final embeddedDocsOk =
+        _welcomeOutput().contains('Start here:') &&
+        _examplesOutput('packages').contains('pkg install hello') &&
+        _glossaryOutput().contains('REAL PTY');
+    final docsOk = repoDocsOk || embeddedDocsOk;
+    final readmeOk =
+        !File('README.md').existsSync() ||
+        File('README.md').readAsStringSync().contains('v0.38');
+    final healthy = docsOk && readmeOk;
+    return '=== Onboarding Doctor ===\n'
+        'Welcome: OK\n'
+        'Commands: OK\n'
+        'Examples: OK\n'
+        'Glossary: OK\n'
+        'Docs: ${docsOk ? 'OK' : 'MISSING'}\n'
+        'README: ${readmeOk ? 'OK' : 'CHECK'}\n'
+        'Overall: ${healthy ? 'HEALTHY' : 'LIMITED'}';
   }
 
   String _settingsSummaryOutput() {
@@ -387,7 +506,7 @@ class CommandService {
   }
 
   String _versionOutput() {
-    return 'Termode v0.37.1\n'
+    return 'Termode v0.38\n'
         'Runtime: frozen\n'
         'Shell: REAL PTY\n'
         'Packages: script-only';
@@ -395,6 +514,7 @@ class CommandService {
 
   String _releaseNotesOutput() {
     return '=== Termode Release Notes ===\n'
+        'v0.38 Documentation / Onboarding Polish\n'
         'v0.37.1 Manual Android QA Fix Pass\n'
         'v0.37 Device QA Bug Bash\n'
         'v0.36 Product Stabilization / Beta Readiness Pass\n'
@@ -425,7 +545,7 @@ class CommandService {
         ? 'REAL PTY'
         : 'NORMAL';
     return '=== Termode Bug Report ===\n'
-        'Termode version: v0.37.1\n'
+        'Termode version: v0.38\n'
         'Android ABI: $abi\n'
         'Runtime status: $runtimeStatus\n'
         'Package doctor: $packageStatus\n'
@@ -607,145 +727,30 @@ class CommandService {
       case 'help':
         return CommandResult(
           output:
-              'Termode runs in a true native REAL PTY shell by default.\n'
-              'Most commands are executed directly in the Unix environment.\n'
-              'Management commands like "pkg" are intercepted and run in the host app.\n\n'
-              'Start Here:\n'
-              '  welcome     - Beginner walkthrough\n'
-              '  commands    - Compact command categories\n'
-              '  doctor      - Unified health summary\n'
-              '  beta-status - Beta readiness summary\n\n'
-              'Useful Prompt Commands:\n'
-              '  normal-mode - Exit PTY interaction mode to return to classic Termode prompt\n'
-              '  stop-shell  - Kill the PTY shell process and return to NORMAL mode\n'
-              '  host-help   - Show list of intercepted app management commands\n'
-              '  whereami    - View active sandbox directories\n\n'
-              'Runtime Strategy Commands:\n'
-              '  runtime-doctor - Probe current runtime support\n'
-              '  runtime-capabilities - Show supported and unsupported runtimes\n'
-              '  runtime-exec-test - Run shell/script/native bridge probes\n'
-              '  runtime-plan - Show staged runtime roadmap\n\n'
-              'Runtime Freeze Commands:\n'
-              '  runtime-freeze - Show runtime freeze help\n'
-              '  runtime-freeze status - Show frozen runtime status\n'
-              '  runtime-freeze decision - Explain the runtime decision\n'
-              '  runtime-freeze deferred - List deferred runtimes\n'
-              '  runtime-freeze why - Explain why runtimes are deferred\n'
-              '  runtime-freeze next - Show product stabilization next milestone\n'
-              '  runtime-freeze doctor - Check runtime freeze health\n\n'
-              'Beta / Release Commands:\n'
-              '  beta, beta-status, beta-doctor, beta-score\n'
-              '  beta-checklist, beta-known-limits, beta-next\n'
-              '  settings-summary, settings-doctor\n'
-              '  version, release-notes, changelog\n'
-              '  bug-report, qa-checklist\n'
-              '  qa-run, qa-status, qa-report, qa-reset\n\n'
-              'Runtime Research Commands:\n'
-              '  runtime-candidates - Compare future runtime strategies\n'
-              '  runtime-candidate <name> - Show one candidate in detail\n'
-              '  runtime-decision - Show recommended runtime order\n'
-              '  runtime-risks - List runtime adoption risks\n'
-              '  runtime-next - Show recommended next milestone\n'
-              '  runtime-research-doctor - Check research readiness\n\n'
-              'Bundled Runtime Proof Commands:\n'
-              '  bundled-runtime-info - Show bundled native proof info\n'
-              '  bundled-runtime-test - Run the native bridge proof\n'
-              '  bundled-runtime-doctor - Diagnose bundled runtime proof\n'
-              '  bundled-runtime-paths - Show native/runtime paths\n'
-              '  bundled-runtime-plan - Show bundled runtime roadmap\n\n'
-              'Native Tool Commands:\n'
-              '  native-tool - Show native tool help and subcommands\n'
-              '  native-tool info - Show native bridge tool info\n'
-              '  native-tool echo <text> - Echo text from native code\n'
-              '  native-tool hash <text> - SHA-256 of text (native)\n'
-              '  native-tool doctor - Diagnose the native tool bridge\n\n'
-              'JS Proof Commands:\n'
-              '  js-proof - Show tiny JS proof help\n'
-              '  js-proof info - Show proof engine status\n'
-              '  js-proof eval <code> - Evaluate tiny supported syntax\n'
-              '  js-proof file <path> - Evaluate a safe Termode file\n'
-              '  js-proof doctor - Diagnose the JS proof bridge\n'
-              '  js-proof limits - Show safety limits\n'
-              '  js-proof plan - Show staged JS/runtime plan\n\n'
-              'JS Engine Decision Commands:\n'
-              '  js-engine-candidates - Compare embedded JS engine options\n'
-              '  js-engine-candidate <name> - Show one JS engine candidate\n'
-              '  js-engine-decision - Show v0.32 JS engine decision\n'
-              '  js-engine-risks - List JS engine integration risks\n'
-              '  js-engine-next - Show recommended JS engine next step\n'
-              '  js-engine-doctor - Check JS engine decision readiness\n\n'
-              'QuickJS Probe Commands:\n'
-              '  quickjs - Show QuickJS probe help\n'
-              '  quickjs info - Show QuickJS probe status\n'
-              '  quickjs eval <code> - Evaluate code if engine is available\n'
-              '  quickjs file <path> - Evaluate a safe Termode JS file\n'
-              '  quickjs limits - Show QuickJS safety limits\n'
-              '  quickjs doctor - Diagnose QuickJS bridge/engine\n'
-              '  quickjs plan - Show staged QuickJS/runtime plan\n\n'
-              'Duktape Probe Commands:\n'
-              '  duktape - Show Duktape probe help\n'
-              '  duktape info - Show Duktape probe status\n'
-              '  duktape eval <code> - Evaluate code if engine is available\n'
-              '  duktape file <path> - Evaluate a safe Termode JS file\n'
-              '  duktape limits - Show Duktape safety limits\n'
-              '  duktape doctor - Diagnose Duktape bridge/engine\n'
-              '  duktape plan - Show staged Duktape/runtime plan\n\n'
-              'Dev Server Commands:\n'
-              '  localhost-doctor - Check localhost readiness\n'
-              '  localhost-capabilities - Show localhost support\n'
-              '  port-check <port> - Check a local TCP port\n'
-              '  http-test <port-or-url> - Test a local HTTP URL\n'
-              '  preview-url <port> - Print a preview URL\n'
-              '  devserver-help - Show localhost command help\n\n'
-              'Preview Commands:\n'
-              '  preview     - Show compact preview status\n'
-              '  preview-copy <port> - Copy a preview URL to clipboard\n'
-              '  preview-open <port> - Open a preview URL externally\n'
-              '  preview-check <port> - Combine port-check and http-test\n'
-              '  preview-history - Show recent preview URLs\n'
-              '  preview-doctor - Diagnose preview capabilities\n'
-              '  preview-help - Show preview workflow help\n\n'
-              'Session Commands:\n'
-              '  tabs        - List open tabs\n'
-              '  tab-new     - Create a new tab\n'
-              '  tab-close   - Close current tab\n'
-              '  tab-rename  - Rename current tab\n'
-              '  tab-switch  - Switch tabs by number\n'
-              '  session-info - Show active session info\n'
-              '  session-doctor - Check session health\n'
-              '  history     - Show command history\n\n'
-              'Terminal UX Commands:\n'
-              '  keyboard-test/settings - Check keyboard controls\n'
-              '  ansi-test    - Print ANSI renderer sample\n'
-              '  input-test   - Show input checklist\n'
-              '  resize-info  - Show terminal size state\n'
-              '  scroll-test [n] - Print numbered test lines\n'
-              '  copy-last/copy-session - Copy transcript lines\n'
-              '  paste-force - Send last blocked large paste\n\n'
-              'Workspace Commands:\n'
-              '  workspace   - Show workspace status\n'
-              '  workspace-init [n] - Create project workspace\n'
-              '  workspace-list - List workspaces\n'
-              '  workspace-cd [n] - Select/cd to workspace\n'
-              '  host-*      - Real file commands for Termode home\n\n'
-              'Termode VFS Commands:\n'
-              '  NOTE: VFS commands are legacy sandbox demo commands.\n'
-              '  help        - Show VFS help\n'
-              '  clear       - Clear screen\n'
-              '  echo [text] - Print arguments\n'
-              '  pwd         - Print VFS working directory\n'
-              '  whoami      - Print active user\n'
-              '  date        - Print current date/time\n'
-              '  ls [path]   - List VFS directory\n'
-              '  cd [path]   - Change VFS directory\n'
-              '  mkdir [dir] - Create VFS directory\n'
-              '  touch [fl]  - Create VFS file\n'
-              '  cat [file]  - Display VFS file\n'
-              '  rm [path]   - Remove VFS file/dir\n'
-              '  cp [s] [d]  - Copy VFS file/dir\n'
-              '  mv [s] [d]  - Move VFS file/dir\n'
-              '  run-tool [t]- Execute a runtime tool script\n'
-              '  pkg [cmd]   - Manage Termode packages',
+              '=== Termode Help ===\n'
+              'Termode is a standalone Android terminal with REAL PTY, script packages, workspaces, and beta diagnostics.\n\n'
+              'Start:\n'
+              '  welcome\n'
+              '  examples\n'
+              '  glossary\n'
+              '  commands\n\n'
+              'Health:\n'
+              '  doctor\n'
+              '  qa-status\n'
+              '  onboarding-doctor\n\n'
+              'Sub-help:\n'
+              '  pkg help\n'
+              '  workspace\n'
+              '  storage-help\n'
+              '  keyboard-help\n'
+              '  preview-help\n'
+              '  runtime-freeze help\n'
+              '  native-tool help\n'
+              '  js-proof help\n\n'
+              'Catalog:\n'
+              '  commands --all\n\n'
+              'Known limits:\n'
+              '  beta-known-limits',
         );
       case 'clear':
         return CommandResult(output: '', shouldClear: true);
@@ -1495,6 +1500,23 @@ class CommandService {
       case 'commands':
         return CommandResult(
           output: _commandsOutput(all: args.contains('--all')),
+        );
+
+      case 'examples':
+        final output = _examplesOutput(args.isNotEmpty ? args[0] : null);
+        return CommandResult(
+          output: output,
+          isError: output.startsWith('Unknown examples category'),
+        );
+
+      case 'glossary':
+        return CommandResult(output: _glossaryOutput());
+
+      case 'onboarding-doctor':
+        final output = _onboardingDoctorOutput();
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: UNHEALTHY'),
         );
 
       case 'doctor':

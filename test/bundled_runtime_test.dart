@@ -290,7 +290,7 @@ void main() {
     // ----- help / autocomplete -----
 
     test('help lists bundled runtime commands', () async {
-      final result = await commandService.execute('help');
+      final result = await commandService.execute('commands --all');
       expect(result.output, contains('bundled-runtime-info'));
       expect(result.output, contains('bundled-runtime-test'));
       expect(result.output, contains('bundled-runtime-doctor'));

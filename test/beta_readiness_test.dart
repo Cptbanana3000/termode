@@ -11,7 +11,7 @@ import 'package:termode/services/virtual_filesystem.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('Product Stabilization / Device QA (v0.36-v0.37.1)', () {
+  group('Product Stabilization / Device QA / Onboarding (v0.36-v0.38)', () {
     late Directory tempDir;
     late CommandService commandService;
 
@@ -139,21 +139,19 @@ void main() {
     test('beta-known-limits output', () async {
       final result = await commandService.execute('beta-known-limits');
 
-      expect(result.output, contains('No Node.js/npm/Python/Git yet'));
+      expect(result.output, contains('Node.js/npm are not included yet'));
+      expect(result.output, contains('Python/Git are not included yet'));
       expect(
         result.output,
         contains('QuickJS/Duktape are probe surfaces only'),
       );
-      expect(result.output, contains('This is beta software'));
+      expect(result.output, contains('Termode is beta software'));
     });
 
     test('beta-next output', () async {
       final result = await commandService.execute('beta-next');
 
-      expect(
-        result.output,
-        contains('v0.38 Documentation / Onboarding Polish'),
-      );
+      expect(result.output, contains('v0.39 UI Polish / Settings Polish'));
     });
 
     test('doctor compact and verbose output', () async {
@@ -172,11 +170,19 @@ void main() {
     test('welcome and getting-started output', () async {
       final welcome = await commandService.execute('welcome');
       final gettingStarted = await commandService.execute('getting-started');
+      final firstRun = await commandService.execute('first-run');
 
-      for (final output in [welcome.output, gettingStarted.output]) {
+      for (final output in [
+        welcome.output,
+        gettingStarted.output,
+        firstRun.output,
+      ]) {
         expect(output, contains('Welcome to Termode.'));
+        expect(output, contains('Start here:'));
         expect(output, contains('pkg install hello'));
-        expect(output, contains('runtime-freeze status'));
+        expect(output, contains('workspace-init demo'));
+        expect(output, contains('qa-status'));
+        expect(output, contains('Run beta-known-limits'));
       }
     });
 
@@ -184,12 +190,45 @@ void main() {
       final compact = await commandService.execute('commands');
       final all = await commandService.execute('commands --all');
 
-      expect(compact.output, contains('Shell:'));
-      expect(compact.output, contains('Diagnostics:'));
-      expect(compact.output, contains('Runtime:'));
+      expect(compact.output, contains('Getting started:'));
+      expect(compact.output, contains('Shell / PTY:'));
+      expect(compact.output, contains('Workspace / files:'));
+      expect(compact.output, contains('QA / beta:'));
       expect(all.output, contains('=== All Commands ==='));
+      expect(all.output, contains('examples'));
+      expect(all.output, contains('glossary'));
+      expect(all.output, contains('onboarding-doctor'));
       expect(all.output, contains('beta-status'));
       expect(all.output, contains('qa-checklist'));
+    });
+
+    test('examples output is grouped and copy-friendly', () async {
+      final root = await commandService.execute('examples');
+      final packages = await commandService.execute('examples packages');
+      final workspace = await commandService.execute('examples workspace');
+      final unknown = await commandService.execute('examples banana');
+
+      expect(root.output, contains('examples shell'));
+      expect(root.output, contains('examples runtime'));
+      expect(packages.output, contains('pkg install hello'));
+      expect(packages.output, contains('pkg verify hello'));
+      expect(workspace.output, contains('workspace-init demo'));
+      expect(workspace.output, contains('host-write hello.txt "hello"'));
+      expect(unknown.isError, isTrue);
+      expect(unknown.output, contains('Unknown examples category: banana'));
+    });
+
+    test('glossary and onboarding doctor output', () async {
+      final glossary = await commandService.execute('glossary');
+      final doctor = await commandService.execute('onboarding-doctor');
+
+      expect(glossary.output, contains('REAL PTY:'));
+      expect(glossary.output, contains('Host command:'));
+      expect(glossary.output, contains('Runtime frozen:'));
+      expect(doctor.output, contains('=== Onboarding Doctor ==='));
+      expect(doctor.output, contains('Welcome: OK'));
+      expect(doctor.output, contains('Docs: OK'));
+      expect(doctor.output, contains('Overall: HEALTHY'));
     });
 
     test('settings summary and doctor output', () async {
@@ -208,9 +247,9 @@ void main() {
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
 
-      expect(version.output, contains('Termode v0.37.1'));
+      expect(version.output, contains('Termode v0.38'));
       expect(version.output, contains('Runtime: frozen'));
-      expect(notes.output, contains('v0.37.1 Manual Android QA Fix Pass'));
+      expect(notes.output, contains('v0.38 Documentation / Onboarding Polish'));
       expect(notes.output, contains('v0.37 Device QA Bug Bash'));
       expect(notes.output, contains('v0.35 Runtime Decision Freeze'));
       expect(changelog.output, contains('v0.31 JS Proof'));
@@ -220,7 +259,7 @@ void main() {
       final result = await commandService.execute('bug-report');
 
       expect(result.output, contains('=== Termode Bug Report ==='));
-      expect(result.output, contains('Termode version: v0.37.1'));
+      expect(result.output, contains('Termode version: v0.38'));
       expect(result.output, contains('Android ABI: arm64-v8a'));
       expect(result.output, isNot(contains('PATH=')));
       expect(result.output, isNot(contains('TOKEN')));
@@ -260,7 +299,7 @@ void main() {
       final result = await commandService.execute('qa-report');
 
       expect(result.output, contains('=== QA Bug Bash Report ==='));
-      expect(result.output, contains('Termode v0.37.1'));
+      expect(result.output, contains('Termode v0.38'));
       expect(result.output, contains('Doctor summary:'));
       expect(result.output, contains('Suggested next tests:'));
       expect(result.output, isNot(contains('PATH=')));
@@ -281,9 +320,10 @@ void main() {
     test('help cleanup includes key categories', () async {
       final result = await commandService.execute('help');
 
-      expect(result.output, contains('Start Here:'));
-      expect(result.output, contains('Beta / Release Commands:'));
-      expect(result.output, contains('Runtime Freeze Commands:'));
+      expect(result.output, contains('=== Termode Help ==='));
+      expect(result.output, contains('Start:'));
+      expect(result.output, contains('Sub-help:'));
+      expect(result.output, contains('Known limits:'));
     });
 
     test('command catalog contains new commands', () {
@@ -292,6 +332,9 @@ void main() {
         'getting-started',
         'first-run',
         'commands',
+        'examples',
+        'glossary',
+        'onboarding-doctor',
         'doctor',
         'beta',
         'beta-status',
@@ -325,6 +368,9 @@ void main() {
 
       await sessionService.executeCommand('beta-status');
       await sessionService.executeCommand('commands');
+      await sessionService.executeCommand('examples packages');
+      await sessionService.executeCommand('glossary');
+      await sessionService.executeCommand('onboarding-doctor');
       await sessionService.executeCommand('qa-status');
 
       final output = session.lines.map((line) => line.text).join('\n');
@@ -332,6 +378,12 @@ void main() {
       expect(output, contains('=== Termode Beta Status ==='));
       expect(output, contains('commands'));
       expect(output, contains('=== Termode Commands ==='));
+      expect(output, contains('examples packages'));
+      expect(output, contains('pkg install hello'));
+      expect(output, contains('glossary'));
+      expect(output, contains('REAL PTY:'));
+      expect(output, contains('onboarding-doctor'));
+      expect(output, contains('=== Onboarding Doctor ==='));
       expect(output, contains('qa-status'));
       expect(output, contains('=== QA Status ==='));
 
@@ -342,9 +394,12 @@ void main() {
     test('docs are present', () {
       expect(File('docs/BETA_READINESS.md').existsSync(), isTrue);
       expect(File('docs/COMMAND_GUIDE.md').existsSync(), isTrue);
+      expect(File('docs/GETTING_STARTED.md').existsSync(), isTrue);
+      expect(File('docs/KNOWN_LIMITATIONS.md').existsSync(), isTrue);
       expect(File('docs/QA_CHECKLIST.md').existsSync(), isTrue);
+      expect(File('docs/ROADMAP.md').existsSync(), isTrue);
       expect(File('docs/DEVICE_QA_BUG_BASH.md').existsSync(), isTrue);
-      expect(File('README.md').readAsStringSync(), contains('Termode'));
+      expect(File('README.md').readAsStringSync(), contains('v0.38'));
     });
   });
 }

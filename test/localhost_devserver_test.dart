@@ -181,11 +181,14 @@ void main() {
 
     test('help and devserver-help include localhost commands', () async {
       final help = await commandService.execute('help');
+      final all = await commandService.execute('commands --all');
       final runtimeHelp = await commandService.execute('runtime-help');
       final devserverHelp = await commandService.execute('devserver-help');
 
+      expect(help.output, contains('preview-help'));
+      expect(help.output, contains('commands --all'));
       for (final output in [
-        help.output,
+        all.output,
         runtimeHelp.output,
         devserverHelp.output,
       ]) {

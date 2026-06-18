@@ -70,3 +70,18 @@ v0.37.1 keeps the runtime decision frozen and focuses on QA rough edges:
 - unified doctor recognizes package `Status: HEALTHY`
 - `runtime-freeze doctor` works inside the installed APK using the embedded
   freeze decision when repo markdown files are unavailable
+
+v0.38 focuses on documentation and onboarding:
+
+- `welcome`, `getting-started`, and `first-run` are compact first-run guides
+- `examples` provides copy-friendly command examples by category
+- `glossary` explains beginner terms
+- `onboarding-doctor` checks onboarding/docs readiness
+- README and docs now point new beta testers to the same starting flow
+- the startup banner now reports `Termode v0.38` and points to onboarding
+  commands
+
+Known v0.38 QA limitation:
+
+- automated `adb input text` was unreliable on the test device, so full manual
+  command entry remains a hand checklist item

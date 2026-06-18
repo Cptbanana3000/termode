@@ -90,30 +90,35 @@ void main() {
     test('runtime-freeze deferred output', () async {
       final result = await commandService.execute('runtime-freeze deferred');
 
-      expect(result.output, contains('QuickJS integration'));
-      expect(result.output, contains('Duktape integration'));
-      expect(result.output, contains('Node.js'));
-      expect(result.output, contains('npm'));
-      expect(result.output, contains('native binary package installs'));
+      expect(result.output, contains('Node.js/npm are not included yet'));
+      expect(result.output, contains('Python/Git are not included yet'));
+      expect(
+        result.output,
+        contains('Native binary packages are not supported'),
+      );
+      expect(
+        result.output,
+        contains('QuickJS/Duktape are probe surfaces only'),
+      );
+      expect(result.output, contains('Remote packages remain script-only'));
     });
 
     test('runtime-freeze why output', () async {
       final result = await commandService.execute('runtime-freeze why');
 
-      expect(result.output, contains('No clean source/vendor policy'));
-      expect(result.output, contains('Timeout and infinite-loop handling'));
+      expect(result.output, contains('stabilizing the app users have today'));
+      expect(result.output, contains('source, sandboxing, timeout'));
+      expect(result.output, contains('Node/npm are much larger'));
       expect(result.output, contains('Product stability matters first'));
     });
 
     test('runtime-freeze next output', () async {
       final result = await commandService.execute('runtime-freeze next');
 
-      expect(
-        result.output,
-        contains('v0.36 Product Stabilization / Beta Readiness Pass'),
-      );
-      expect(result.output, contains('device QA'));
-      expect(result.output, contains('terminal UX polish'));
+      expect(result.output, contains('v0.39 UI Polish / Settings Polish'));
+      expect(result.output, contains('UI polish'));
+      expect(result.output, contains('settings polish'));
+      expect(result.output, contains('Runtime experiments stay deferred'));
     });
 
     test('runtime-freeze doctor output', () async {
@@ -165,9 +170,10 @@ void main() {
       final help = await commandService.execute('help');
       final runtimeHelp = await commandService.execute('runtime-help');
 
-      expect(help.output, contains('Runtime Freeze Commands:'));
-      expect(help.output, contains('runtime-freeze status'));
+      expect(help.output, contains('runtime-freeze help'));
+      expect(help.output, contains('Known limits:'));
       expect(runtimeHelp.output, contains('runtime-freeze [sub]'));
+      expect(runtimeHelp.output, contains('Show frozen runtime direction'));
       expect(kTermodeCommands, contains('runtime-freeze'));
     });
 
