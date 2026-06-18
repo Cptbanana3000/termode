@@ -174,7 +174,7 @@ class ExtraKeyboardRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.black,
-      height: 38,
+      height: 40,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 4),

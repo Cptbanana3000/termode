@@ -6,7 +6,7 @@ or IDE integration work.
 ## Near Term
 
 - v0.38 Documentation / Onboarding Polish
-- v0.39 UI Polish / Settings Polish
+- v0.39 UI / Settings Polish (current)
 - v0.40 Beta Candidate
 
 ## Product First

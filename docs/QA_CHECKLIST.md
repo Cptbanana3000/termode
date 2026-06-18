@@ -31,6 +31,19 @@ v0.38 onboarding checks:
 - run `onboarding-doctor`
 - confirm README/docs match the in-app guidance
 
+v0.39 UI / settings checks:
+
+- run `settings-summary` and confirm all settings are listed
+- run `settings-doctor` and confirm `Overall: HEALTHY`
+- run `terminal-settings` and `keyboard-settings`
+- run `theme-test` and confirm normal/dim/bold/ANSI/badges are readable
+- run `status` in NORMAL and after `default-shell`
+- run `settings-reset-safe` (should require `--confirm`)
+- run `settings-reset-safe --confirm` and confirm packages/workspaces/sessions
+  survive
+- open Settings screen and confirm version reads `v0.39`, and line height,
+  scrollback, ANSI debug, keep-screen-on, and Safe Reset controls are present
+
 ## App Launch
 
 - launch app
@@ -112,3 +125,10 @@ v0.38 onboarding checks:
 - automated `adb input text` dropped characters in the active terminal, so the
   command checklist still needs a human typed pass
 - stale startup banner text was fixed to `Termode v0.38`
+
+## v0.39 Device Note
+
+- startup banner and `version` now report `Termode v0.39`
+- Settings screen app version was corrected from the stale `0.4.0` string
+- automated `adb input text` remains unreliable against the live terminal, so
+  the typed-command UI pass is still a manual hand check

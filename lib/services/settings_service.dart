@@ -137,6 +137,32 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Resets visual and terminal-rendering settings to their defaults.
+  ///
+  /// This is the data-safe reset used by `settings-reset-safe`. It deliberately
+  /// does NOT touch packages, workspaces, sessions, history, repo config, or
+  /// files. It also preserves [startInRealShell] so shell startup behavior is
+  /// not changed unexpectedly.
+  void resetVisualSettings() {
+    _fontSize = 14.0;
+    _lineHeight = 1.3;
+    _themeColor = 'Green';
+    _showWelcomeBanner = true;
+    _showLargeAsciiBanner = false;
+    _immersiveMode = false;
+    _showControlCharsHex = false;
+    _enableAnsiRenderer = true;
+    _ansiDebugMode = false;
+    _cursorStyle = 'block';
+    _blinkingCursor = true;
+    _maxScrollbackLines = 2000;
+    _pasteHardLimit = 10000;
+    _pasteWarningThreshold = 1000;
+    _keepScreenOn = false;
+    // startInRealShell is intentionally preserved.
+    notifyListeners();
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'fontSize': _fontSize,

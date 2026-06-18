@@ -135,7 +135,7 @@ class TerminalSessionService extends ChangeNotifier {
         ]);
       }
       lines.addAll([
-        TerminalLine(text: 'Termode v0.38', type: LineType.output),
+        TerminalLine(text: 'Termode v0.39', type: LineType.output),
         TerminalLine(
           text: 'Type "welcome" to get started.',
           type: LineType.output,
@@ -624,6 +624,9 @@ class TerminalSessionService extends ChangeNotifier {
         'beta-next',
         'settings-summary',
         'settings-doctor',
+        'settings-reset-safe',
+        'theme-test',
+        'status',
         'version',
         'release-notes',
         'changelog',

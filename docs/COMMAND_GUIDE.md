@@ -80,6 +80,18 @@ Use `welcome`, `examples`, and `glossary` first if you are new.
 - `copy-session <lines>`
 - `paste-force`
 
+## Settings / Theme / Status
+
+- `settings-summary`
+- `settings-doctor`
+- `settings-reset-safe --confirm`
+- `theme-test`
+- `status`
+
+`settings-reset-safe` restores visual/terminal settings to defaults and
+requires `--confirm`. It keeps packages, workspaces, sessions, history, repo
+config, and files. See [UI & Settings](UI_SETTINGS.md).
+
 ## Preview / Localhost
 
 - `preview`

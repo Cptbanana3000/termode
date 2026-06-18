@@ -85,3 +85,21 @@ Known v0.38 QA limitation:
 
 - automated `adb input text` was unreliable on the test device, so full manual
   command entry remains a hand checklist item
+
+v0.39 focuses on UI and settings polish (no new runtimes):
+
+- `settings-summary` now lists theme, font size, line height, cursor, blink,
+  scrollback, paste limits, keep-screen-on, and welcome banner
+- `settings-doctor` adds font-size and line-height health checks
+- `settings-reset-safe --confirm` restores visual/terminal defaults without
+  touching packages, workspaces, sessions, history, repo config, or files
+- `theme-test` prints a readability sample (normal/dim/bold/ANSI/badges)
+- `status` prints a compact mode/shell/session/workspace/packages/runtime/beta
+  summary
+- the settings screen exposes line height, scrollback, ANSI debug, keep screen
+  on, a safe visual reset, and the correct app version
+- the startup banner now reports `Termode v0.39`
+- tab name/badge wrapping and prompt/keyboard spacing were tightened
+
+The runtime decision remains frozen. Node.js, npm, Python, Git, QuickJS, and
+Duktape are still not added.

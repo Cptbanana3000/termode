@@ -3,7 +3,7 @@
 Termode is a standalone Android terminal project with a REAL PTY shell,
 script packages, workspace folders, and beta QA tooling.
 
-Current status: v0.38 Documentation / Onboarding Polish.
+Current status: v0.39 UI / Settings Polish.
 
 Termode is not a full Linux distribution and is not a Termux replacement yet.
 It is a focused terminal app that proves a shell-first mobile workflow while
@@ -24,6 +24,8 @@ keeping runtime scope honest and testable.
 - built-in JNI native tools
 - `js-proof` controlled evaluator
 - beta QA commands and doctors
+- settings/theme/status readouts (`settings-summary`, `theme-test`, `status`)
+- data-safe visual reset via `settings-reset-safe --confirm`
 
 ## Not Included Yet
 
@@ -44,6 +46,8 @@ welcome
 examples
 glossary
 commands
+status
+theme-test
 doctor
 qa-status
 ```
@@ -114,13 +118,14 @@ after the UI polish pass.
 ## Roadmap
 
 - v0.38 Documentation / Onboarding Polish
-- v0.39 UI Polish / Settings Polish
+- v0.39 UI / Settings Polish (current)
 - v0.40 Beta Candidate
 - Node/npm later, after product stability
 
 ## Docs
 
 - [Getting Started](docs/GETTING_STARTED.md)
+- [UI & Settings](docs/UI_SETTINGS.md)
 - [Known Limitations](docs/KNOWN_LIMITATIONS.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Command Guide](docs/COMMAND_GUIDE.md)

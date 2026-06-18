@@ -233,8 +233,8 @@ class CommandService {
   String _betaNextOutput() {
     return '=== Beta Next ===\n'
         'Recommended next milestone:\n'
-        'v0.39 UI Polish / Settings Polish\n\n'
-        'Reason: v0.38 focuses on onboarding, command discovery, README, and beta tester docs.';
+        'v0.40 Beta Candidate\n\n'
+        'Reason: v0.39 polishes settings, theme, terminal layout, and status readouts.';
   }
 
   Future<String> _termodeDoctor({bool verbose = false}) async {
@@ -349,12 +349,14 @@ class CommandService {
         '  storage-status, storage-link, storage-test, storage-help\n'
         'Terminal UX:\n'
         '  keyboard-help, keyboard-test, ansi-test, scroll-test, copy-session\n'
+        'Settings / theme:\n'
+        '  settings-summary, settings-doctor, theme-test, settings-reset-safe\n'
         'Preview / localhost:\n'
         '  preview, preview-url, preview-check, localhost-doctor\n'
         'Runtime status:\n'
         '  runtime-freeze status, runtime-doctor, native-tool, js-proof\n'
         'QA / beta:\n'
-        '  doctor, qa-status, qa-run, beta-status, onboarding-doctor\n'
+        '  status, doctor, qa-status, qa-run, beta-status, onboarding-doctor\n'
         'Advanced probes:\n'
         '  runtime-candidates, js-engine-decision, quickjs, duktape\n\n'
         'Use commands --all for the full catalog.';
@@ -457,7 +459,7 @@ class CommandService {
     final docsOk = repoDocsOk || embeddedDocsOk;
     final readmeOk =
         !File('README.md').existsSync() ||
-        File('README.md').readAsStringSync().contains('v0.38');
+        File('README.md').readAsStringSync().contains('v0.39');
     final healthy = docsOk && readmeOk;
     return '=== Onboarding Doctor ===\n'
         'Welcome: OK\n'
@@ -473,6 +475,8 @@ class CommandService {
     final settings = SettingsService();
     return '=== Settings Summary ===\n'
         'Theme: dark (${settings.themeColor})\n'
+        'Font size: ${settings.fontSize.toStringAsFixed(1)}\n'
+        'Line height: ${settings.lineHeight.toStringAsFixed(2)}\n'
         'Start in real shell: ${_yesNo(settings.startInRealShell)}\n'
         'ANSI renderer: ${settings.enableAnsiRenderer ? 'on' : 'off'}\n'
         'ANSI debug: ${settings.ansiDebugMode ? 'on' : 'off'}\n'
@@ -481,7 +485,9 @@ class CommandService {
         'Scrollback: ${settings.maxScrollbackLines}\n'
         'Paste warning: ${settings.pasteWarningThreshold}\n'
         'Paste hard limit: ${settings.pasteHardLimit}\n'
-        'Keep screen on: ${_yesNo(settings.keepScreenOn)}';
+        'Keep screen on: ${_yesNo(settings.keepScreenOn)}\n'
+        'Welcome banner: ${settings.showWelcomeBanner ? 'on' : 'off'}\n'
+        'Tip: settings-reset-safe --confirm restores visual defaults.';
   }
 
   String _settingsDoctorOutput() {
@@ -494,9 +500,20 @@ class CommandService {
     final pasteOk = settings.pasteWarningThreshold < settings.pasteHardLimit;
     final cursorOk = allowedCursor.contains(settings.cursorStyle);
     final ansiDebugOk = !settings.ansiDebugMode;
+    final fontOk = settings.fontSize >= 10.0 && settings.fontSize <= 24.0;
+    final lineHeightOk =
+        settings.lineHeight >= 1.0 && settings.lineHeight <= 2.0;
     final limited = !ansiDebugOk || !pasteOk;
-    final healthy = scrollbackOk && pasteOk && cursorOk && ansiDebugOk;
+    final healthy =
+        scrollbackOk &&
+        pasteOk &&
+        cursorOk &&
+        ansiDebugOk &&
+        fontOk &&
+        lineHeightOk;
     return '=== Settings Doctor ===\n'
+        'Font size: ${fontOk ? 'OK' : 'CHECK'}\n'
+        'Line height: ${lineHeightOk ? 'OK' : 'CHECK'}\n'
         'Scrollback limit: ${scrollbackOk ? 'OK' : 'INVALID'}\n'
         'Paste limits: ${pasteOk ? 'OK' : 'LIMITED'}\n'
         'Cursor setting: ${cursorOk ? 'OK' : 'INVALID'}\n'
@@ -505,8 +522,56 @@ class CommandService {
         'Overall: ${healthy ? 'HEALTHY' : (limited ? 'LIMITED' : 'UNHEALTHY')}';
   }
 
+  String _themeTestOutput() {
+    return '=== Theme Test ===\n'
+        'Normal text\n'
+        '\u001B[2mDim text\u001B[0m\n'
+        '\u001B[1mBold text\u001B[0m\n'
+        'ANSI colors: \u001B[31mred\u001B[0m \u001B[32mgreen\u001B[0m '
+        '\u001B[33myellow\u001B[0m \u001B[34mblue\u001B[0m '
+        '\u001B[35mmagenta\u001B[0m \u001B[36mcyan\u001B[0m\n'
+        'Background colors: \u001B[41m R \u001B[0m \u001B[42m G \u001B[0m '
+        '\u001B[44m B \u001B[0m \u001B[43m Y \u001B[0m\n'
+        'Status badge sample:\n'
+        'REAL PTY / NORMAL / LIMITED';
+  }
+
+  Future<String> _statusOutput() async {
+    final session = TerminalSessionService().activeSession;
+    final mode = session.isPtyInteractionActive ? 'REAL PTY' : 'NORMAL';
+    final shell = (session.isRealPtyActive || session.isShellActive)
+        ? 'running'
+        : 'stopped';
+    final workspaceName = await WorkspaceService().currentWorkspaceName();
+    final workspace = (workspaceName.isEmpty || workspaceName == '(none)')
+        ? 'none'
+        : workspaceName;
+    final pkgStatus = _statusFromDoctorOutput(
+      (await execute('pkg doctor')).output,
+    );
+    final packages = pkgStatus == 'HEALTHY' ? 'healthy' : 'limited';
+    final betaOutput = await _betaStatusOutput();
+    final betaOverall =
+        RegExp(
+          r'Overall:\s*(.+)$',
+          multiLine: true,
+        ).firstMatch(betaOutput)?.group(1)?.trim() ??
+        'LIMITED';
+    final beta = betaOverall.toUpperCase().contains('CANDIDATE')
+        ? 'ready'
+        : 'ready with limitations';
+    return '=== Termode Status ===\n'
+        'Mode: $mode\n'
+        'Shell: $shell\n'
+        'Session: ${session.name}\n'
+        'Workspace: $workspace\n'
+        'Packages: $packages\n'
+        'Runtime: frozen\n'
+        'Beta: $beta';
+  }
+
   String _versionOutput() {
-    return 'Termode v0.38\n'
+    return 'Termode v0.39\n'
         'Runtime: frozen\n'
         'Shell: REAL PTY\n'
         'Packages: script-only';
@@ -514,6 +579,7 @@ class CommandService {
 
   String _releaseNotesOutput() {
     return '=== Termode Release Notes ===\n'
+        'v0.39 UI / Settings Polish\n'
         'v0.38 Documentation / Onboarding Polish\n'
         'v0.37.1 Manual Android QA Fix Pass\n'
         'v0.37 Device QA Bug Bash\n'
@@ -545,7 +611,7 @@ class CommandService {
         ? 'REAL PTY'
         : 'NORMAL';
     return '=== Termode Bug Report ===\n'
-        'Termode version: v0.38\n'
+        'Termode version: v0.39\n'
         'Android ABI: $abi\n'
         'Runtime status: $runtimeStatus\n'
         'Package doctor: $packageStatus\n'
@@ -1565,6 +1631,32 @@ class CommandService {
           output: output,
           isError: output.contains('Overall: UNHEALTHY'),
         );
+
+      case 'settings-reset-safe':
+        if (!args.contains('--confirm')) {
+          return CommandResult(
+            output:
+                'Warning: This restores visual and terminal settings to defaults.\n'
+                'Packages, workspaces, sessions, history, repo config, and files are NOT changed.\n'
+                'Run: settings-reset-safe --confirm',
+            isError: true,
+          );
+        }
+        SettingsService().resetVisualSettings();
+        await TerminalSessionService().saveState();
+        return CommandResult(
+          output:
+              '=== Safe Settings Reset ===\n'
+              'Status: visual and terminal settings restored to defaults.\n'
+              'Kept: packages, workspaces, sessions, history, repo config, files.\n'
+              'Tip: run settings-summary to review.',
+        );
+
+      case 'theme-test':
+        return CommandResult(output: _themeTestOutput());
+
+      case 'status':
+        return CommandResult(output: await _statusOutput());
 
       case 'version':
         return CommandResult(output: _versionOutput());
@@ -4012,7 +4104,11 @@ class CommandService {
         sb.writeln('  qa-*           - Run device QA bug bash helpers');
         sb.writeln('  commands       - Show compact command categories');
         sb.writeln('  welcome        - Show first-run onboarding');
-        sb.writeln('  settings-*     - Show settings summary/doctor');
+        sb.writeln(
+          '  settings-*     - Show/reset settings (summary, doctor, reset-safe)',
+        );
+        sb.writeln('  status         - Show a compact Termode status summary');
+        sb.writeln('  theme-test     - Print a theme/ANSI readability sample');
         sb.writeln('  bug-report     - Create a safe diagnostic report');
         sb.writeln(
           '  js-proof       - Run the controlled JS-like native bridge proof',

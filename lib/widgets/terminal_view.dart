@@ -99,7 +99,7 @@ class TerminalView extends StatelessWidget {
 
         return Container(
           color: settings.backgroundColor,
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
           child: SelectionArea(
             child: ListView.builder(
               controller: scrollController,

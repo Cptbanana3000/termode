@@ -12,6 +12,8 @@ welcome
 commands
 examples
 glossary
+status
+theme-test
 doctor
 qa-status
 default-shell
@@ -19,6 +21,10 @@ pwd
 pkg list
 workspace
 ```
+
+`status` prints a compact one-screen summary of mode, shell, session,
+workspace, packages, runtime, and beta readiness. `theme-test` prints a quick
+readability sample.
 
 ## Package Example
 
@@ -59,3 +65,16 @@ onboarding-doctor
 
 `READY WITH LIMITATIONS` can be acceptable when the limitations are documented,
 such as frozen runtime work or unlinked Android storage.
+
+## Settings / Theme Example
+
+```sh
+settings-summary
+settings-doctor
+theme-test
+settings-reset-safe --confirm
+```
+
+`settings-reset-safe --confirm` restores visual/terminal defaults only. It does
+not touch packages, workspaces, sessions, history, repo config, or files. See
+[UI & Settings](UI_SETTINGS.md).

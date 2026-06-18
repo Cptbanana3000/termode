@@ -77,6 +77,56 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  void _showSafeResetConfirmation(
+    BuildContext context,
+    SettingsService settings,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          title: Text(
+            'Safe Reset',
+            style: TextStyle(
+              color: settings.primaryColor,
+              fontFamily: 'monospace',
+            ),
+          ),
+          content: const Text(
+            'Restore theme, font, cursor, scrollback, and paste settings to '
+            'defaults?\n\nSessions, history, packages, workspaces, repo config, '
+            'and files are kept. "Start in real shell" is preserved.',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            ),
+            TextButton(
+              onPressed: () async {
+                settings.resetVisualSettings();
+                await TerminalSessionService().saveState();
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Visual settings restored to defaults'),
+                      backgroundColor: settings.primaryColor,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              child: Text('Reset', style: TextStyle(color: settings.primaryColor)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showResetConfirmation(BuildContext context, SettingsService settings) {
     showDialog(
       context: context,
@@ -291,6 +341,67 @@ class SettingsScreen extends StatelessWidget {
                 },
               ),
 
+              ListTile(
+                title: const Text('Line Height', style: TextStyle(color: Colors.white)),
+                subtitle: Text(settings.lineHeight.toStringAsFixed(2), style: const TextStyle(color: Colors.white60)),
+                trailing: SizedBox(
+                  width: 150,
+                  child: Slider(
+                    value: settings.lineHeight,
+                    min: 1.0,
+                    max: 2.0,
+                    divisions: 10,
+                    activeColor: settings.primaryColor,
+                    inactiveColor: const Color(0xFF2D2D2D),
+                    onChanged: (value) {
+                      settings.setLineHeight(value);
+                    },
+                  ),
+                ),
+              ),
+
+              ListTile(
+                title: const Text('Scrollback Lines', style: TextStyle(color: Colors.white)),
+                subtitle: const Text('Lines kept per session', style: TextStyle(color: Colors.white60)),
+                trailing: DropdownButton<int>(
+                  value: settings.maxScrollbackLines,
+                  dropdownColor: const Color(0xFF1E1E1E),
+                  style: const TextStyle(color: Colors.white),
+                  underline: Container(height: 2, color: settings.primaryColor),
+                  items: const <int>[500, 1000, 2000, 5000, 10000].map((int value) {
+                    return DropdownMenuItem<int>(
+                      value: value,
+                      child: Text('$value'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      settings.setMaxScrollbackLines(value);
+                    }
+                  },
+                ),
+              ),
+
+              SwitchListTile(
+                title: const Text('ANSI Debug Mode', style: TextStyle(color: Colors.white)),
+                subtitle: const Text('Show raw control codes for debugging (verbose)', style: TextStyle(color: Colors.white60)),
+                value: settings.ansiDebugMode,
+                activeThumbColor: settings.primaryColor,
+                onChanged: (value) {
+                  settings.setAnsiDebugMode(value);
+                },
+              ),
+
+              SwitchListTile(
+                title: const Text('Keep Screen On', style: TextStyle(color: Colors.white)),
+                subtitle: const Text('Preference to discourage auto-sleep while in the terminal', style: TextStyle(color: Colors.white60)),
+                value: settings.keepScreenOn,
+                activeThumbColor: settings.primaryColor,
+                onChanged: (value) {
+                  settings.setKeepScreenOn(value);
+                },
+              ),
+
               const SizedBox(height: 30),
               const Text(
                 'Backup & Restore',
@@ -339,6 +450,14 @@ class SettingsScreen extends StatelessWidget {
               ),
               const Divider(color: Color(0xFF2D2D2D), height: 30),
               ListTile(
+                title: const Text('Safe Reset (Visual Only)', style: TextStyle(color: Colors.white)),
+                subtitle: const Text('Restore theme and terminal display defaults. Keeps sessions, packages, workspaces, and files', style: TextStyle(color: Colors.white60)),
+                trailing: Icon(Icons.restart_alt, color: settings.primaryColor),
+                onTap: () {
+                  _showSafeResetConfirmation(context, settings);
+                },
+              ),
+              ListTile(
                 title: const Text('Reset Termode', style: TextStyle(color: Colors.redAccent)),
                 subtitle: const Text('Wipe all sessions, folders, and settings permanently', style: TextStyle(color: Colors.white60)),
                 trailing: const Icon(Icons.delete_forever, color: Colors.redAccent),
@@ -360,7 +479,7 @@ class SettingsScreen extends StatelessWidget {
               const Divider(color: Color(0xFF2D2D2D), height: 30),
               const ListTile(
                 title: Text('App Version', style: TextStyle(color: Colors.white)),
-                trailing: Text('0.4.0 (Persistence)', style: TextStyle(color: Colors.white60)),
+                trailing: Text('v0.39 (UI / Settings Polish)', style: TextStyle(color: Colors.white60)),
               ),
               const ListTile(
                 title: Text('Developer', style: TextStyle(color: Colors.white)),

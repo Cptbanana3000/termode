@@ -290,15 +290,21 @@ class _TerminalScreenState extends State<TerminalScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          session.name,
-                          style: TextStyle(
-                            color: isActive ? Colors.white : Colors.white54,
-                            fontFamily: 'monospace',
-                            fontSize: 11,
-                            fontWeight: isActive
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 120),
+                          child: Text(
+                            session.name,
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isActive ? Colors.white : Colors.white54,
+                              fontFamily: 'monospace',
+                              fontSize: 11,
+                              fontWeight: isActive
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -317,6 +323,9 @@ class _TerminalScreenState extends State<TerminalScreen> {
                           ),
                           child: Text(
                             badgeText,
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.clip,
                             style: TextStyle(
                               color: badgeColor,
                               fontSize: 8,
