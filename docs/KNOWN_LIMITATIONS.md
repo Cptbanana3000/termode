@@ -1,7 +1,10 @@
 # Known Limitations
 
-Termode is beta software. The current goal is to stabilize the standalone
-terminal experience before expanding runtimes.
+Termode is beta software (v0.41 is a release-candidate cleanup pass). The
+current goal is to stabilize the standalone terminal experience before
+expanding runtimes. A `LIMITED` doctor status is often an intentional
+limitation (frozen runtime, unlinked storage) and does not mean Termode is
+broken.
 
 ## Runtime Freeze
 

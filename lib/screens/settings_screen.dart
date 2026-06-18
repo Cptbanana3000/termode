@@ -479,7 +479,7 @@ class SettingsScreen extends StatelessWidget {
               const Divider(color: Color(0xFF2D2D2D), height: 30),
               const ListTile(
                 title: Text('App Version', style: TextStyle(color: Colors.white)),
-                trailing: Text('v0.40 (Beta Candidate)', style: TextStyle(color: Colors.white60)),
+                trailing: Text('v0.41 (Release Candidate Cleanup)', style: TextStyle(color: Colors.white60)),
               ),
               const ListTile(
                 title: Text('Developer', style: TextStyle(color: Colors.white)),

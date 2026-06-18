@@ -118,3 +118,18 @@ Beta readiness treats intentional limitations as acceptable: a frozen runtime,
 deferred QuickJS/Duktape, and unlinked storage are reported as `FROZEN` /
 `LIMITED` and do NOT make Termode "not ready". Only a genuinely `UNHEALTHY`
 core subsystem (packages, workspaces, sessions) blocks `beta-candidate ready`.
+
+v0.41 is a beta-feedback / release-candidate cleanup pass (no new features):
+
+- version is `v0.41` (Android `versionName 0.41.0` / `versionCode 41`)
+- `feedback`, `feedback template`, `feedback checklist` help testers file useful
+  bug reports locally (no network)
+- `rc-checklist` lists the final pre-release checklist; `rc-status` reports a
+  compact release-candidate status (`RC CLEANUP READY` when core systems are OK)
+- `rc-status` uses the same readiness logic as `beta-candidate ready`, so the
+  intentional frozen runtime and unlinked storage do NOT block RC readiness
+- stale wording was cleaned up (e.g. `runtime-freeze next` now points to the
+  current next milestone)
+
+A `LIMITED` doctor status is expected when the only issues are intentional
+(frozen runtime, unlinked storage); it does not mean Termode is broken.

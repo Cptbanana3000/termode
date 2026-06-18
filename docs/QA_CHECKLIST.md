@@ -151,3 +151,23 @@ v0.39 UI / settings checks:
 - `adb shell input text` works for the typed pass while the soft keyboard is
   raised (tap the terminal body first); it drops characters when the keyboard
   is dismissed
+
+## v0.41 RC cleanup checks
+
+- run `version` and `build-info` and confirm `v0.41`
+- run `feedback`, `feedback template`, `feedback checklist`
+- run `rc-checklist` and `rc-status` (confirm `RC CLEANUP READY`)
+- run `beta-candidate ready` (confirm `Ready for beta testing.`)
+- confirm `doctor` may be `LIMITED` only for intentional reasons (frozen runtime
+  / unlinked storage) and `qa-status` is `READY WITH LIMITATIONS`
+- confirm `settings-reset-safe` still requires `--confirm` and keeps user data
+- install the renamed RC artifact `Termode-v0.41-rc-debug.apk`
+
+## v0.41 Device Note
+
+- startup banner and `version`/`build-info` report `Termode v0.41`
+- Android `versionName` is `0.41.0`, `versionCode` is `41`
+- when driving the device with `adb`, confirm Termode is the foreground app
+  first (`dumpsys activity activities | grep topResumedActivity`) and keep the
+  soft keyboard raised; only the first typed command after a tap lands, so
+  re-tap before each command

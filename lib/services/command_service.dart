@@ -234,8 +234,8 @@ class CommandService {
   String _betaNextOutput() {
     return '=== Beta Next ===\n'
         'Recommended next milestone:\n'
-        'v0.41 Beta Feedback Fixes\n\n'
-        'Reason: v0.40 packages Termode as a beta candidate; next comes tester feedback triage.';
+        'v0.42 Release Polish\n\n'
+        'Reason: v0.41 is the beta feedback / release-candidate cleanup pass; next comes release polish.';
   }
 
   /// Computes beta-candidate readiness. Intentional limitations (frozen
@@ -274,7 +274,7 @@ class CommandService {
     final r = await _betaCandidateReadiness();
     String label(String s) => s == 'UNHEALTHY' ? 'UNHEALTHY' : 'OK';
     return '=== Termode Beta Candidate ===\n'
-        'Version: v0.40\n'
+        'Version: v0.41\n'
         'Core shell: OK\n'
         'Packages: ${label(r.packages)}\n'
         'Workspaces: ${label(r.workspaces)}\n'
@@ -309,7 +309,7 @@ class CommandService {
   }
 
   String _betaCandidateNotesOutput() {
-    return '=== Termode v0.40 Beta Candidate ===\n'
+    return '=== Termode v0.41 Beta Candidate ===\n'
         'Termode is a standalone Android terminal with a REAL PTY shell.\n\n'
         'Highlights:\n'
         '* REAL PTY shell with host command interception\n'
@@ -337,14 +337,86 @@ class CommandService {
 
   String _betaCandidateHelpOutput() {
     return '=== Termode Beta Candidate ===\n'
-        'Termode v0.40 is a beta candidate build.\n\n'
+        'Termode v0.41 is a beta candidate / release-candidate cleanup build.\n\n'
         'Subcommands:\n'
         '  beta-candidate status     - Show beta candidate readiness summary\n'
         '  beta-candidate checklist  - Show the beta candidate checklist\n'
-        '  beta-candidate notes      - Show concise v0.40 release notes\n'
+        '  beta-candidate notes      - Show concise release notes\n'
         '  beta-candidate limits     - Show known beta limitations\n'
         '  beta-candidate ready      - Show whether Termode is ready for beta\n\n'
-        'See also: build-info, doctor, qa-status, beta-status.';
+        'See also: build-info, feedback, rc-status, doctor, qa-status.';
+  }
+
+  String _feedbackOutput() {
+    return '=== Beta Feedback ===\n'
+        'Use these when reporting a bug:\n\n'
+        '1. bug-report\n'
+        '2. qa-report\n'
+        '3. beta-candidate status\n'
+        '4. steps to reproduce\n'
+        '5. expected result\n'
+        '6. actual result\n'
+        '7. screenshot/screen recording if possible\n\n'
+        'Tip: feedback template gives a copy-friendly form. No data leaves your device.';
+  }
+
+  String _feedbackTemplateOutput() {
+    return 'Termode version:\n'
+        'Device:\n'
+        'Android version:\n'
+        'Command/area:\n'
+        'Steps to reproduce:\n'
+        'Expected:\n'
+        'Actual:\n'
+        'Does it happen after restart:\n'
+        'Output from bug-report:\n'
+        'Output from qa-report:';
+  }
+
+  String _feedbackChecklistOutput() {
+    return '=== Beta Feedback Checklist ===\n'
+        '* launch\n'
+        '* typing\n'
+        '* REAL PTY\n'
+        '* package install/remove\n'
+        '* workspace file write/read\n'
+        '* force close/reopen\n'
+        '* settings reset safe\n'
+        '* beta-candidate ready';
+  }
+
+  String _rcChecklistOutput() {
+    return '=== Release Candidate Checklist ===\n'
+        '* flutter analyze\n'
+        '* flutter test\n'
+        '* debug APK build\n'
+        '* install APK on real Android device\n'
+        '* versionName/versionCode confirmed\n'
+        '* version command checked\n'
+        '* beta-candidate ready checked\n'
+        '* doctor checked\n'
+        '* qa-status checked\n'
+        '* package install/remove checked\n'
+        '* workspace file roundtrip checked\n'
+        '* force-close/reopen checked\n'
+        '* release notes reviewed\n'
+        '* known limitations reviewed';
+  }
+
+  Future<String> _rcStatusOutput() async {
+    final r = await _betaCandidateReadiness();
+    final coreSystems = _overallFromStatuses([
+      r.packages,
+      r.workspaces,
+      r.sessions,
+    ]);
+    final coreLabel = coreSystems == 'HEALTHY' ? 'OK' : coreSystems;
+    return '=== Release Candidate Status ===\n'
+        'Version: v0.41\n'
+        'Beta candidate: yes\n'
+        'Core systems: $coreLabel\n'
+        'Known limitations: intentional\n'
+        'Overall: ${r.ready ? 'RC CLEANUP READY' : 'NEEDS FIXES'}';
   }
 
   Future<String> _termodeDoctor({bool verbose = false}) async {
@@ -469,6 +541,8 @@ class CommandService {
         '  status, doctor, qa-status, qa-run, beta-status, onboarding-doctor\n'
         'Beta candidate:\n'
         '  build-info, beta-candidate status, beta-candidate ready\n'
+        'Beta feedback / RC:\n'
+        '  feedback, feedback template, rc-checklist, rc-status\n'
         'Advanced probes:\n'
         '  runtime-candidates, js-engine-decision, quickjs, duktape\n\n'
         'Use commands --all for the full catalog.';
@@ -571,7 +645,7 @@ class CommandService {
     final docsOk = repoDocsOk || embeddedDocsOk;
     final readmeOk =
         !File('README.md').existsSync() ||
-        File('README.md').readAsStringSync().contains('v0.40');
+        File('README.md').readAsStringSync().contains('v0.41');
     final healthy = docsOk && readmeOk;
     return '=== Onboarding Doctor ===\n'
         'Welcome: OK\n'
@@ -683,7 +757,7 @@ class CommandService {
   }
 
   String _versionOutput() {
-    return 'Termode v0.40\n'
+    return 'Termode v0.41\n'
         'Runtime: frozen\n'
         'Shell: REAL PTY\n'
         'Packages: script-only';
@@ -699,17 +773,18 @@ class CommandService {
   String _buildInfoOutput() {
     return '=== Build Info ===\n'
         'App: Termode\n'
-        'Version: v0.40\n'
+        'Version: v0.41\n'
         'Build type: ${_buildTypeName()}\n'
         'Runtime: frozen\n'
         'Shell: REAL PTY\n'
         'Packages: script-only\n'
         'Beta candidate: yes\n'
-        'Artifact: Termode-v0.40-beta-debug.apk';
+        'Artifact: Termode-v0.41-rc-debug.apk';
   }
 
   String _releaseNotesOutput() {
     return '=== Termode Release Notes ===\n'
+        'v0.41 Beta Feedback Fixes / RC Cleanup\n'
         'v0.40 Beta Candidate Packaging\n'
         'v0.39 UI / Settings Polish\n'
         'v0.38 Documentation / Onboarding Polish\n'
@@ -743,7 +818,7 @@ class CommandService {
         ? 'REAL PTY'
         : 'NORMAL';
     return '=== Termode Bug Report ===\n'
-        'Termode version: v0.40\n'
+        'Termode version: v0.41\n'
         'Android ABI: $abi\n'
         'Runtime status: $runtimeStatus\n'
         'Package doctor: $packageStatus\n'
@@ -939,7 +1014,9 @@ class CommandService {
               'Beta candidate:\n'
               '  build-info\n'
               '  beta-candidate status\n'
-              '  beta-candidate ready\n\n'
+              '  beta-candidate ready\n'
+              '  feedback\n'
+              '  rc-status\n\n'
               'Sub-help:\n'
               '  pkg help\n'
               '  workspace\n'
@@ -1760,6 +1837,35 @@ class CommandService {
 
       case 'build-info':
         return CommandResult(output: _buildInfoOutput());
+
+      case 'feedback':
+        final sub = args.isNotEmpty ? args[0].toLowerCase() : '';
+        switch (sub) {
+          case '':
+          case 'help':
+            return CommandResult(output: _feedbackOutput());
+          case 'template':
+            return CommandResult(output: _feedbackTemplateOutput());
+          case 'checklist':
+            return CommandResult(output: _feedbackChecklistOutput());
+          default:
+            return CommandResult(
+              output:
+                  'Unknown feedback subcommand: $sub\n'
+                  'Usage: feedback <template|checklist>',
+              isError: true,
+            );
+        }
+
+      case 'rc-checklist':
+        return CommandResult(output: _rcChecklistOutput());
+
+      case 'rc-status':
+        final output = await _rcStatusOutput();
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: NEEDS FIXES'),
+        );
 
       case 'beta-candidate':
         final sub = args.isNotEmpty ? args[0].toLowerCase() : 'help';

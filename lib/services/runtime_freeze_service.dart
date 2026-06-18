@@ -3,7 +3,7 @@ import 'dart:io';
 import 'runtime_capability_service.dart';
 
 class RuntimeFreezeService {
-  static const nextMilestone = 'v0.39 UI Polish / Settings Polish';
+  static const nextMilestone = 'v0.42 Release Polish';
 
   static const supportedRuntimeDirection = [
     'script packages through /system/bin/sh',
@@ -84,10 +84,10 @@ class RuntimeFreezeService {
         'Recommended next milestone:\n'
         '$nextMilestone\n\n'
         'Focus:\n'
-        '  - UI polish\n'
-        '  - settings polish\n'
-        '  - beta candidate cleanup\n'
+        '  - release candidate cleanup\n'
+        '  - beta feedback fixes\n'
         '  - package/workspace/terminal QA\n'
+        '  - documentation and release notes\n'
         'Runtime experiments stay deferred.';
   }
 

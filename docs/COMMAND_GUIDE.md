@@ -88,6 +88,18 @@ Use `welcome`, `examples`, and `glossary` first if you are new.
 - `theme-test`
 - `status`
 
+## Beta Candidate / Feedback / RC
+
+- `build-info`
+- `beta-candidate` (`status`, `checklist`, `notes`, `limits`, `ready`)
+- `feedback` (`template`, `checklist`)
+- `rc-checklist`
+- `rc-status`
+
+`feedback` and the `rc-*` commands are local only — no network upload. `rc-status`
+reports `RC CLEANUP READY` when core systems are healthy; the intentional frozen
+runtime and unlinked storage do not block it.
+
 `settings-reset-safe` restores visual/terminal settings to defaults and
 requires `--confirm`. It keeps packages, workspaces, sessions, history, repo
 config, and files. See [UI & Settings](UI_SETTINGS.md).

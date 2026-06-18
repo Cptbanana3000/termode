@@ -7,8 +7,8 @@ or IDE integration work.
 
 - v0.38 Documentation / Onboarding Polish
 - v0.39 UI / Settings Polish
-- v0.40 Beta Candidate (current)
-- v0.41 Beta Feedback Fixes
+- v0.40 Beta Candidate
+- v0.41 Beta Feedback Fixes / RC Cleanup (current)
 - v0.42 Release Polish
 - v1.0 later
 

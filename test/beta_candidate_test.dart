@@ -91,7 +91,7 @@ void main() {
       expect(result.isError, isFalse);
       expect(result.output, contains('=== Build Info ==='));
       expect(result.output, contains('App: Termode'));
-      expect(result.output, contains('Version: v0.40'));
+      expect(result.output, contains('Version: v0.41'));
       expect(result.output, contains('Build type:'));
       expect(result.output, contains('Runtime: frozen'));
       expect(result.output, contains('Shell: REAL PTY'));
@@ -115,7 +115,7 @@ void main() {
       final result = await commandService.execute('beta-candidate status');
 
       expect(result.output, contains('=== Termode Beta Candidate ==='));
-      expect(result.output, contains('Version: v0.40'));
+      expect(result.output, contains('Version: v0.41'));
       expect(result.output, contains('Core shell: OK'));
       expect(result.output, contains('Packages: OK'));
       expect(result.output, contains('Workspaces: OK'));
@@ -145,7 +145,7 @@ void main() {
     test('beta-candidate notes output', () async {
       final result = await commandService.execute('beta-candidate notes');
 
-      expect(result.output, contains('=== Termode v0.40 Beta Candidate ==='));
+      expect(result.output, contains('=== Termode v0.41 Beta Candidate ==='));
       expect(result.output, contains('REAL PTY shell'));
       expect(result.output, contains('script packages'));
       expect(result.output, contains('Runtime remains frozen'));
@@ -182,17 +182,17 @@ void main() {
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
 
-      expect(version.output, contains('Termode v0.40'));
-      expect(notes.output, contains('v0.40 Beta Candidate Packaging'));
-      expect(changelog.output, contains('v0.40 Beta Candidate Packaging'));
+      expect(version.output, contains('Termode v0.41'));
+      expect(notes.output, contains('v0.41 Beta Feedback Fixes / RC Cleanup'));
+      expect(changelog.output, contains('v0.41 Beta Feedback Fixes / RC Cleanup'));
     });
 
     test('bug-report and qa-report include v0.40', () async {
       final bug = await commandService.execute('bug-report');
       final qa = await commandService.execute('qa-report');
 
-      expect(bug.output, contains('Termode version: v0.40'));
-      expect(qa.output, contains('Termode v0.40'));
+      expect(bug.output, contains('Termode version: v0.41'));
+      expect(qa.output, contains('Termode v0.41'));
     });
 
     test('command catalog includes new v0.40 commands', () {

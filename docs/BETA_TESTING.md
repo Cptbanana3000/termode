@@ -1,8 +1,12 @@
 # Beta Testing
 
-Thanks for testing the Termode beta candidate. This is beta software — bugs are
-expected. This page explains what to check, what to report, and which behaviors
-are intentional.
+Thanks for testing Termode. v0.41 is a release-candidate cleanup pass on the
+beta candidate — this is beta software and bugs are expected. This page explains
+what to check, what to report, and which behaviors are intentional.
+
+In the app, run `feedback` for the reporting steps and `feedback template` for a
+copy-friendly bug form. `feedback checklist` lists the common things to try.
+Nothing is uploaded — these are local helpers.
 
 ## Short Tester Checklist
 
@@ -41,10 +45,13 @@ duplicate prompt, and run `doctor` and `beta-candidate ready` again.
 ## How to Run bug-report
 
 ```sh
+feedback template
 bug-report
+qa-report
 ```
 
-Copy the full output into your report. It includes the Termode version, Android
+Fill in `feedback template`, then copy the full `bug-report` (and `qa-report`)
+output into your report. It includes the Termode version, Android
 ABI, and doctor summaries. It deliberately omits private environment variables,
 tokens, and full file paths, so it is safe to share.
 
