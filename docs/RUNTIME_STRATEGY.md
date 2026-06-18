@@ -1,6 +1,6 @@
 # Termode Runtime Strategy
 
-Termode v0.25 treats runtime work as a measured proof sequence. The current
+Termode treats runtime work as a measured proof sequence. The current
 runtime is shell-first: REAL PTY sessions run Android `/system/bin/sh`, Termode
 host-intercepts management commands such as `pkg`, and installed packages are
 script packages executed through shell helper functions.
@@ -13,6 +13,9 @@ script packages executed through shell helper functions.
 - Remote packages are supported only for script packages and only after repo
   trust/source checks.
 - Workspace files live under `files/home/projects`.
+- Native tools are built into Termode and exposed through JNI; they are not
+  installable packages.
+- Runtime candidate research is the current phase before attempting Node.js.
 
 ## Android Execution Restrictions
 
@@ -45,11 +48,13 @@ management proofs before they become package types.
 2. Keep runtime diagnostics visible for shell, Toybox, and script probes.
 3. Prove localhost and port diagnostics before adding any dev server runtime.
 4. Add one bundled native runtime proof binary to validate ABI and execution.
-5. Add a Node runtime proof after native execution behavior is understood.
-6. Prove npm install/cache behavior inside app storage.
-7. Prove a minimal Vite dev server.
-8. Connect localhost preview once server lifecycle is reliable.
-9. Integrate CalypsoIDE workflows after runtime support is proven.
+5. Keep tiny native tools as built-in audited capabilities, not packages.
+6. Research native runtime candidates.
+7. Prove a tiny embedded JS/runtime path before Node.
+8. Add a Node runtime proof after native execution behavior is understood.
+9. Prove npm install/cache behavior inside app storage.
+10. Prove a minimal Vite dev server.
+11. Integrate CalypsoIDE workflows after runtime support is proven.
 
 ## Risks
 
@@ -62,9 +67,9 @@ management proofs before they become package types.
 
 ## Recommended Next Proof
 
-The next runtime target should be a tiny bundled native binary proof, not Node.
-It should report `native-ok`, ABI, pid, and cwd, and it should be tested across
-devices before any large runtime is added.
+The next runtime target should be a tiny embedded JS engine feasibility probe,
+not Node. It should prove JavaScript evaluation through an Android-supported
+APK-native-library/JNI path before any large runtime is added.
 
 ## Bundled Runtime Proof Findings (v0.28)
 
@@ -99,6 +104,7 @@ trying to drop and execute a binary in app storage. A future Node strategy
 should be evaluated as an APK-shipped native component driven through a native
 bridge.
 
-Recommended next step: a tiny *audited* native tool proof (still no Node), to
-confirm the native-library approach scales from a fixed token to a small,
-real native tool before any large runtime is attempted.
+Recommended next step: native runtime candidate research, then a tiny embedded
+JS engine feasibility probe (still no Node), to confirm the native-library
+approach can support runtime-style evaluation before any large runtime is
+attempted.

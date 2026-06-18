@@ -4,6 +4,11 @@ Termode packages are script-only packages installed into the app sandbox. Native
 
 Native binary packages are not supported. Both local and remote packages must be `type: script`. Native runtime support is experimental and planned, not available for packages. The bundled runtime proof (the `bundled-runtime-*` commands, see [BUNDLED_RUNTIME_PROOF.md](BUNDLED_RUNTIME_PROOF.md)) is a separate native-bridge proof and is **not** a package mechanism — it is independent of `pkg` and remote repo installs.
 
+The tiny native tools (the `native-tool` commands, see [NATIVE_TOOL_PROOF.md](NATIVE_TOOL_PROOF.md)) are built into Termode and reached through the JNI/native bridge. They are **not** installable packages and cannot be added, removed, or downloaded through `pkg`. Remote packages remain script-only.
+
+Runtime candidate research is the current phase. Node.js, npm, Python, Git, and
+native package downloads are not included yet.
+
 ## Package Shape
 
 Each package entry must include:

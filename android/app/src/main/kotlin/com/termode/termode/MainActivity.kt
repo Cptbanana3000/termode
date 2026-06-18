@@ -676,6 +676,51 @@ class MainActivity: FlutterActivity() {
                         }
                     }
                 }
+                "nativeTool" -> {
+                    val command = call.argument<String>("command") ?: ""
+                    val args = call.argument<String>("args") ?: ""
+                    thread {
+                        try {
+                            val response: Map<String, Any?> = when (command) {
+                                "info" -> mapOf(
+                                    "ok" to true,
+                                    "abi" to nativeToolAbi(),
+                                    "pid" to nativeToolPid(),
+                                    "cwd" to nativeToolCwd()
+                                )
+                                "echo" -> mapOf("ok" to true, "value" to nativeToolEcho(args))
+                                "cwd" -> mapOf("ok" to true, "value" to nativeToolCwd())
+                                "pid" -> mapOf("ok" to true, "value" to nativeToolPid())
+                                "abi" -> mapOf("ok" to true, "value" to nativeToolAbi())
+                                "hash" -> mapOf(
+                                    "ok" to true,
+                                    "value" to nativeToolHash(args),
+                                    "hashType" to "SHA-256"
+                                )
+                                "time" -> mapOf("ok" to true, "value" to nativeToolTime())
+                                "env" -> mapOf("ok" to true, "env" to nativeToolEnvSummary())
+                                "doctor" -> mapOf(
+                                    "ok" to true,
+                                    "abi" to nativeToolAbi(),
+                                    "cwd" to nativeToolCwd(),
+                                    "echoOk" to (nativeToolEcho("native-tool-doctor") == "native-tool-doctor"),
+                                    "hashOk" to (nativeToolHash("x").length == 64)
+                                )
+                                else -> mapOf(
+                                    "ok" to false,
+                                    "error" to "unknown native tool command: $command"
+                                )
+                            }
+                            Handler(Looper.getMainLooper()).post {
+                                result.success(response)
+                            }
+                        } catch (e: Throwable) {
+                            Handler(Looper.getMainLooper()).post {
+                                result.error("NATIVE_TOOL_FAILED", e.message ?: "Native tool failed", null)
+                            }
+                        }
+                    }
+                }
                 "bundledRuntimeProof" -> {
                     thread {
                         try {
@@ -1392,6 +1437,30 @@ class MainActivity: FlutterActivity() {
     // Bundled runtime proof (v0.28)
     private external fun nativeProofToken(): String
     private external fun nativeEchoProof(input: String): String
+
+    // Tiny native tool proof (v0.29)
+    private external fun nativeToolEcho(input: String): String
+    private external fun nativeToolCwd(): String
+    private external fun nativeToolPid(): Int
+    private external fun nativeToolAbi(): String
+    private external fun nativeToolHash(input: String): String
+    private external fun nativeToolTime(): Long
+
+    // Builds a safe, limited environment summary. Only a fixed whitelist of
+    // keys is exposed; nothing else from the process environment is returned.
+    private fun nativeToolEnvSummary(): Map<String, String> {
+        val homeDir = java.io.File(filesDir, "home").absolutePath
+        val usrDir = java.io.File(filesDir, "usr").absolutePath
+        val binDir = java.io.File(filesDir, "usr/bin").absolutePath
+        val tmpDir = java.io.File(filesDir, "tmp").absolutePath
+        return mapOf(
+            "HOME" to (System.getenv("HOME") ?: homeDir),
+            "TMPDIR" to (System.getenv("TMPDIR") ?: tmpDir),
+            "TERMODE_HOME" to homeDir,
+            "TERMODE_USR" to usrDir,
+            "TERMODE_BIN" to binDir
+        )
+    }
 
     companion object {
         init {

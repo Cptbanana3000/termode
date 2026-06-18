@@ -9,9 +9,11 @@ import 'terminal_session_service.dart';
 import 'settings_service.dart';
 import 'runtime_tool_service.dart';
 import 'runtime_capability_service.dart';
+import 'runtime_candidate_service.dart';
 import 'localhost_service.dart';
 import 'preview_service.dart';
 import 'bundled_runtime_service.dart';
+import 'native_tool_service.dart';
 import 'package_manager_service.dart';
 import 'workspace_service.dart';
 
@@ -153,12 +155,25 @@ class CommandService {
               '  runtime-capabilities - Show supported and unsupported runtimes\n'
               '  runtime-exec-test - Run shell/script/native bridge probes\n'
               '  runtime-plan - Show staged runtime roadmap\n\n'
+              'Runtime Research Commands:\n'
+              '  runtime-candidates - Compare future runtime strategies\n'
+              '  runtime-candidate <name> - Show one candidate in detail\n'
+              '  runtime-decision - Show recommended runtime order\n'
+              '  runtime-risks - List runtime adoption risks\n'
+              '  runtime-next - Show recommended next milestone\n'
+              '  runtime-research-doctor - Check research readiness\n\n'
               'Bundled Runtime Proof Commands:\n'
               '  bundled-runtime-info - Show bundled native proof info\n'
               '  bundled-runtime-test - Run the native bridge proof\n'
               '  bundled-runtime-doctor - Diagnose bundled runtime proof\n'
               '  bundled-runtime-paths - Show native/runtime paths\n'
               '  bundled-runtime-plan - Show bundled runtime roadmap\n\n'
+              'Native Tool Commands:\n'
+              '  native-tool - Show native tool help and subcommands\n'
+              '  native-tool info - Show native bridge tool info\n'
+              '  native-tool echo <text> - Echo text from native code\n'
+              '  native-tool hash <text> - SHA-256 of text (native)\n'
+              '  native-tool doctor - Diagnose the native tool bridge\n\n'
               'Dev Server Commands:\n'
               '  localhost-doctor - Check localhost readiness\n'
               '  localhost-capabilities - Show localhost support\n'
@@ -915,11 +930,18 @@ class CommandService {
               '  runtime-capabilities   - List supported and unsupported runtimes\n'
               '  runtime-exec-test      - Run runtime execution probes\n'
               '  runtime-plan           - Show native/runtime proof roadmap\n'
+              '  runtime-candidates     - Compare possible future runtime strategies\n'
+              '  runtime-candidate <n>  - Show details for one runtime candidate\n'
+              '  runtime-decision       - Show recommended runtime decision order\n'
+              '  runtime-risks          - List major runtime risks\n'
+              '  runtime-next           - Show recommended next proof\n'
+              '  runtime-research-doctor - Check runtime research readiness\n'
               '  bundled-runtime-info   - Show bundled native proof info\n'
               '  bundled-runtime-test   - Run the native bridge proof\n'
               '  bundled-runtime-doctor - Diagnose bundled runtime proof\n'
               '  bundled-runtime-paths  - Show native/runtime paths\n'
               '  bundled-runtime-plan   - Show bundled runtime roadmap\n'
+              '  native-tool [sub]      - Run a tiny native bridge tool\n'
               '  localhost-doctor       - Check localhost readiness\n'
               '  localhost-capabilities - Show dev server readiness support\n'
               '  port-check <port>      - Check 127.0.0.1 port status\n'
@@ -969,6 +991,44 @@ class CommandService {
       case 'runtime-plan':
         return CommandResult(output: RuntimeCapabilityService().plan());
 
+      case 'runtime-candidates':
+        return CommandResult(
+          output: RuntimeCandidateService().candidatesTable(),
+        );
+
+      case 'runtime-candidate':
+        if (args.isEmpty) {
+          return CommandResult(
+            output: 'Usage: runtime-candidate <name>',
+            isError: true,
+          );
+        }
+        final candidateOutput = RuntimeCandidateService().candidateDetails(
+          args[0],
+        );
+        return CommandResult(
+          output: candidateOutput,
+          isError: candidateOutput.startsWith('Unknown runtime candidate:'),
+        );
+
+      case 'runtime-decision':
+        return CommandResult(output: RuntimeCandidateService().decision());
+
+      case 'runtime-risks':
+        return CommandResult(output: RuntimeCandidateService().risks());
+
+      case 'runtime-next':
+        return CommandResult(output: RuntimeCandidateService().next());
+
+      case 'runtime-research-doctor':
+        final output = await RuntimeCandidateService().researchDoctor(
+          sessionId,
+        );
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall readiness: UNHEALTHY'),
+        );
+
       case 'bundled-runtime-info':
         return CommandResult(output: await BundledRuntimeService().info());
 
@@ -993,6 +1053,53 @@ class CommandService {
 
       case 'bundled-runtime-plan':
         return CommandResult(output: BundledRuntimeService().plan());
+
+      case 'native-tool':
+        final tool = NativeToolService();
+        final sub = args.isNotEmpty ? args[0].toLowerCase() : 'help';
+        switch (sub) {
+          case 'help':
+            return CommandResult(output: tool.help());
+          case 'info':
+            return CommandResult(output: await tool.info());
+          case 'echo':
+            return CommandResult(
+              output: await tool.echo(args.sublist(1).join(' ')),
+            );
+          case 'cwd':
+            return CommandResult(output: await tool.cwd());
+          case 'pid':
+            return CommandResult(output: await tool.pid());
+          case 'abi':
+            return CommandResult(output: await tool.abi());
+          case 'hash':
+            if (args.length < 2) {
+              return CommandResult(
+                output: 'Usage: native-tool hash <text>',
+                isError: true,
+              );
+            }
+            return CommandResult(
+              output: await tool.hash(args.sublist(1).join(' ')),
+            );
+          case 'time':
+            return CommandResult(output: await tool.time());
+          case 'env':
+            return CommandResult(output: await tool.env());
+          case 'doctor':
+            final doctorOut = await tool.doctor();
+            return CommandResult(
+              output: doctorOut,
+              isError: doctorOut.contains('Overall: UNHEALTHY'),
+            );
+          default:
+            return CommandResult(
+              output:
+                  'Unknown native-tool subcommand: $sub\n'
+                  'Usage: native-tool <help|info|echo|cwd|pid|abi|hash|time|env|doctor>',
+              isError: true,
+            );
+        }
 
       case 'localhost-doctor':
         final verbose = args.contains('--verbose');
@@ -2442,7 +2549,9 @@ class CommandService {
                   'Package Limits:\n'
                   '  - Packages are script-only. Native binary packages are not supported yet.\n'
                   '  - Remote packages are script-only and require repo trust.\n'
-                  '  - The bundled runtime proof (bundled-runtime-*) is separate from pkg remote installs.',
+                  '  - The bundled runtime proof (bundled-runtime-*) is separate from pkg remote installs.\n'
+                  '  - Native tools (native-tool) are built into Termode, not installable packages.\n'
+                  '  - Node.js/npm/Python/Git are not available yet.',
             );
 
           case 'update':

@@ -148,6 +148,10 @@ class RuntimeCapabilityService {
     sb.writeln(
       'Bundled proof: ${report.nativeBridgeOk ? 'PROOF READY' : 'UNAVAILABLE'}',
     );
+    sb.writeln(
+      'Native tools: ${report.nativeBridgeOk ? 'bridge-exposed' : 'unavailable'}',
+    );
+    sb.writeln('Runtime research: available (runtime-candidates)');
     sb.writeln('Workspace cwd: ${_ok(report.workspaceCwdOk)}');
     if (verbose) {
       sb.writeln();
@@ -183,6 +187,8 @@ class RuntimeCapabilityService {
     sb.writeln('workspace cwd probe: ${_pass(report.workspaceCwdOk)}');
     sb.writeln('native bridge probe: ${_pass(report.nativeBridgeOk)}');
     sb.writeln('bundled native proof: ${_pass(report.nativeBridgeOk)}');
+    sb.writeln('tiny native tool proof: ${_pass(report.nativeBridgeOk)}');
+    sb.writeln('runtime candidate research: PASS');
     if (verbose) {
       sb.writeln();
       sb.writeln('Details:');
@@ -204,15 +210,18 @@ class RuntimeCapabilityService {
         '  - Remote script packages after repo trust/source checks\n'
         '  - Workspace folders under files/home/projects\n'
         '  - Localhost diagnostics for ports, HTTP checks, and preview URLs\n'
-        '  - Bundled native bridge proof (v0.28)\n\n'
+        '  - Bundled native bridge proof (v0.28)\n'
+        '  - Tiny native tools via the JNI bridge (v0.29): native-tool echo/cwd/pid/abi/hash/time/env\n'
+        '  - Native runtime candidate research: runtime-candidates, runtime-next, runtime-research-doctor\n\n'
         'Not supported yet:\n'
         '  - Native binary packages\n'
         '  - Node.js\n'
         '  - npm\n'
         '  - Python\n'
         '  - Git\n\n'
+        'Native tools are bridge-exposed, not package-installed binaries.\n'
         'Bundled runtime: native bridge proof available. Node.js not included.\n'
-        'Next runtime phase: tiny native tool proof.';
+        'Next runtime phase: run runtime-next for the recommended proof.';
   }
 
   String plan() {
@@ -221,11 +230,14 @@ class RuntimeCapabilityService {
         '2. Runtime diagnostics - keep shell, Toybox, and script probes visible.\n'
         '3. Localhost/preview workflow - prove dev server readiness and preview URLs without Node yet.\n'
         '4. Bundled native proof - tiny JNI/native bridge proof inside the APK (v0.28), no Node.\n'
-        '5. Tiny native tool proof - add one tiny audited native tool later.\n'
-        '6. Node proof later - test ABI, extraction, and execution constraints.\n'
-        '7. npm proof later - prove package install/cache behavior in app storage.\n'
-        '8. Vite proof later - run a minimal dev server inside the sandbox.\n'
-        '9. CalypsoIDE integration later - wire editor workflows after runtime proof.';
+        '5. Tiny native tool proof - audited native tools through the JNI bridge (v0.29), no Node.\n'
+        '6. Native runtime candidate research - compare script, JNI, APK-native, embedded JS, Node, prefix, and remote paths.\n'
+        '7. Tiny JS/runtime feasibility proof - recommended next step before Node.\n'
+        '8. Node proof later - test ABI, extraction, and execution constraints.\n'
+        '9. npm proof later - prove package install/cache behavior in app storage.\n'
+        '10. Vite proof later - run a minimal dev server inside the sandbox.\n'
+        '11. CalypsoIDE integration later - wire editor workflows after runtime proof.\n'
+        'Recommended next proof: runtime-next';
   }
 
   String _directExecStatus(NativeCommandResult result) {

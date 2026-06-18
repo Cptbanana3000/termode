@@ -93,10 +93,7 @@ void main() {
       expect(missing.error, contains('Missing port'));
 
       expect(service.normalizePreviewUrl(3000), 'http://127.0.0.1:3000');
-      expect(
-        service.normalizeHttpTestUrl('5173'),
-        'http://127.0.0.1:5173',
-      );
+      expect(service.normalizeHttpTestUrl('5173'), 'http://127.0.0.1:5173');
     });
 
     // ----- preview status -----
@@ -361,11 +358,14 @@ void main() {
       expect(result.output, contains('preview history'));
     });
 
-    test('runtime-plan reflects staged roadmap with preview workflow', () async {
-      final result = await commandService.execute('runtime-plan');
-      expect(result.output, contains('3. Localhost/preview workflow'));
-      expect(result.output, contains('4. Bundled native proof'));
-      expect(result.output, contains('8. Vite proof later'));
-    });
+    test(
+      'runtime-plan reflects staged roadmap with preview workflow',
+      () async {
+        final result = await commandService.execute('runtime-plan');
+        expect(result.output, contains('3. Localhost/preview workflow'));
+        expect(result.output, contains('4. Bundled native proof'));
+        expect(result.output, contains('10. Vite proof later'));
+      },
+    );
   });
 }

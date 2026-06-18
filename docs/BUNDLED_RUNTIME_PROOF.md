@@ -7,6 +7,9 @@ and exposes it through `bundled-runtime-*` commands.
 **v0.28 does not include Node.js.** It also does not include npm, Python, Git,
 native binary packages, downloaded executables, or any bundled runtime.
 
+v0.30 adds native runtime candidate research. The recommended next proof is a
+tiny embedded JS engine feasibility probe before Node.js.
+
 ## Current Android Execution Constraints
 
 Android app-private storage commonly blocks direct execution of files placed in
@@ -24,6 +27,9 @@ on app-private data on many devices/policies). The app can read and write those
 files, but the OS refuses to exec them. Direct app-bin execution therefore
 reports `blocked` in `runtime-doctor` and `runtime-exec-test`, and the bundled
 proof reports `Bundled executable: blocked` on-device.
+
+Native tools are built into Termode and exposed by the JNI bridge; they are not
+installable packages. Remote packages remain script-only.
 
 ## Four Execution Mechanisms Compared
 
@@ -80,6 +86,6 @@ bundled-runtime-plan     # bundled runtime roadmap
 
 ## Recommended Next Step
 
-Add a tiny *audited* native tool proof (still no Node) to confirm the
-native-library approach scales from a fixed token to a small real native tool,
-before attempting any large runtime.
+Use runtime candidate research to choose the safest next proof. The current
+recommendation is a tiny embedded JS engine feasibility probe before attempting
+Node.js.

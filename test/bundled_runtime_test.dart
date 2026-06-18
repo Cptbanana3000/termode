@@ -150,12 +150,15 @@ void main() {
       expect(result.output, contains('Overall: PROOF READY'));
     });
 
-    test('bundled-runtime-info reports UNAVAILABLE when bridge fails', () async {
-      proofMode = 'throw';
-      final result = await commandService.execute('bundled-runtime-info');
-      expect(result.output, contains('Native bridge: unavailable'));
-      expect(result.output, contains('Overall: UNAVAILABLE'));
-    });
+    test(
+      'bundled-runtime-info reports UNAVAILABLE when bridge fails',
+      () async {
+        proofMode = 'throw';
+        final result = await commandService.execute('bundled-runtime-info');
+        expect(result.output, contains('Native bridge: unavailable'));
+        expect(result.output, contains('Overall: UNAVAILABLE'));
+      },
+    );
 
     // ----- bundled-runtime-test -----
 
@@ -206,10 +209,7 @@ void main() {
         'bundled-runtime-doctor --verbose',
       );
       expect(result.output, contains('Details:'));
-      expect(
-        result.output,
-        contains('Native library: libtermode_pty.so'),
-      );
+      expect(result.output, contains('Native library: libtermode_pty.so'));
       expect(
         result.output,
         contains('Native channel: com.termode/native_shell'),
@@ -243,7 +243,9 @@ void main() {
       expect(result.output, contains('=== Bundled Runtime Plan ==='));
       expect(result.output, contains('Native bridge proof (v0.28)'));
       expect(result.output, contains('Native echo dispatcher proof'));
-      expect(result.output, contains('Node.js: not included in v0.28.'));
+      expect(result.output, contains('Tiny native tool proof (v0.29)'));
+      expect(result.output, contains('Tiny JS/runtime feasibility proof'));
+      expect(result.output, contains('Node.js: not included.'));
     });
 
     // ----- runtime command integration -----
@@ -282,10 +284,7 @@ void main() {
         contains('Native binary packages are not supported'),
       );
       expect(result.output, contains('Remote packages are script-only'));
-      expect(
-        result.output,
-        contains('bundled runtime proof'),
-      );
+      expect(result.output, contains('bundled runtime proof'));
     });
 
     // ----- help / autocomplete -----
@@ -324,21 +323,24 @@ void main() {
       }
     });
 
-    test('bundled-runtime commands are intercepted inside REAL PTY mode', () async {
-      final sessionService = TerminalSessionService();
-      final session = sessionService.activeSession;
-      session.lines.clear();
-      session.isRealPtyActive = true;
-      session.isPtyInteractionActive = true;
+    test(
+      'bundled-runtime commands are intercepted inside REAL PTY mode',
+      () async {
+        final sessionService = TerminalSessionService();
+        final session = sessionService.activeSession;
+        session.lines.clear();
+        session.isRealPtyActive = true;
+        session.isPtyInteractionActive = true;
 
-      await sessionService.executeCommand('bundled-runtime-info');
+        await sessionService.executeCommand('bundled-runtime-info');
 
-      final output = session.lines.map((line) => line.text).join('\n');
-      expect(output, contains('bundled-runtime-info'));
-      expect(output, contains('=== Bundled Runtime Info ==='));
+        final output = session.lines.map((line) => line.text).join('\n');
+        expect(output, contains('bundled-runtime-info'));
+        expect(output, contains('=== Bundled Runtime Info ==='));
 
-      session.isPtyInteractionActive = false;
-      session.isRealPtyActive = false;
-    });
+        session.isPtyInteractionActive = false;
+        session.isRealPtyActive = false;
+      },
+    );
   });
 }

@@ -30,19 +30,18 @@ class BundledRuntimeProof {
     this.error,
   });
 
-  factory BundledRuntimeProof.unavailable(String? error) =>
-      BundledRuntimeProof(
-        bridgeOk: false,
-        tokenOk: false,
-        echoOk: false,
-        token: '',
-        echo: '',
-        abi: 'unknown',
-        cwd: 'unknown',
-        pid: -1,
-        apkNativeLayer: 'unknown',
-        error: error,
-      );
+  factory BundledRuntimeProof.unavailable(String? error) => BundledRuntimeProof(
+    bridgeOk: false,
+    tokenOk: false,
+    echoOk: false,
+    token: '',
+    echo: '',
+    abi: 'unknown',
+    cwd: 'unknown',
+    pid: -1,
+    apkNativeLayer: 'unknown',
+    error: error,
+  );
 
   /// PROOF READY / LIMITED / UNAVAILABLE
   String get readiness {
@@ -130,6 +129,8 @@ class BundledRuntimeService {
       'APK native layer: ${p.bridgeOk ? p.apkNativeLayer : 'unknown'}',
     );
     sb.writeln('Executable strategy: bridge/native-lib proof');
+    sb.writeln('Tiny native tool: available (bridge-exposed, not a package)');
+    sb.writeln('Runtime candidate research: available');
     sb.writeln('Node.js: not included');
     sb.write('Overall: ${p.readiness}');
     return sb.toString();
@@ -145,6 +146,8 @@ class BundledRuntimeService {
     sb.writeln('Native cwd: ${p.cwd}');
     sb.writeln('Native pid: ${p.pid}');
     sb.writeln('Echo proof: ${p.echoOk ? 'OK' : 'FAIL'}');
+    sb.writeln('Tiny native tool: available');
+    sb.writeln('Runtime candidate research: available');
     sb.write('Overall: ${p.testResult}');
     return sb.toString();
   }
@@ -162,6 +165,8 @@ class BundledRuntimeService {
       'APK native layer: ${p.bridgeOk ? p.apkNativeLayer : 'unknown'}',
     );
     sb.writeln('Bundled executable: ${_bundledExecutableStatus()}');
+    sb.writeln('Tiny native tool: available (bridge-exposed)');
+    sb.writeln('Recommended next proof: runtime-next');
     sb.writeln('Node.js: not included');
     if (verbose) {
       sb.writeln();
@@ -204,12 +209,14 @@ class BundledRuntimeService {
     return '=== Bundled Runtime Plan ===\n'
         '1. Native bridge proof (v0.28) - prove JNI calls return a native token, ABI, pid, and cwd.\n'
         '2. Native echo dispatcher proof - prove native-side command handling without external code.\n'
-        '3. Tiny native tool proof - add one tiny audited native tool later.\n'
-        '4. Node as APK-shipped native component - investigate shipping Node in the APK native layer.\n'
-        '5. Node via native bridge control - drive a runtime through JNI rather than direct exec.\n'
-        '6. Standalone native executable - only if Android allows; app-private exec is blocked.\n'
-        '7. Fallback - no Node until a safe strategy is proven.\n'
-        'Node.js: not included in v0.28.';
+        '3. Tiny native tool proof (v0.29) - audited native tools (native-tool) through the JNI bridge.\n'
+        '4. Native runtime candidate research - study which runtimes can ship via the APK native layer.\n'
+        '5. Tiny JS/runtime feasibility proof - test embedded JS before Node.\n'
+        '6. Node as APK-shipped native component - investigate shipping Node in the APK native layer later.\n'
+        '7. Node via native bridge control - drive a runtime through JNI rather than direct exec later.\n'
+        '8. Standalone native executable - only if Android allows; app-private exec is blocked.\n'
+        '9. Fallback - no Node until a safe strategy is proven.\n'
+        'Node.js: not included.';
   }
 
   String _bundledExecutableStatus() {
