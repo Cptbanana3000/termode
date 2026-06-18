@@ -1,12 +1,13 @@
 # Known Limitations
 
-Termode is beta software. v0.43 provides the prefix/PATH/environment layer for
-future toolchains, but those toolchains are **planned, not installed**.
+Termode is beta software. v0.44 provides a safe runtime package installer
+prototype on top of the prefix/PATH/environment layer, but real toolchains are
+still **planned, not installed**.
 
 Termode does not run Node.js, npm, Git, or Python yet. A `LIMITED` or
-`ARCHITECTURE PHASE` status is often intentional when it refers to frozen
-runtime work, unlinked Android storage, planned toolchains, or a prefix that has
-not been initialized yet.
+`PROTOTYPE READY`, `ARCHITECTURE PHASE`, or `LIMITED` status is often
+intentional when it refers to frozen runtime work, unlinked Android storage,
+planned toolchains, or a prefix that has not been initialized yet.
 
 ## Runtime Freeze
 
@@ -19,13 +20,14 @@ supports:
 - `js-proof` controlled evaluator
 - localhost/preview diagnostics
 - prefix/PATH/environment infrastructure for future tools
+- runtime package installer prototype with `hello-bin`
 
 ## Not Included Yet
 
 - Node.js/npm
 - Python
 - Git
-- native binary package installs
+- real native binary package installs
 - native package manager
 - full Linux distribution compatibility
 
@@ -35,8 +37,9 @@ runtimes.
 ## Runtime Environment And Planned Toolchains
 
 Git, Node.js, npm, Python, curl/wget, and editors are planned for future
-milestones. v0.43 adds safe prefix/PATH/env infrastructure but still no real
-installs, downloads, or native execution. Explore it with:
+milestones. v0.44 adds a safe prototype installer with `hello-bin`, but still
+no real Git/Node/npm/Python installs, downloads, or native execution. Explore it
+with:
 
 ```sh
 prefix-status
@@ -46,10 +49,14 @@ bin-list
 shim-info
 toolchain-status
 runtime-install status
+runtime-pkg status
+runtime-pkg available
+runtime-abi
 dev-doctor
 ```
 
-See [Prefix / PATH / Environment](PREFIX_PATH_ENVIRONMENT.md) and
+See [Binary Package Installer Prototype](BINARY_PACKAGE_INSTALLER_PROTOTYPE.md),
+[Prefix / PATH / Environment](PREFIX_PATH_ENVIRONMENT.md), and
 [Runtime Expansion Architecture](RUNTIME_EXPANSION_ARCHITECTURE.md).
 
 ## Android / Storage Limits

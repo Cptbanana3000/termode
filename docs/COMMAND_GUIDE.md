@@ -43,6 +43,26 @@ Use `welcome`, `examples`, and `glossary` first if you are new.
 - `pkg repair`
 - `pkg doctor`
 
+## Runtime Package Prototype
+
+- `runtime-pkg`
+- `runtime-pkg help`
+- `runtime-pkg list`
+- `runtime-pkg available`
+- `runtime-pkg info <name>`
+- `runtime-pkg install <name>`
+- `runtime-pkg remove <name>`
+- `runtime-pkg verify <name>`
+- `runtime-pkg status`
+- `runtime-pkg doctor`
+- `runtime-pkg repair`
+- `runtime-abi`
+- `hello-bin`
+
+`runtime-pkg install hello-bin` installs only the built-in safe prototype
+package. It does not install Git, Node.js, npm, Python, or real native binary
+packages.
+
 ## Workspace / Files
 
 - `workspace`
@@ -96,16 +116,18 @@ Use `welcome`, `examples`, and `glossary` first if you are new.
 - `rc-checklist`
 - `rc-status`
 
-`feedback` and the `rc-*` commands are local only — no network upload. `rc-status`
-reports `RC CLEANUP READY` when core systems are healthy; the intentional frozen
-runtime and unlinked storage do not block it.
+`feedback` and the `rc-*` commands are local only; no network upload.
+`rc-status` reports `RC CLEANUP READY` when core systems are healthy. The
+intentional frozen runtime and unlinked storage do not block it.
 
 ## Runtime Environment
 
-These describe Termode's prefix, PATH overlay, environment, bin discovery, and
-future runtime/toolchain layer. They do not install, download, or execute
+These describe Termode's prefix, PATH overlay, environment, bin discovery,
+runtime package prototype, and future runtime/toolchain layer. They do not
+install Git/Node/npm/Python, download from the internet, or execute unknown
 external runtimes yet. See
-[Prefix / PATH / Environment](PREFIX_PATH_ENVIRONMENT.md) and
+[Binary Package Installer Prototype](BINARY_PACKAGE_INSTALLER_PROTOTYPE.md),
+[Prefix / PATH / Environment](PREFIX_PATH_ENVIRONMENT.md), and
 [Runtime Expansion Architecture](RUNTIME_EXPANSION_ARCHITECTURE.md).
 
 Prefix / environment:
@@ -139,7 +161,7 @@ Toolchains (planned):
 - `toolchain-plan`
 - `toolchain-doctor`
 
-Install planning:
+Install planning / prototype status:
 
 - `runtime-install` (`list`, `plan <tool>`, `status`, `doctor`)
 
@@ -148,9 +170,9 @@ Guided presets (planned):
 - `dev-setup` (`list`, `plan <preset>`)
 - `dev-doctor`
 
-`prefix-init` is idempotent and never deletes user files. Toolchain/runtime/dev
-doctors report `ARCHITECTURE PHASE` for planned-but-missing tools — that is
-expected, not a failure.
+`prefix-init` is idempotent and never deletes user files. Toolchain/runtime
+doctors report `PROTOTYPE READY` or intentional `LIMITED` states for
+planned-but-missing real tools; that is expected, not a failure.
 
 `settings-reset-safe` restores visual/terminal settings to defaults and
 requires `--confirm`. It keeps packages, workspaces, sessions, history, repo

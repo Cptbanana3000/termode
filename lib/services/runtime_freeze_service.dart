@@ -3,7 +3,7 @@ import 'dart:io';
 import 'runtime_capability_service.dart';
 
 class RuntimeFreezeService {
-  static const nextMilestone = 'v0.44 Binary Package Installer Prototype';
+  static const nextMilestone = 'v0.45 Git Support';
 
   static const supportedRuntimeDirection = [
     'script packages through /system/bin/sh',
@@ -37,7 +37,8 @@ class RuntimeFreezeService {
   String status() {
     return '=== Runtime Freeze Status ===\n'
         'Runtime implementation: frozen for current beta foundation.\n'
-        'Expansion architecture: active in v0.43.\n'
+        'Expansion architecture: active through v0.44.\n'
+        'Runtime package installer: prototype ready.\n'
         'Actual external runtimes: not installed yet.\n'
         'Decision: frozen\n'
         'Current JS path: js-proof\n'
@@ -45,7 +46,7 @@ class RuntimeFreezeService {
         'Duktape: deferred\n'
         'Node.js: planned (not installed)\n'
         'npm: planned (not installed)\n'
-        'Next focus: binary package installer prototype\n'
+        'Next focus: Git support using the prototype installer path\n'
         'Overall: FROZEN';
   }
 
@@ -67,7 +68,8 @@ class RuntimeFreezeService {
     return '=== Runtime Freeze Deferred ===\n'
         '* Node.js/npm are not included yet.\n'
         '* Python/Git are not included yet.\n'
-        '* Native binary packages are not supported.\n'
+        '* Runtime package installer is prototype-only.\n'
+        '* Native binary packages are planned, not enabled.\n'
         '* QuickJS/Duktape are probe surfaces only.\n'
         '* Runtime research is frozen for now.\n'
         '* Remote packages remain script-only.';
@@ -89,9 +91,9 @@ class RuntimeFreezeService {
         'Recommended next milestone:\n'
         '$nextMilestone\n\n'
         'Focus:\n'
-        '  - binary package installer prototype\n'
-        '  - prefix/PATH/env validation on device\n'
-        '  - guided toolchain installs (git, node, python)\n'
+        '  - Git support using controlled runtime package metadata\n'
+        '  - checksum and ABI validation on device\n'
+        '  - keep Node/npm/Python planned but not installed\n'
         '  - package/workspace/terminal QA\n'
         'Runtime implementation stays frozen for now; runtime expansion is planned.';
   }
@@ -114,6 +116,7 @@ class RuntimeFreezeService {
         'Duktape: deferred\n'
         'Node.js: not included\n'
         'npm: not included\n'
+        'Runtime package installer: prototype ready\n'
         'Decision docs: ${docsOk ? 'OK' : 'MISSING'}\n'
         'Runtime plan: ${planOk ? 'OK' : 'MISSING'}\n'
         'Overall: $overall';

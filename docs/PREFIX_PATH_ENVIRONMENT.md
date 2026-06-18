@@ -1,8 +1,9 @@
 # Prefix / PATH / Environment System
 
 Termode v0.43 turns the v0.42 runtime expansion plan into a safe, usable
-environment layer. It does not install Git, Node.js, npm, Python, compilers, or
-native packages yet.
+environment layer. v0.44 builds on it with the `hello-bin` runtime package
+prototype. Termode still does not install Git, Node.js, npm, Python, compilers,
+or real native packages yet.
 
 ## Prefix
 
@@ -108,12 +109,15 @@ bin-which git
 bin-doctor
 ```
 
-If `node`, `git`, `npm`, or `python` are missing, that is expected.
+If `node`, `git`, `npm`, or `python` are missing, that is expected. After
+`runtime-pkg install hello-bin`, `bin-list` and `bin-which hello-bin` should see
+the prototype command.
 
 ## Shims
 
-Runtime shims are planning-only in v0.43. Future shims will live in
-`TERMODE_PREFIX/bin` and point only to controlled runtime entrypoints.
+Runtime shims live in `TERMODE_PREFIX/bin` and point only to controlled runtime
+entrypoints. v0.44 can show `hello-bin` as a prototype shim after installation.
+Future real runtime shims will use the same controlled location.
 
 Run:
 
@@ -132,6 +136,7 @@ shim-doctor
 - Env script generation
 - Bin discovery
 - Runtime shim planning
+- Runtime package prototype discovery with `hello-bin`
 
 ## Not Supported Yet
 
@@ -142,4 +147,4 @@ shim-doctor
 - Native binary package manager
 - Full Linux distribution compatibility
 
-Next milestone: v0.44 Binary Package Installer Prototype.
+Next milestone: v0.45 Git Support.

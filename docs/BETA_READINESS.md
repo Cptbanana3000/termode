@@ -21,7 +21,8 @@ terminal.
 ## Known Limits
 
 - No Node.js, npm, Python, or Git.
-- Native binary packages are not supported.
+- Runtime package installer is prototype-only; real native binary packages are
+  planned, not enabled.
 - QuickJS and Duktape are probe surfaces only.
 - Direct app-bin execution may be blocked by Android.
 - Storage import/export may be limited by Android storage permissions.
@@ -167,3 +168,22 @@ v0.43 turns the prefix/PATH/environment layer into usable infrastructure:
   environment-ready state
 
 Git, Node.js, npm, and Python remain planned but not installed.
+
+v0.44 adds the binary package installer prototype:
+
+- version is `v0.44` (Android `versionName 0.44.0` / `versionCode 44`)
+- `runtime-pkg` commands manage the built-in safe prototype package
+  `hello-bin`
+- `hello-bin` installs into `TERMODE_PREFIX/bin`, is tracked in runtime package
+  metadata, verifies with SHA-256, and is removable
+- `runtime-abi` reports the Android ABI and states native binary install is
+  still planned while prototype package install is enabled
+- `runtime-install status`, `runtime-install list`, `runtime-install doctor`,
+  `toolchain-doctor`, `dev-doctor`, `status`, and `build-info` now mention the
+  prototype installer
+- Git, Node.js, npm, Python, compilers, and real native packages remain planned
+  but not installed
+
+Beta readiness remains unaffected by planned-but-missing real runtimes.
+`PROTOTYPE READY` is acceptable for v0.44 when core packages, workspaces, and
+sessions are healthy.

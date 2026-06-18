@@ -94,7 +94,7 @@ void main() {
       expect(result.output, contains('Python/Git are not included yet'));
       expect(
         result.output,
-        contains('Native binary packages are not supported'),
+        contains('Runtime package installer is prototype-only'),
       );
       expect(
         result.output,
@@ -115,13 +115,10 @@ void main() {
     test('runtime-freeze next output', () async {
       final result = await commandService.execute('runtime-freeze next');
 
-      expect(
-        result.output,
-        contains('v0.44 Binary Package Installer Prototype'),
-      );
-      expect(result.output, contains('binary package installer prototype'));
-      expect(result.output, contains('prefix/PATH/env validation on device'));
-      expect(result.output, contains('guided toolchain installs'));
+      expect(result.output, contains('v0.45 Git Support'));
+      expect(result.output, contains('Git support using controlled runtime'));
+      expect(result.output, contains('checksum and ABI validation on device'));
+      expect(result.output, contains('keep Node/npm/Python planned'));
       expect(result.output, contains('runtime expansion is planned'));
     });
 

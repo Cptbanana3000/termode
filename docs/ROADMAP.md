@@ -12,6 +12,8 @@ CalypsoIDE as a plug-and-play terminal/runtime engine.
 - workspaces and host file commands
 - tabs, sessions, history, scrollback, restore
 - QA / beta / onboarding tooling and doctors
+- safe prefix/PATH/environment infrastructure
+- runtime package installer prototype with `hello-bin`
 
 ## What Termode Does Not Have Yet
 
@@ -23,8 +25,9 @@ CalypsoIDE as a plug-and-play terminal/runtime engine.
 - compilers
 - full Termux-replacement status
 
-These are **planned, not installed**. v0.43 adds the safe prefix/PATH/env
-infrastructure for them; real installs come in later milestones. See
+These are **planned, not installed**. v0.44 adds the safe runtime package
+installer prototype for them; real installs come in later milestones. See
+[Binary Package Installer Prototype](BINARY_PACKAGE_INSTALLER_PROTOTYPE.md),
 [Prefix / PATH / Environment](PREFIX_PATH_ENVIRONMENT.md) and
 [Runtime Expansion Architecture](RUNTIME_EXPANSION_ARCHITECTURE.md).
 
@@ -32,8 +35,8 @@ infrastructure for them; real installs come in later milestones. See
 
 - v0.41 Beta Feedback Fixes / RC Cleanup
 - v0.42 Runtime Expansion Architecture
-- v0.43 Prefix / PATH / Environment System (current)
-- v0.44 Binary Package Installer Prototype
+- v0.43 Prefix / PATH / Environment System
+- v0.44 Binary Package Installer Prototype (current)
 - v0.45 Git Support
 - v0.46 Node.js Support
 - v0.47 npm Support

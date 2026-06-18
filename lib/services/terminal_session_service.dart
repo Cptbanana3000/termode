@@ -135,7 +135,7 @@ class TerminalSessionService extends ChangeNotifier {
         ]);
       }
       lines.addAll([
-        TerminalLine(text: 'Termode v0.43', type: LineType.output),
+        TerminalLine(text: 'Termode v0.44', type: LineType.output),
         TerminalLine(
           text: 'Type "welcome" to get started.',
           type: LineType.output,
@@ -647,6 +647,9 @@ class TerminalSessionService extends ChangeNotifier {
         'shim-info',
         'shim-list',
         'shim-doctor',
+        'runtime-pkg',
+        'runtime-abi',
+        'hello-bin',
         'toolchain-status',
         'toolchain-doctor',
         'toolchain-plan',

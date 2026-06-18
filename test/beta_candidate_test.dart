@@ -91,15 +91,16 @@ void main() {
       expect(result.isError, isFalse);
       expect(result.output, contains('=== Build Info ==='));
       expect(result.output, contains('App: Termode'));
-      expect(result.output, contains('Version: v0.43'));
+      expect(result.output, contains('Version: v0.44'));
       expect(result.output, contains('Build type:'));
+      expect(result.output, contains('Runtime: prototype installer active'));
       expect(
         result.output,
-        contains('Runtime: environment architecture active'),
+        contains('Runtime package installer: prototype ready'),
       );
       expect(result.output, contains('Toolchains: planned'));
       expect(result.output, contains('Shell: REAL PTY'));
-      expect(result.output, contains('Packages: script-only'));
+      expect(result.output, contains('Packages: script + runtime prototype'));
       expect(
         result.output,
         contains('Beta candidate: terminal foundation beta'),
@@ -122,7 +123,11 @@ void main() {
       final result = await commandService.execute('beta-candidate status');
 
       expect(result.output, contains('=== Termode Beta Candidate ==='));
-      expect(result.output, contains('Version: v0.43'));
+      expect(result.output, contains('Version: v0.44'));
+      expect(
+        result.output,
+        contains('Runtime package installer: prototype ready'),
+      );
       expect(result.output, contains('Core shell: OK'));
       expect(result.output, contains('Packages: OK'));
       expect(result.output, contains('Workspaces: OK'));
@@ -154,7 +159,8 @@ void main() {
     test('beta-candidate notes output', () async {
       final result = await commandService.execute('beta-candidate notes');
 
-      expect(result.output, contains('=== Termode v0.43 Beta Candidate ==='));
+      expect(result.output, contains('=== Termode v0.44 Beta Candidate ==='));
+      expect(result.output, contains('prototype runtime package installer'));
       expect(result.output, contains('REAL PTY shell'));
       expect(result.output, contains('script packages'));
       expect(result.output, contains('Runtime remains frozen'));
@@ -168,7 +174,7 @@ void main() {
       expect(result.output, contains('Python/Git are not included'));
       expect(
         result.output,
-        contains('Native binary packages are not supported'),
+        contains('Runtime package installer is prototype-only'),
       );
       expect(result.output, contains('QuickJS/Duktape are deferred'));
       expect(result.output, contains('Beta software; bugs expected'));
@@ -194,7 +200,11 @@ void main() {
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
 
-      expect(version.output, contains('Termode v0.43'));
+      expect(version.output, contains('Termode v0.44'));
+      expect(
+        notes.output,
+        contains('v0.44 Binary Package Installer Prototype'),
+      );
       expect(
         notes.output,
         contains('v0.43 Prefix / PATH / Environment System'),
@@ -210,8 +220,8 @@ void main() {
       final bug = await commandService.execute('bug-report');
       final qa = await commandService.execute('qa-report');
 
-      expect(bug.output, contains('Termode version: v0.43'));
-      expect(qa.output, contains('Termode v0.43'));
+      expect(bug.output, contains('Termode version: v0.44'));
+      expect(qa.output, contains('Termode v0.44'));
     });
 
     test('command catalog includes new v0.40 commands', () {

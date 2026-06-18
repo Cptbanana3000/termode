@@ -230,8 +230,10 @@ class RuntimeCapabilityService {
         '  - Duktape probe command surface (v0.34): duktape info/eval/file/doctor; engine source not integrated yet\n'
         '  - Runtime decision freeze (v0.35): runtime-freeze status/decision/deferred/why/next/doctor\n'
         '  - Native runtime candidate research: runtime-candidates, runtime-next, runtime-research-doctor\n\n'
+        '  - Prefix/PATH/environment system (v0.43): prefix-status, path-doctor, env-check\n'
+        '  - Runtime package installer prototype (v0.44): runtime-pkg, runtime-abi, hello-bin\n\n'
         'Not supported yet:\n'
-        '  - Native binary packages\n'
+        '  - Native binary packages: planned, not enabled beyond the hello-bin prototype\n'
         '  - Node.js\n'
         '  - npm\n'
         '  - Python\n'
@@ -242,7 +244,8 @@ class RuntimeCapabilityService {
         'Duktape is a built-in fallback probe surface, not a package; current engine status is limited/unavailable until source is integrated.\n'
         'Real embedded JS is deferred by the runtime freeze and is not Node.\n'
         'Bundled runtime: native bridge proof available. Node.js not included.\n'
-        'Next runtime phase: v0.36 Product Stabilization / Beta Readiness Pass.';
+        'Native binary packages are not supported yet beyond the hello-bin prototype.\n'
+        'Next runtime phase: v0.45 Git Support.';
   }
 
   String plan() {
@@ -259,11 +262,11 @@ class RuntimeCapabilityService {
         '10. Duktape probe/fallback - command/bridge surface added; engine source not integrated in this build.\n'
         '11. Runtime decision freeze - frozen at js-proof + scripts + JNI tools; real runtimes deferred.\n'
         '12. Product stabilization - docs/help cleanup, onboarding, device QA, package/workspace/terminal polish.\n'
-        '13. Node proof later - test ABI, extraction, and execution constraints.\n'
-        '14. npm proof later - prove package install/cache behavior in app storage.\n'
+        '13. Prefix/PATH/environment system - app-private prefix, env injection, bin discovery.\n'
+        '14. Runtime package installer prototype - metadata, checksums, ABI surface, hello-bin.\n'
         '15. Vite proof later - run a minimal dev server inside the sandbox.\n'
         '16. CalypsoIDE integration later - wire editor workflows after runtime proof.\n'
-        'Recommended next milestone: v0.36 Product Stabilization / Beta Readiness Pass';
+        'Recommended next milestone: v0.45 Git Support';
   }
 
   String _directExecStatus(NativeCommandResult result) {

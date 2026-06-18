@@ -3,7 +3,7 @@
 Termode is a standalone Android terminal project with a REAL PTY shell,
 script packages, workspace folders, and beta QA tooling.
 
-Current status: **v0.43 Prefix / PATH / Environment System** (terminal foundation beta).
+Current status: **v0.44 Binary Package Installer Prototype** (terminal foundation beta).
 
 Termode is not a full Linux distribution and is not a Termux replacement yet,
 and it is not a stable v1.0. It is building a complete standalone Android
@@ -13,8 +13,10 @@ integrating into CalypsoIDE.
 Termode has a strong terminal foundation today (REAL PTY, packages, workspaces,
 sessions, QA/beta tooling). It does **not** yet include Node.js, npm, Git,
 Python, compilers, or a full Linux package ecosystem — those are **planned, not
-installed**. v0.43 makes the prefix, PATH overlay, environment variables, and
-REAL PTY environment injection usable for future toolchains. See
+installed**. v0.44 adds the first safe runtime package installer prototype on
+top of the prefix, PATH overlay, environment variables, and REAL PTY environment
+injection from v0.43. See
+[Binary Package Installer Prototype](docs/BINARY_PACKAGE_INSTALLER_PROTOTYPE.md),
 [Prefix / PATH / Environment](docs/PREFIX_PATH_ENVIRONMENT.md),
 [Runtime Expansion Architecture](docs/RUNTIME_EXPANSION_ARCHITECTURE.md),
 [Beta Install](docs/BETA_INSTALL.md), and [Beta Testing](docs/BETA_TESTING.md).
@@ -37,6 +39,7 @@ REAL PTY environment injection usable for future toolchains. See
 - settings/theme/status readouts (`settings-summary`, `theme-test`, `status`)
 - data-safe visual reset via `settings-reset-safe --confirm`
 - safe Termode prefix, PATH overlay, env preview/doctor, and bin discovery
+- prototype runtime package installer with `hello-bin`
 
 ## Not Included Yet
 
@@ -44,7 +47,7 @@ REAL PTY environment injection usable for future toolchains. See
 - Python
 - Git
 - full Linux package manager
-- native binary package installs
+- real native binary package installs
 - full Termux compatibility
 
 QuickJS and Duktape remain probe surfaces only. Runtime direction is frozen
@@ -63,6 +66,8 @@ beta-candidate status
 prefix-status
 path-status
 env-status
+runtime-pkg status
+runtime-abi
 doctor
 qa-status
 ```
@@ -82,7 +87,7 @@ hello
 Termode ships as a debug APK for beta testing:
 
 1. Enable "Install unknown apps" for your file manager or browser.
-2. Copy `Termode-v0.43-env-debug.apk` to the device and tap to install.
+2. Copy `Termode-v0.44-binpkg-debug.apk` to the device and tap to install.
 3. Launch Termode and run `welcome`, then `doctor` and `dev-doctor`.
 
 Full steps and how to clear app data are in
@@ -117,7 +122,8 @@ pkg remove hello
 pkg doctor
 ```
 
-Native binary packages are not supported.
+Runtime package installs are prototype-only. Real native binary packages are
+planned, not enabled.
 
 ## Workspace Basics
 
@@ -150,7 +156,7 @@ Termode is stabilizing the current app before adding larger runtime systems.
 Node/npm/Python/Git and native package managers are future work, not current
 features.
 
-v0.43 adds a safe environment layer for future tools:
+v0.43 added a safe environment layer for future tools:
 
 ```sh
 prefix-init
@@ -165,8 +171,24 @@ shim-info
 REAL PTY shells receive `TERMODE_HOME`, `TERMODE_PREFIX`, `TERMODE_BIN`,
 `TERMODE_WORKSPACES`, `TERMODE_TMPDIR`, `PATH`, `TMPDIR`, and `TERM`.
 
-See [docs/PREFIX_PATH_ENVIRONMENT.md](docs/PREFIX_PATH_ENVIRONMENT.md) and
-[docs/RUNTIME_DECISION_FREEZE.md](docs/RUNTIME_DECISION_FREEZE.md).
+v0.44 adds a safe runtime package installer prototype:
+
+```sh
+runtime-pkg available
+runtime-pkg install hello-bin
+hello-bin
+runtime-pkg verify hello-bin
+runtime-pkg remove hello-bin
+```
+
+`hello-bin` is a tiny built-in script-tool stand-in for future binary/runtime
+packages. It uses manifest validation, checksum verification, controlled
+metadata, prefix/bin integration, and host interception. It is not real native
+binary support yet.
+
+See [docs/PREFIX_PATH_ENVIRONMENT.md](docs/PREFIX_PATH_ENVIRONMENT.md),
+[docs/BINARY_PACKAGE_INSTALLER_PROTOTYPE.md](docs/BINARY_PACKAGE_INSTALLER_PROTOTYPE.md),
+and [docs/RUNTIME_DECISION_FREEZE.md](docs/RUNTIME_DECISION_FREEZE.md).
 
 ## Screenshots
 
@@ -177,8 +199,8 @@ after the UI polish pass.
 
 - v0.41 Beta Feedback Fixes / RC Cleanup
 - v0.42 Runtime Expansion Architecture
-- v0.43 Prefix / PATH / Environment System (current)
-- v0.44 Binary Package Installer Prototype
+- v0.43 Prefix / PATH / Environment System
+- v0.44 Binary Package Installer Prototype (current)
 - v0.45 Git · v0.46 Node.js · v0.47 npm · v0.48 Python
 - v0.49 Dev Stack Presets · v0.50 Full Terminal QA · v0.51 Complete Termode Beta
 - CalypsoIDE integration later
@@ -189,6 +211,7 @@ stabilizes.
 ## Docs
 
 - [Runtime Expansion Architecture](docs/RUNTIME_EXPANSION_ARCHITECTURE.md)
+- [Binary Package Installer Prototype](docs/BINARY_PACKAGE_INSTALLER_PROTOTYPE.md)
 - [Prefix / PATH / Environment](docs/PREFIX_PATH_ENVIRONMENT.md)
 - [Release Notes v0.41](docs/RELEASE_NOTES_v0.41.md)
 - [Release Notes v0.40](docs/RELEASE_NOTES_v0.40.md)

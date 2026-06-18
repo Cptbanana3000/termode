@@ -618,7 +618,7 @@ class SettingsScreen extends StatelessWidget {
                   style: TextStyle(color: Colors.white),
                 ),
                 trailing: Text(
-                  'v0.43 (Prefix / PATH / Environment)',
+                  'v0.44 (Binary Package Installer Prototype)',
                   style: TextStyle(color: Colors.white60),
                 ),
               ),

@@ -24,6 +24,7 @@ import 'duktape_service.dart';
 import 'package_manager_service.dart';
 import 'workspace_service.dart';
 import 'runtime_prefix_service.dart';
+import 'runtime_binary_package_service.dart';
 
 class CommandResult {
   final String output;
@@ -225,7 +226,8 @@ class CommandService {
     return '=== Beta Known Limits ===\n'
         '* Node.js/npm are not included yet.\n'
         '* Python/Git are not included yet.\n'
-        '* Native binary packages are not supported.\n'
+        '* Runtime package installer is prototype-only.\n'
+        '* Native binary packages are planned, not enabled.\n'
         '* QuickJS/Duktape are probe surfaces only.\n'
         '* Runtime research is frozen for now.\n'
         '* Storage features need Android folder linking.\n'
@@ -235,8 +237,8 @@ class CommandService {
   String _betaNextOutput() {
     return '=== Beta Next ===\n'
         'Recommended next milestone:\n'
-        'v0.44 Binary Package Installer Prototype\n\n'
-        'Reason: v0.43 makes the prefix/PATH/environment usable; next prototypes the binary package installer.';
+        'v0.45 Git Support\n\n'
+        'Reason: v0.44 adds the safe runtime package installer prototype; next can apply it to Git.';
   }
 
   /// Computes beta-candidate readiness. Intentional limitations (frozen
@@ -284,15 +286,16 @@ class CommandService {
     String label(String s) => s == 'UNHEALTHY' ? 'UNHEALTHY' : 'OK';
     final prefixReady = await RuntimePrefixService().isInitialized();
     return '=== Termode Beta Candidate ===\n'
-        'Version: v0.43\n'
+        'Version: v0.44\n'
         'Core shell: OK\n'
         'Packages: ${label(r.packages)}\n'
         'Workspaces: ${label(r.workspaces)}\n'
         'Sessions: ${label(r.sessions)}\n'
         'Terminal UX: OK\n'
-        'Runtime: FROZEN (environment architecture active)\n'
+        'Runtime: FROZEN (prototype installer active)\n'
         'Prefix: ${prefixReady ? 'initialized' : 'not initialized'}\n'
         'PATH overlay: ${prefixReady ? 'ready' : 'limited'}\n'
+        'Runtime package installer: prototype ready\n'
         'Toolchains: planned (not installed)\n'
         'Known limitations: yes\n'
         'Overall: ${r.ready ? 'BETA CANDIDATE' : 'NEEDS FIXES'}';
@@ -322,7 +325,7 @@ class CommandService {
   }
 
   String _betaCandidateNotesOutput() {
-    return '=== Termode v0.43 Beta Candidate ===\n'
+    return '=== Termode v0.44 Beta Candidate ===\n'
         'Termode is a standalone Android terminal with a REAL PTY shell.\n\n'
         'Highlights:\n'
         '* REAL PTY shell with host command interception\n'
@@ -332,16 +335,18 @@ class CommandService {
         '* terminal UX: keyboard, ANSI, paste, copy, scrollback helpers\n'
         '* settings/theme/status readouts and safe visual reset\n'
         '* preview/localhost diagnostics\n'
+        '* prototype runtime package installer with hello-bin\n'
         '* QA/beta/onboarding tooling and doctors\n\n'
-        'Runtime remains frozen. Node/npm/Python/Git and native packages are not\n'
-        'included yet. Run beta-candidate limits for details.';
+        'Runtime remains frozen beyond the prototype installer. Node/npm/Python/Git\n'
+        'and real native packages are not included yet. Run beta-candidate limits.';
   }
 
   String _betaCandidateLimitsOutput() {
     return '=== Beta Candidate Limits ===\n'
         '* Node.js/npm are not included (planned, not installed).\n'
         '* Python/Git are not included (planned, not installed).\n'
-        '* Native binary packages are not supported yet.\n'
+        '* Runtime package installer is prototype-only.\n'
+        '* Native binary packages are planned, not enabled yet.\n'
         '* QuickJS/Duktape are deferred.\n'
         '* Real toolchain installs are planned, not implemented (see runtime-install).\n'
         '* Direct app-bin execution may be blocked by Android.\n'
@@ -351,7 +356,7 @@ class CommandService {
 
   String _betaCandidateHelpOutput() {
     return '=== Termode Beta Candidate ===\n'
-        'Termode v0.43 is a terminal-foundation beta (prefix / PATH / environment system).\n\n'
+        'Termode v0.44 is a terminal-foundation beta (binary package installer prototype).\n\n'
         'Subcommands:\n'
         '  beta-candidate status     - Show beta candidate readiness summary\n'
         '  beta-candidate checklist  - Show the beta candidate checklist\n'
@@ -426,7 +431,7 @@ class CommandService {
     ]);
     final coreLabel = coreSystems == 'HEALTHY' ? 'OK' : coreSystems;
     return '=== Release Candidate Status ===\n'
-        'Version: v0.43\n'
+        'Version: v0.44\n'
         'Beta candidate: yes\n'
         'Core systems: $coreLabel\n'
         'Known limitations: intentional\n'
@@ -512,6 +517,7 @@ class CommandService {
 
   String _toolchainStatusOutput() {
     return '=== Toolchain Status ===\n'
+        'Runtime package installer: prototype ready\n'
         'Git: planned\n'
         'Node.js: planned\n'
         'npm: planned\n'
@@ -568,6 +574,7 @@ class CommandService {
   Future<String> _toolchainDoctorOutput() async {
     final initialized = await RuntimePrefixService().isInitialized();
     return '=== Toolchain Doctor ===\n'
+        'Runtime package installer: prototype ready\n'
         'Git: planned (not installed)\n'
         'Node.js: planned (not installed)\n'
         'npm: planned (not installed)\n'
@@ -578,23 +585,27 @@ class CommandService {
         'PATH overlay: ${initialized ? 'ready' : 'limited'}\n'
         'Env: ${initialized ? 'ready' : 'limited'}\n'
         'Bin dir: ${initialized ? 'ready' : 'limited'}\n'
-        'Note: missing toolchains are expected in this architecture phase.\n'
-        'Overall: ARCHITECTURE PHASE';
+        'Note: missing toolchains are expected; hello-bin is the only enabled prototype.\n'
+        'Overall: PROTOTYPE READY';
   }
 
   String _runtimeInstallHelpOutput() {
-    return '=== Runtime Install (planning) ===\n'
-        'Real installs are not enabled yet. This is a planning surface only.\n'
-        'Nothing is downloaded or executed.\n\n'
+    return '=== Runtime Install (prototype) ===\n'
+        'Prototype installer is available for hello-bin.\n'
+        'Real Git/Node/npm/Python installs are not enabled yet.\n'
+        'Nothing is downloaded and no unknown binary is executed.\n\n'
         'Subcommands:\n'
-        '  runtime-install list          - List planned runtimes\n'
+        '  runtime-install list          - List prototype and planned runtimes\n'
         '  runtime-install plan <tool>   - Show the future install plan\n'
         '  runtime-install status        - Show install mode and prefix status\n'
-        '  runtime-install doctor        - Check install readiness (planning)';
+        '  runtime-install doctor        - Check prototype installer readiness';
   }
 
   String _runtimeInstallListOutput() {
-    final sb = StringBuffer('Available planned runtimes:\n');
+    final sb = StringBuffer('Prototype available now:\n');
+    sb.writeln('* hello-bin');
+    sb.writeln();
+    sb.writeln('Planned future runtimes:');
     for (final key in _plannedToolchainOrder) {
       sb.writeln('* $key');
     }
@@ -624,13 +635,14 @@ class CommandService {
   Future<String> _runtimeInstallStatusOutput() async {
     final initialized = await RuntimePrefixService().isInitialized();
     return '=== Runtime Install Status ===\n'
-        'Mode: ${initialized ? 'environment ready' : 'planning only'}\n'
-        'Real installs: not enabled yet\n'
+        'Mode: prototype installer available\n'
+        'Real Git/Node/Python installs: not enabled yet\n'
+        'Prototype package: hello-bin\n'
         'Prefix initialized: ${initialized ? 'yes' : 'no'}\n'
         'PATH overlay ready: ${initialized ? 'yes' : 'no'}\n'
         'Env ready: ${initialized ? 'yes' : 'no'}\n'
         'Bin dir ready: ${initialized ? 'yes' : 'no'}\n'
-        'Next milestone: v0.44 Binary Package Installer Prototype';
+        'Next milestone: v0.45 Git Support';
   }
 
   Future<String> _runtimeInstallDoctorOutput() async {
@@ -640,16 +652,20 @@ class CommandService {
     final binReady = Directory(p['bin']!).existsSync();
     final diagnostics = await NativeCommandService().getDiagnostics();
     final abi = diagnostics?['abi']?.toString();
+    final runtimePkgDoctor = await RuntimeBinaryPackageService().doctor();
+    final runtimePkgReady = !runtimePkgDoctor.contains('Overall: UNHEALTHY');
     return '=== Runtime Install Doctor ===\n'
-        'Mode: ${initialized ? 'environment ready' : 'planning only'}\n'
-        'Prefix initialized: ${initialized ? 'yes' : 'no'}\n'
-        'PATH overlay ready: ${initialized ? 'yes' : 'no'}\n'
-        'Env ready: ${initialized ? 'yes' : 'no'}\n'
+        'Mode: prototype installer available\n'
+        'Prefix: ${initialized ? 'OK' : 'LIMITED'}\n'
+        'PATH: ${initialized ? 'OK' : 'LIMITED'}\n'
+        'Env: ${initialized ? 'OK' : 'LIMITED'}\n'
         'Bin dir ready: ${binReady ? 'yes' : 'no'}\n'
+        'Runtime package metadata: ${runtimePkgReady ? 'OK' : 'CHECK'}\n'
+        'Prototype installer: enabled\n'
         'Android ABI: ${abi == null || abi.isEmpty ? 'unknown' : abi}\n'
-        'Actual installs: not enabled yet\n'
+        'Real Git/Node/npm/Python installs: not enabled yet\n'
         'Safety: no downloads, no native execution\n'
-        'Overall: ${initialized ? 'ENVIRONMENT READY' : 'ARCHITECTURE PHASE'}';
+        'Overall: ${runtimePkgReady ? 'PROTOTYPE READY' : 'LIMITED'}';
   }
 
   String _devSetupHelpOutput() {
@@ -715,6 +731,7 @@ class CommandService {
     return '=== Dev Doctor ===\n'
         'Terminal: OK\n'
         'REAL PTY: OK\n'
+        'Runtime package installer: prototype ready\n'
         'Prefix: ${initialized ? 'OK' : 'LIMITED'}\n'
         'PATH: ${initialized ? 'OK' : 'LIMITED'}\n'
         'Env: ${initialized ? 'OK' : 'LIMITED'}\n'
@@ -722,7 +739,7 @@ class CommandService {
         'Node.js: planned\n'
         'npm: planned\n'
         'Python: planned\n'
-        'Overall: ${initialized ? 'ENVIRONMENT READY' : 'ARCHITECTURE PHASE'}';
+        'Overall: PROTOTYPE READY';
   }
 
   Future<String> _termodeDoctor({bool verbose = false}) async {
@@ -842,7 +859,7 @@ class CommandService {
         'Preview / localhost:\n'
         '  preview, preview-url, preview-check, localhost-doctor\n'
         'Runtime status:\n'
-        '  runtime-freeze status, runtime-doctor, native-tool, js-proof\n'
+        '  runtime-freeze status, runtime-doctor, runtime-abi, native-tool\n'
         'QA / beta:\n'
         '  status, doctor, qa-status, qa-run, beta-status, onboarding-doctor\n'
         'Beta candidate:\n'
@@ -854,6 +871,9 @@ class CommandService {
         '  path-info, path-status, path-preview, path-doctor\n'
         '  env-info, env-status, env-preview, env-doctor, env-check\n'
         '  bin-list, bin-which, bin-doctor, shim-info, shim-doctor\n'
+        'Runtime package prototype:\n'
+        '  runtime-pkg, runtime-pkg available, runtime-pkg install hello-bin\n'
+        '  runtime-pkg doctor, runtime-pkg verify hello-bin, hello-bin\n'
         'Runtime install planning:\n'
         '  toolchain-status, toolchain-list, toolchain-info, toolchain-doctor\n'
         '  runtime-install list, dev-setup list, dev-doctor\n'
@@ -959,7 +979,7 @@ class CommandService {
     final docsOk = repoDocsOk || embeddedDocsOk;
     final readmeOk =
         !File('README.md').existsSync() ||
-        File('README.md').readAsStringSync().contains('v0.43');
+        File('README.md').readAsStringSync().contains('v0.44');
     final healthy = docsOk && readmeOk;
     return '=== Onboarding Doctor ===\n'
         'Welcome: OK\n'
@@ -1070,15 +1090,16 @@ class CommandService {
         'Runtime: environment architecture active\n'
         'Prefix: ${prefixReady ? 'initialized' : 'not initialized'}\n'
         'PATH overlay: ${prefixReady ? 'ready' : 'limited'}\n'
+        'Runtime package installer: prototype ready\n'
         'Toolchains: planned (not installed)\n'
         'Beta: $beta';
   }
 
   String _versionOutput() {
-    return 'Termode v0.43\n'
+    return 'Termode v0.44\n'
         'Runtime: frozen\n'
         'Shell: REAL PTY\n'
-        'Packages: script-only';
+        'Packages: script + runtime prototype';
   }
 
   String _buildTypeName() {
@@ -1091,18 +1112,20 @@ class CommandService {
   String _buildInfoOutput() {
     return '=== Build Info ===\n'
         'App: Termode\n'
-        'Version: v0.43\n'
+        'Version: v0.44\n'
         'Build type: ${_buildTypeName()}\n'
-        'Runtime: environment architecture active\n'
+        'Runtime: prototype installer active\n'
+        'Runtime package installer: prototype ready\n'
         'Toolchains: planned (not installed)\n'
         'Shell: REAL PTY\n'
-        'Packages: script-only\n'
+        'Packages: script + runtime prototype\n'
         'Beta candidate: terminal foundation beta\n'
-        'Artifact: Termode-v0.43-env-debug.apk';
+        'Artifact: Termode-v0.44-binpkg-debug.apk';
   }
 
   String _releaseNotesOutput() {
     return '=== Termode Release Notes ===\n'
+        'v0.44 Binary Package Installer Prototype\n'
         'v0.43 Prefix / PATH / Environment System\n'
         'v0.42 Runtime Expansion Architecture\n'
         'v0.41 Beta Feedback Fixes / RC Cleanup\n'
@@ -1139,7 +1162,7 @@ class CommandService {
         ? 'REAL PTY'
         : 'NORMAL';
     return '=== Termode Bug Report ===\n'
-        'Termode version: v0.43\n'
+        'Termode version: v0.44\n'
         'Android ABI: $abi\n'
         'Runtime status: $runtimeStatus\n'
         'Package doctor: $packageStatus\n'
@@ -1343,6 +1366,8 @@ class CommandService {
               '  path-status\n'
               '  env-status\n'
               '  bin-list\n'
+              '  runtime-pkg status\n'
+              '  runtime-abi\n'
               '  toolchain-status\n'
               '  dev-doctor\n\n'
               'Sub-help:\n'
@@ -2288,6 +2313,92 @@ class CommandService {
 
       case 'shim-doctor':
         return CommandResult(output: await RuntimePrefixService().shimDoctor());
+
+      case 'runtime-abi':
+        return CommandResult(
+          output: await RuntimeBinaryPackageService().runtimeAbi(),
+        );
+
+      case 'runtime-pkg':
+        final sub = args.isNotEmpty ? args[0].toLowerCase() : 'help';
+        final service = RuntimeBinaryPackageService();
+        switch (sub) {
+          case 'help':
+            return CommandResult(output: await service.help());
+          case 'list':
+            return CommandResult(output: await service.list());
+          case 'available':
+            return CommandResult(output: await service.available());
+          case 'info':
+            if (args.length < 2) {
+              return CommandResult(
+                output: 'Usage: runtime-pkg info <name>',
+                isError: true,
+              );
+            }
+            final output = await service.info(args[1]);
+            return CommandResult(
+              output: output,
+              isError: output.startsWith('Unknown runtime package:'),
+            );
+          case 'install':
+            if (args.length < 2) {
+              return CommandResult(
+                output: 'Usage: runtime-pkg install <name>',
+                isError: true,
+              );
+            }
+            final result = await service.install(args[1]);
+            return CommandResult(
+              output: result.output,
+              isError: result.isError,
+            );
+          case 'remove':
+            if (args.length < 2) {
+              return CommandResult(
+                output: 'Usage: runtime-pkg remove <name>',
+                isError: true,
+              );
+            }
+            final result = await service.remove(args[1]);
+            return CommandResult(
+              output: result.output,
+              isError: result.isError,
+            );
+          case 'verify':
+            if (args.length < 2) {
+              return CommandResult(
+                output: 'Usage: runtime-pkg verify <name>',
+                isError: true,
+              );
+            }
+            final result = await service.verify(args[1]);
+            return CommandResult(
+              output: result.output,
+              isError: result.isError,
+            );
+          case 'status':
+            return CommandResult(output: await service.status());
+          case 'doctor':
+            final output = await service.doctor();
+            return CommandResult(
+              output: output,
+              isError: output.contains('Overall: UNHEALTHY'),
+            );
+          case 'repair':
+            return CommandResult(output: await service.repair());
+          default:
+            return CommandResult(
+              output:
+                  'Unknown runtime-pkg subcommand: $sub\n'
+                  'Usage: runtime-pkg <available|info|install|remove|verify|list|status|doctor|repair>',
+              isError: true,
+            );
+        }
+
+      case 'hello-bin':
+        final result = await RuntimeBinaryPackageService().runHelloBin();
+        return CommandResult(output: result.output, isError: result.isError);
 
       case 'toolchain-status':
         return CommandResult(output: _toolchainStatusOutput());

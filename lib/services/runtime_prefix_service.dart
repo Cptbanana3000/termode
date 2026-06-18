@@ -569,18 +569,28 @@ class RuntimePrefixService {
   // --- shims (planning) ----------------------------------------------------
 
   String shimInfo() {
-    return '=== Runtime Shims (planning) ===\n'
-        'Future runtime shims will live in \$TERMODE_PREFIX/bin.\n'
-        'Shims will point to controlled runtime entrypoints.\n'
+    return '=== Runtime Shims ===\n'
+        'Runtime shims live in \$TERMODE_PREFIX/bin.\n'
+        'Prototype shims point to controlled runtime package entrypoints.\n'
         'Shims will not execute unknown external code.\n'
-        'Future examples: git, node, npm, python\n'
-        'No runtime shims are created yet.';
+        'Prototype example: hello-bin\n'
+        'Future examples: git, node, npm, python';
   }
 
   Future<String> shimList() async {
-    // No controlled runtime shims exist yet (real installs start in v0.45+).
-    return 'No runtime shims installed yet.\n'
-        'Planned shims: git, node, npm, python';
+    final names = await _binEntries();
+    final shims = names.where((n) => n == 'hello-bin').toList();
+    if (shims.isEmpty) {
+      return 'No runtime shims installed yet.\n'
+          'Prototype shim: hello-bin\n'
+          'Planned shims: git, node, npm, python';
+    }
+    final sb = StringBuffer('=== Runtime Shims ===\n');
+    for (final shim in shims) {
+      sb.writeln('$shim -> runtime package prototype');
+    }
+    sb.write('Planned shims: git, node, npm, python');
+    return sb.toString();
   }
 
   Future<String> shimDoctor() async {
@@ -588,11 +598,15 @@ class RuntimePrefixService {
     final sandbox = p['sandbox']!;
     final binSafe = _isInsideSandbox(p['bin']!, sandbox);
     final binExists = Directory(p['bin']!).existsSync();
+    final installed = (await _binEntries())
+        .where((n) => n == 'hello-bin')
+        .length;
     return '=== Shim Doctor ===\n'
         'Shim directory: ${shortPath(p['bin']!)}\n'
         'Directory present: ${binExists ? 'OK' : 'NOT INITIALIZED'}\n'
         'Path safety: ${binSafe ? 'OK' : 'UNSAFE'}\n'
-        'Installed shims: 0\n'
-        'Overall: ARCHITECTURE PHASE';
+        'Installed shims: $installed\n'
+        'Prototype shim: ${installed > 0 ? 'installed' : 'available'}\n'
+        'Overall: ${binExists && binSafe ? 'PROTOTYPE READY' : 'LIMITED'}';
   }
 }

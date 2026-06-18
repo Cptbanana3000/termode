@@ -226,7 +226,8 @@ void main() {
 
       final shimDoctor = await commandService.execute('shim-doctor');
       expect(shimDoctor.output, contains('=== Shim Doctor ==='));
-      expect(shimDoctor.output, contains('Overall: ARCHITECTURE PHASE'));
+      expect(shimDoctor.output, contains('Prototype shim: available'));
+      expect(shimDoctor.output, contains('Overall: PROTOTYPE READY'));
     });
 
     test('toolchain-status and toolchain-list', () async {
@@ -262,7 +263,11 @@ void main() {
     test('toolchain-doctor does not fail for missing tools', () async {
       final result = await commandService.execute('toolchain-doctor');
       expect(result.output, contains('=== Toolchain Doctor ==='));
-      expect(result.output, contains('Overall: ARCHITECTURE PHASE'));
+      expect(
+        result.output,
+        contains('Runtime package installer: prototype ready'),
+      );
+      expect(result.output, contains('Overall: PROTOTYPE READY'));
       expect(result.isError, isFalse);
     });
 
@@ -270,13 +275,15 @@ void main() {
       final bare = await commandService.execute('runtime-install');
       final help = await commandService.execute('runtime-install help');
       for (final out in [bare.output, help.output]) {
-        expect(out, contains('=== Runtime Install (planning) ==='));
-        expect(out, contains('planning surface only'));
+        expect(out, contains('=== Runtime Install (prototype) ==='));
+        expect(out, contains('Prototype installer is available'));
         expect(out, contains('runtime-install list'));
       }
 
       final list = await commandService.execute('runtime-install list');
-      expect(list.output, contains('Available planned runtimes:'));
+      expect(list.output, contains('Prototype available now:'));
+      expect(list.output, contains('* hello-bin'));
+      expect(list.output, contains('Planned future runtimes:'));
       expect(list.output, contains('* git'));
       expect(list.output, contains('* node'));
     });
@@ -297,35 +304,46 @@ void main() {
     test('runtime-install status and doctor are planning-only', () async {
       final status = await commandService.execute('runtime-install status');
       expect(status.output, contains('=== Runtime Install Status ==='));
-      expect(status.output, contains('Mode: planning only'));
-      expect(status.output, contains('Real installs: not enabled yet'));
+      expect(status.output, contains('Mode: prototype installer available'));
       expect(
         status.output,
-        contains('Next milestone: v0.44 Binary Package Installer Prototype'),
+        contains('Real Git/Node/Python installs: not enabled yet'),
       );
+      expect(status.output, contains('Prototype package: hello-bin'));
+      expect(status.output, contains('Next milestone: v0.45 Git Support'));
 
       final doctor = await commandService.execute('runtime-install doctor');
       expect(doctor.output, contains('=== Runtime Install Doctor ==='));
-      expect(doctor.output, contains('Mode: planning only'));
-      expect(doctor.output, contains('Prefix initialized: no'));
+      expect(doctor.output, contains('Mode: prototype installer available'));
+      expect(doctor.output, contains('Prefix: LIMITED'));
       expect(doctor.output, contains('Android ABI: arm64-v8a'));
-      expect(doctor.output, contains('Overall: ARCHITECTURE PHASE'));
+      expect(doctor.output, contains('Prototype installer: enabled'));
+      expect(doctor.output, contains('Overall: PROTOTYPE READY'));
       expect(doctor.isError, isFalse);
 
       await commandService.execute('prefix-init');
       final statusAfter = await commandService.execute(
         'runtime-install status',
       );
-      expect(statusAfter.output, contains('Mode: environment ready'));
+      expect(
+        statusAfter.output,
+        contains('Mode: prototype installer available'),
+      );
       expect(statusAfter.output, contains('PATH overlay ready: yes'));
 
       final doctorAfter = await commandService.execute(
         'runtime-install doctor',
       );
-      expect(doctorAfter.output, contains('Mode: environment ready'));
-      expect(doctorAfter.output, contains('Env ready: yes'));
-      expect(doctorAfter.output, contains('Actual installs: not enabled yet'));
-      expect(doctorAfter.output, contains('Overall: ENVIRONMENT READY'));
+      expect(
+        doctorAfter.output,
+        contains('Mode: prototype installer available'),
+      );
+      expect(doctorAfter.output, contains('Env: OK'));
+      expect(
+        doctorAfter.output,
+        contains('Real Git/Node/npm/Python installs: not enabled yet'),
+      );
+      expect(doctorAfter.output, contains('Overall: PROTOTYPE READY'));
     });
 
     test('dev-setup default/help, list, and plans', () async {
@@ -364,14 +382,18 @@ void main() {
       expect(result.output, contains('Env: LIMITED'));
       expect(result.output, contains('Git: planned'));
       expect(result.output, contains('Node.js: planned'));
-      expect(result.output, contains('Overall: ARCHITECTURE PHASE'));
+      expect(
+        result.output,
+        contains('Runtime package installer: prototype ready'),
+      );
+      expect(result.output, contains('Overall: PROTOTYPE READY'));
 
       await commandService.execute('prefix-init');
       final after = await commandService.execute('dev-doctor');
       expect(after.output, contains('Prefix: OK'));
       expect(after.output, contains('PATH: OK'));
       expect(after.output, contains('Env: OK'));
-      expect(after.output, contains('Overall: ENVIRONMENT READY'));
+      expect(after.output, contains('Overall: PROTOTYPE READY'));
     });
 
     test('beta-candidate ready despite planned missing toolchains', () async {
@@ -440,7 +462,8 @@ void main() {
         expect(output, contains('No runtime tools installed yet'));
         expect(output, contains('=== Shim Doctor ==='));
         expect(output, contains('=== Toolchain Status ==='));
-        expect(output, contains('Available planned runtimes:'));
+        expect(output, contains('Prototype available now:'));
+        expect(output, contains('Planned future runtimes:'));
         expect(output, contains('=== Dev Doctor ==='));
 
         session.isPtyInteractionActive = false;
