@@ -29,7 +29,8 @@ class JsEngineCandidate {
 }
 
 class JsEngineDecisionService {
-  static const recommendedNextMilestone = 'v0.33 QuickJS Probe';
+  static const recommendedNextMilestone =
+      'v0.34 Duktape Probe / Engine fallback';
 
   static const List<JsEngineCandidate> candidates = [
     JsEngineCandidate(
@@ -80,9 +81,10 @@ class JsEngineDecisionService {
           'Medium. Requires source vendoring, CMake wiring, JNI wrappers, and tests.',
       securityNotes:
           'Expose no filesystem/network/process APIs. Enforce length, output, and timeout/interrupt controls.',
-      currentStatus: 'Not integrated.',
+      currentStatus:
+          'v0.33 command/bridge probe exists, but QuickJS source is not integrated in this build.',
       recommendation:
-          'Recommended next probe if it can stay isolated, source-vendored, and resource-limited.',
+          'Keep the probe limited unless a small vendored source snapshot and timeout/resource limits are added.',
     ),
     JsEngineCandidate(
       id: 'duktape',
@@ -107,7 +109,7 @@ class JsEngineDecisionService {
           'Use a sealed global environment. Do not expose host APIs or Node APIs.',
       currentStatus: 'Not integrated.',
       recommendation:
-          'Use as fallback if QuickJS cannot be kept small and controlled.',
+          'Use as v0.34 fallback if QuickJS cannot be integrated safely.',
     ),
     JsEngineCandidate(
       id: 'javascriptcore',
@@ -170,8 +172,7 @@ class JsEngineDecisionService {
       securityNotes:
           'npm can fetch and execute code. Do not attempt before runtime isolation is designed.',
       currentStatus: 'Not included.',
-      recommendation:
-          'Do not attempt in v0.32 or v0.33. Prove embedded JS first.',
+      recommendation: 'Do not attempt yet. Prove embedded JS first.',
     ),
     JsEngineCandidate(
       id: 'no-engine-yet',
@@ -195,7 +196,7 @@ class JsEngineDecisionService {
           'Avoids new native crash/resource risks while preserving current proof.',
       currentStatus: 'Chosen for v0.32 implementation scope.',
       recommendation:
-          'Use as v0.32 outcome, then attempt a scoped QuickJS proof in v0.33.',
+          'Use as fallback while QuickJS remains limited/unavailable.',
     ),
   ];
 
@@ -244,17 +245,17 @@ class JsEngineDecisionService {
 
   String decision() {
     return '=== JS Engine Decision ===\n'
-        'Decision: Do not add a real JavaScript engine in v0.32.\n'
-        'Chosen path: keep js-proof as the safe current proof and prepare a scoped QuickJS probe next.\n'
+        'Decision: QuickJS remains a limited v0.33 probe because no local source snapshot was available to integrate safely.\n'
+        'Chosen path: keep js-proof as the safe current proof and keep quickjs as an unavailable/limited probe surface.\n'
         'Recommended next milestone: $recommendedNextMilestone\n\n'
         'Why:\n'
-        '  - QuickJS is the strongest real-engine candidate, but it requires vendored source, CMake/JNI integration, and resource limits.\n'
-        '  - Duktape is a good fallback if QuickJS cannot stay small.\n'
+        '  - QuickJS is still promising, but this repo does not contain a vendored source snapshot.\n'
+        '  - Duktape is a good fallback if QuickJS cannot be sourced and limited cleanly.\n'
         '  - V8 and JavaScriptCore are too large or platform-dependent for this stage.\n'
         '  - Node.js is a future runtime goal, not this engine probe.\n\n'
         'Node.js included: NO\n'
         'npm included: NO\n'
-        'Real engine integrated: NO';
+        'QuickJS source integrated: NO';
   }
 
   String risks() {
@@ -271,8 +272,8 @@ class JsEngineDecisionService {
   String next() {
     return '=== JS Engine Next ===\n'
         'Recommended next milestone: $recommendedNextMilestone\n'
-        'Scope: vendor a tiny QuickJS source snapshot only if it stays isolated, audited, and resource-limited.\n'
-        'Fallback: v0.33 Duktape Probe if QuickJS is too large or complex.\n'
+        'Scope: test Duktape or another smaller source-vendored engine path if QuickJS remains too large or unavailable.\n'
+        'Fallback: keep js-proof and quickjs limited until timeout/resource limits are practical.\n'
         'Safety gate: do not expose loops broadly until timeout or interrupt behavior is proven.\n'
         'Node.js/npm: still not included.';
   }
@@ -281,11 +282,12 @@ class JsEngineDecisionService {
     return '=== JS Engine Doctor ===\n'
         'Decision commands: OK\n'
         'Current proof: js-proof\n'
+        'QuickJS probe: limited/unavailable\n'
         'Real embedded engine: not integrated\n'
-        'Recommended candidate: quickjs\n'
-        'Fallback candidate: duktape\n'
+        'Recommended candidate: duktape fallback\n'
+        'Fallback candidate: no-engine-yet\n'
         'Node.js included: NO\n'
         'npm included: NO\n'
-        'Overall: RESEARCH_READY';
+        'Overall: LIMITED';
   }
 }

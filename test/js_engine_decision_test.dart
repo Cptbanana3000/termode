@@ -120,7 +120,7 @@ void main() {
 
       expect(result.isError, isFalse);
       expect(result.output, contains('small embeddable JavaScript engine'));
-      expect(result.output, contains('resource-limited'));
+      expect(result.output, contains('timeout/resource limits'));
       expect(result.output, contains('v0.33 proof'));
     });
 
@@ -160,8 +160,8 @@ void main() {
 
       expect(result.isError, isFalse);
       expect(result.output, contains('=== JS Engine Decision ==='));
-      expect(result.output, contains('Do not add a real JavaScript engine'));
-      expect(result.output, contains('v0.33 QuickJS Probe'));
+      expect(result.output, contains('QuickJS remains a limited v0.33 probe'));
+      expect(result.output, contains('v0.34 Duktape Probe'));
       expect(result.output, contains('Node.js included: NO'));
     });
 
@@ -179,8 +179,8 @@ void main() {
       final result = await commandService.execute('js-engine-next');
 
       expect(result.isError, isFalse);
-      expect(result.output, contains('v0.33 QuickJS Probe'));
-      expect(result.output, contains('v0.33 Duktape Probe'));
+      expect(result.output, contains('v0.34 Duktape Probe'));
+      expect(result.output, contains('Fallback'));
       expect(result.output, contains('Node.js/npm: still not included'));
     });
 
@@ -190,8 +190,9 @@ void main() {
       expect(result.isError, isFalse);
       expect(result.output, contains('=== JS Engine Doctor ==='));
       expect(result.output, contains('Current proof: js-proof'));
+      expect(result.output, contains('QuickJS probe: limited/unavailable'));
       expect(result.output, contains('Real embedded engine: not integrated'));
-      expect(result.output, contains('Overall: RESEARCH_READY'));
+      expect(result.output, contains('Overall: LIMITED'));
     });
 
     test(
@@ -203,15 +204,15 @@ void main() {
           result.output,
           contains('8. Real embedded JS engine decision/probe'),
         );
-        expect(result.output, contains('9. Node proof later'));
-        expect(result.output, contains('12. CalypsoIDE integration later'));
+        expect(result.output, contains('9. QuickJS probe'));
+        expect(result.output, contains('14. CalypsoIDE integration later'));
       },
     );
 
-    test('runtime-next recommends v0.33 QuickJS Probe', () async {
+    test('runtime-next recommends v0.34 Duktape fallback', () async {
       final result = await commandService.execute('runtime-next');
 
-      expect(result.output, contains('v0.33 QuickJS Probe'));
+      expect(result.output, contains('v0.34 Duktape Probe'));
       expect(result.output, contains('Fallback'));
       expect(result.output, contains('Duktape'));
       expect(result.output, contains('Node.js/npm: still not included'));
@@ -222,8 +223,8 @@ void main() {
       final info = await commandService.execute('js-proof info');
 
       expect(plan.output, contains('Embedded JS engine decision/probe'));
-      expect(plan.output, contains('v0.33 QuickJS Probe'));
-      expect(info.output, contains('JS engine decision'));
+      expect(plan.output, contains('QuickJS probe command surface'));
+      expect(info.output, contains('QuickJS probe'));
     });
 
     test('command catalog includes JS engine commands', () {
@@ -249,7 +250,7 @@ void main() {
       expect(output, contains('js-engine-candidates'));
       expect(output, contains('=== JS Engine Candidates ==='));
       expect(output, contains('js-engine-next'));
-      expect(output, contains('v0.33 QuickJS Probe'));
+      expect(output, contains('v0.34 Duktape Probe'));
 
       session.isPtyInteractionActive = false;
       session.isRealPtyActive = false;
@@ -260,7 +261,7 @@ void main() {
       expect(File('docs/JS_PROOF.md').readAsStringSync(), contains('v0.32'));
       expect(
         File('docs/RUNTIME_STRATEGY.md').readAsStringSync(),
-        contains('QuickJS Probe'),
+        contains('Duktape Probe'),
       );
       expect(
         File('docs/NATIVE_RUNTIME_CANDIDATES.md').readAsStringSync(),

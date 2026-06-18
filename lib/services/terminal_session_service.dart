@@ -632,6 +632,7 @@ class TerminalSessionService extends ChangeNotifier {
         'js-engine-risks',
         'js-engine-next',
         'js-engine-doctor',
+        'quickjs',
         'localhost-doctor',
         'localhost-capabilities',
         'port-check',

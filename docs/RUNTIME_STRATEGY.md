@@ -18,6 +18,8 @@ script packages executed through shell helper functions.
 - `js-proof` is the current safe JavaScript-like proof.
 - JS engine decision commands compare QuickJS, Duktape, JavaScriptCore, V8,
   Node, and no-engine-yet before any real engine is added.
+- `quickjs` is a v0.33 limited/unavailable probe surface. QuickJS source is
+  not integrated in this build.
 
 ## Android Execution Restrictions
 
@@ -54,10 +56,12 @@ management proofs before they become package types.
 6. Research native runtime candidates.
 7. Prove a tiny JS/runtime path before Node with `js-proof`.
 8. Decide whether to ship a real embedded JS engine with `js-engine-*`.
-9. Add a Node runtime proof after native execution behavior is understood.
-10. Prove npm install/cache behavior inside app storage.
-11. Prove a minimal Vite dev server.
-12. Integrate CalypsoIDE workflows after runtime support is proven.
+9. Add the QuickJS probe command/bridge surface.
+10. Harden embedded-engine safety before broad script execution.
+11. Add a Node runtime proof after native execution behavior is understood.
+12. Prove npm install/cache behavior inside app storage.
+13. Prove a minimal Vite dev server.
+14. Integrate CalypsoIDE workflows after runtime support is proven.
 
 ## Risks
 
@@ -71,9 +75,9 @@ management proofs before they become package types.
 ## Recommended Next Proof
 
 The current runtime target is still the tiny `js-proof` evaluator, not Node.
-v0.32 adds the JS engine decision/probe layer and intentionally does not add a
-real engine. The recommended next proof is a scoped QuickJS probe, with Duktape
-as fallback if QuickJS cannot stay small and resource-limited.
+v0.33 adds the QuickJS command/bridge probe, but QuickJS source is not
+integrated. The recommended next proof is a Duktape or smaller engine-source
+fallback, unless QuickJS can be safely vendored with timeout/resource limits.
 
 ## Bundled Runtime Proof Findings (v0.28)
 
@@ -108,5 +112,6 @@ trying to drop and execute a binary in app storage. A future Node strategy
 should be evaluated as an APK-shipped native component driven through a native
 bridge.
 
-Recommended next step: v0.33 QuickJS Probe (still no Node/npm), using the
-v0.32 decision criteria in [JS_ENGINE_DECISION.md](JS_ENGINE_DECISION.md).
+Recommended next step: v0.34 Duktape Probe / Engine fallback (still no
+Node/npm), using the criteria in [JS_ENGINE_DECISION.md](JS_ENGINE_DECISION.md)
+and [QUICKJS_PROBE.md](QUICKJS_PROBE.md).

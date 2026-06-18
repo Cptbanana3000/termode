@@ -67,6 +67,8 @@ This path needs a tiny proof before it can be trusted.
 An embedded JavaScript engine is the recommended next feasibility step before
 Node. v0.32 adds `js-engine-*` decision commands comparing QuickJS, Duktape,
 JavaScriptCore, V8, Node, the current proof, and no-engine-yet.
+v0.33 adds the `quickjs` command/bridge probe, but QuickJS source is not
+integrated in this build.
 
 Strengths:
 - Proves JavaScript evaluation without npm.
@@ -120,14 +122,15 @@ Current proof:
 Current decision:
 - `v0.32 Real Embedded JS Engine Decision / Probe` via `js-engine-*`
 
-Next proof:
-- `v0.33 QuickJS Probe`
+Current probe:
+- `v0.33 QuickJS Probe` via `quickjs`, limited/unavailable because no QuickJS
+  source snapshot is vendored
 
-Fallback proof if QuickJS blocks:
-- `v0.33 Duktape Probe` or keep the current `js-proof` longer
+Next proof:
+- `v0.34 Duktape Probe / Engine fallback`
 
 Later:
 - Attempt Node only after the runtime strategy is proven.
 
 See [JS_ENGINE_DECISION.md](JS_ENGINE_DECISION.md) for the detailed engine
-comparison.
+comparison and [QUICKJS_PROBE.md](QUICKJS_PROBE.md) for the v0.33 probe.

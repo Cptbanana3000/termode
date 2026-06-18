@@ -786,6 +786,60 @@ class MainActivity: FlutterActivity() {
                         }
                     }
                 }
+                "quickJs" -> {
+                    val command = call.argument<String>("command") ?: ""
+                    thread {
+                        try {
+                            val base = mapOf(
+                                "engine" to "QuickJS",
+                                "mode" to "native embedded engine",
+                                "limited" to true,
+                                "node" to false,
+                                "npm" to false,
+                                "filesystem" to false,
+                                "network" to false,
+                                "timeout" to false
+                            )
+                            val response: Map<String, Any?> = when (command) {
+                                "info" -> base + mapOf(
+                                    "ok" to true,
+                                    "status" to "UNAVAILABLE",
+                                    "error" to "QuickJS source is not integrated in this build."
+                                )
+                                "eval" -> base + mapOf(
+                                    "ok" to false,
+                                    "status" to "UNAVAILABLE",
+                                    "error" to "QuickJS engine is not integrated in this build."
+                                )
+                                "doctor" -> base + mapOf(
+                                    "ok" to true,
+                                    "bridgeOk" to true,
+                                    "engineOk" to false,
+                                    "evalOk" to false,
+                                    "errorsOk" to true,
+                                    "overall" to "LIMITED"
+                                )
+                                "limits" -> base + mapOf(
+                                    "ok" to true,
+                                    "maxCodeLength" to 4096,
+                                    "maxFileSize" to 32768,
+                                    "maxOutputLength" to 8192
+                                )
+                                else -> base + mapOf(
+                                    "ok" to false,
+                                    "error" to "unknown QuickJS command: $command"
+                                )
+                            }
+                            Handler(Looper.getMainLooper()).post {
+                                result.success(response)
+                            }
+                        } catch (e: Throwable) {
+                            Handler(Looper.getMainLooper()).post {
+                                result.error("QUICKJS_FAILED", e.message ?: "QuickJS probe failed", null)
+                            }
+                        }
+                    }
+                }
                 "bundledRuntimeProof" -> {
                     thread {
                         try {

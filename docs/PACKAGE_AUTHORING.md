@@ -12,6 +12,11 @@ native package downloads are not included yet.
 `js-proof` is also built into Termode. It is not an installable package and does
 not make Node.js or npm available to packages.
 
+`quickjs` is a built-in probe command surface, not an installable package. In
+this build QuickJS source is not integrated, Node.js is not available, npm is
+not available, and packages cannot use `require`, `import`, `process`, `fs`, or
+`http` APIs.
+
 ## Package Shape
 
 Each package entry must include:

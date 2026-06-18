@@ -1,12 +1,15 @@
-# Termode v0.32 JS Engine Decision
+# Termode JS Engine Decision
 
-Termode v0.32 is a decision/probe milestone for embedded JavaScript engines.
-It does not add Node.js, npm, Python, Git, native package downloads, a JS
-package manager, or app-writable binary execution.
+Termode v0.32 introduced the JS engine decision layer. v0.33 adds the
+`quickjs` command and Android bridge surface, but does not integrate QuickJS
+source because no local vendored snapshot exists in the repository.
+
+This work does not add Node.js, npm, Python, Git, native package downloads, a
+JS package manager, or app-writable binary execution.
 
 ## Current Status
 
-`js-proof` remains the safe current proof. It routes code through:
+`js-proof` remains the safe current working evaluator. It routes code through:
 
 ```text
 Dart command -> Kotlin MethodChannel -> JNI/native C++ -> result
@@ -19,6 +22,10 @@ such as `require`, `import`, `process`, `fs`, `http`, and `eval`.
 `js-proof` is not Node.js and is not a real JavaScript engine. It proves the
 route and safety model, not compatibility with browser JavaScript, Node, npm,
 or packages.
+
+`quickjs` is now available as a limited/unavailable probe surface. It reports
+cleanly that the engine source is not integrated in this build. See
+[QUICKJS_PROBE.md](QUICKJS_PROBE.md).
 
 ## Candidate Summary
 
@@ -48,16 +55,19 @@ Cons:
 - Needs output, memory, and runaway-script controls.
 - Native crashes can affect the app process.
 
-Recommendation: attempt a scoped v0.33 QuickJS Probe only if it remains
-isolated, audited, and resource-limited.
+v0.33 result: the command/bridge surface was added, but engine integration was
+deferred because no source snapshot was available locally.
+
+Recommendation: do not expose QuickJS evaluation until source vendoring,
+timeout/interruption, memory/output limits, and crash behavior are solved.
 
 ## Duktape
 
 Duktape is a simpler mature embeddable JavaScript engine. It is less modern
 than QuickJS, but may be easier to integrate as a first real-engine fallback.
 
-Recommendation: use Duktape as the fallback if QuickJS is too large or complex
-for the next proof.
+Recommendation: use Duktape as the v0.34 fallback if QuickJS remains too large,
+unavailable, or hard to interrupt safely.
 
 ## JavaScriptCore, V8, And Node
 
@@ -87,12 +97,11 @@ Any real embedded engine must handle:
 If infinite loop protection cannot be implemented, loops should be blocked or
 the real engine should stay behind a research-only proof.
 
-## v0.32 Decision
+## Current Decision
 
-Real engine integration is deferred in v0.32. The current proof remains
-`js-proof`.
+Real engine integration is still deferred. The current working proof remains
+`js-proof`, while `quickjs` is a limited bridge/command probe.
 
-Recommended next step: `v0.33 QuickJS Probe`.
+Recommended next step: `v0.34 Duktape Probe / Engine fallback`.
 
-Fallback: `v0.33 Duktape Probe`, or keep the current proof longer if neither
-engine can be added safely.
+Fallback: keep the current proof longer if no engine can be added safely.

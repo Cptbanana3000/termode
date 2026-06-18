@@ -16,6 +16,7 @@ import 'bundled_runtime_service.dart';
 import 'native_tool_service.dart';
 import 'js_proof_service.dart';
 import 'js_engine_decision_service.dart';
+import 'quickjs_service.dart';
 import 'package_manager_service.dart';
 import 'workspace_service.dart';
 
@@ -191,6 +192,14 @@ class CommandService {
               '  js-engine-risks - List JS engine integration risks\n'
               '  js-engine-next - Show recommended JS engine next step\n'
               '  js-engine-doctor - Check JS engine decision readiness\n\n'
+              'QuickJS Probe Commands:\n'
+              '  quickjs - Show QuickJS probe help\n'
+              '  quickjs info - Show QuickJS probe status\n'
+              '  quickjs eval <code> - Evaluate code if engine is available\n'
+              '  quickjs file <path> - Evaluate a safe Termode JS file\n'
+              '  quickjs limits - Show QuickJS safety limits\n'
+              '  quickjs doctor - Diagnose QuickJS bridge/engine\n'
+              '  quickjs plan - Show staged QuickJS/runtime plan\n\n'
               'Dev Server Commands:\n'
               '  localhost-doctor - Check localhost readiness\n'
               '  localhost-capabilities - Show localhost support\n'
@@ -961,6 +970,7 @@ class CommandService {
               '  native-tool [sub]      - Run a tiny native bridge tool\n'
               '  js-proof [sub]         - Run a tiny JS-like native bridge proof\n'
               '  js-engine-*            - Show embedded JS engine decision/research\n'
+              '  quickjs [sub]          - Run the QuickJS embedded-engine probe\n'
               '  localhost-doctor       - Check localhost readiness\n'
               '  localhost-capabilities - Show dev server readiness support\n'
               '  port-check <port>      - Check 127.0.0.1 port status\n'
@@ -1198,6 +1208,61 @@ class CommandService {
           output: output,
           isError: output.contains('Overall: UNHEALTHY'),
         );
+
+      case 'quickjs':
+        final quickjs = QuickJsService();
+        final sub = args.isNotEmpty ? args[0].toLowerCase() : 'help';
+        switch (sub) {
+          case 'help':
+            return CommandResult(output: quickjs.help());
+          case 'info':
+            final output = await quickjs.info();
+            return CommandResult(
+              output: output,
+              isError: output.contains('Status: UNAVAILABLE'),
+            );
+          case 'eval':
+            final output = await quickjs.eval(args.sublist(1).join(' '));
+            return CommandResult(
+              output: output,
+              isError:
+                  output.startsWith('Error:') ||
+                  output.startsWith('QuickJS bridge unavailable'),
+            );
+          case 'file':
+            if (args.length < 2) {
+              return CommandResult(
+                output: 'Usage: quickjs file <path>',
+                isError: true,
+              );
+            }
+            final output = await quickjs.file(args[1]);
+            return CommandResult(
+              output: output,
+              isError:
+                  output.startsWith('Error:') ||
+                  output.startsWith('QuickJS bridge unavailable'),
+            );
+          case 'limits':
+            return CommandResult(output: quickjs.limits());
+          case 'doctor':
+            final output = await quickjs.doctor();
+            return CommandResult(
+              output: output,
+              isError:
+                  output.contains('Overall: UNAVAILABLE') ||
+                  output.startsWith('QuickJS bridge unavailable'),
+            );
+          case 'plan':
+            return CommandResult(output: quickjs.plan());
+          default:
+            return CommandResult(
+              output:
+                  'Unknown quickjs subcommand: $sub\n'
+                  'Usage: quickjs <help|info|eval|file|limits|doctor|plan>',
+              isError: true,
+            );
+        }
 
       case 'localhost-doctor':
         final verbose = args.contains('--verbose');
@@ -3249,6 +3314,12 @@ class CommandService {
         );
         sb.writeln(
           '  runtime-*      - Probe and explain Termode runtime capabilities',
+        );
+        sb.writeln(
+          '  js-proof       - Run the controlled JS-like native bridge proof',
+        );
+        sb.writeln(
+          '  quickjs        - Run the limited QuickJS embedded-engine probe',
         );
         sb.writeln(
           '  localhost-*    - Check local ports and future dev server readiness',

@@ -132,6 +132,7 @@ class BundledRuntimeService {
     sb.writeln('Tiny native tool: available (bridge-exposed, not a package)');
     sb.writeln('Tiny JS proof: available via js-proof (not Node)');
     sb.writeln('JS engine decision: available via js-engine-decision');
+    sb.writeln('QuickJS probe: limited/unavailable via quickjs');
     sb.writeln('Runtime candidate research: available');
     sb.writeln('Node.js: not included');
     sb.write('Overall: ${p.readiness}');
@@ -151,6 +152,7 @@ class BundledRuntimeService {
     sb.writeln('Tiny native tool: available');
     sb.writeln('Tiny JS proof: available');
     sb.writeln('JS engine decision/probe: available');
+    sb.writeln('QuickJS probe command surface: available');
     sb.writeln('Runtime candidate research: available');
     sb.write('Overall: ${p.testResult}');
     return sb.toString();
@@ -172,6 +174,7 @@ class BundledRuntimeService {
     sb.writeln('Tiny native tool: available (bridge-exposed)');
     sb.writeln('Tiny JS proof: available (js-proof)');
     sb.writeln('JS engine decision: available (js-engine-decision)');
+    sb.writeln('QuickJS probe: limited/unavailable (quickjs)');
     sb.writeln('Recommended next proof: runtime-next');
     sb.writeln('Node.js: not included');
     if (verbose) {
@@ -219,11 +222,12 @@ class BundledRuntimeService {
         '4. Native runtime candidate research - study which runtimes can ship via the APK native layer.\n'
         '5. Tiny JS/runtime feasibility proof (v0.31) - controlled js-proof evaluator through the native bridge.\n'
         '6. Real embedded JS engine decision/probe (v0.32) - choose QuickJS/Duktape/no-engine-yet before engine code.\n'
-        '7. QuickJS/Duktape real engine proof - only if limits are practical.\n'
-        '8. Node as APK-shipped native component - investigate shipping Node in the APK native layer later.\n'
-        '9. Node via native bridge control - drive a runtime through JNI rather than direct exec later.\n'
-        '10. Standalone native executable - only if Android allows; app-private exec is blocked.\n'
-        '11. Fallback - no Node until a safe strategy is proven.\n'
+        '7. QuickJS probe (v0.33) - command/bridge surface; engine source not integrated in this build.\n'
+        '8. QuickJS/Duktape real engine proof - only if limits are practical.\n'
+        '9. Node as APK-shipped native component - investigate shipping Node in the APK native layer later.\n'
+        '10. Node via native bridge control - drive a runtime through JNI rather than direct exec later.\n'
+        '11. Standalone native executable - only if Android allows; app-private exec is blocked.\n'
+        '12. Fallback - no Node until a safe strategy is proven.\n'
         'Node.js: not included.';
   }
 
