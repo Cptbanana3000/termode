@@ -231,6 +231,10 @@ void main() {
         contains('Created'),
       );
       expect(
+        (await commandService.execute('host-rm src')).output,
+        contains('Removed directory'),
+      );
+      expect(
         (await commandService.execute('host-rm empty.txt')).output,
         contains('Removed'),
       );
@@ -242,6 +246,31 @@ void main() {
       );
       expect(traversal.isError, isTrue);
       expect(traversal.output, contains('path escapes'));
+
+      final parentTraversal = await commandService.execute('host-cat ../bad');
+      expect(parentTraversal.isError, isTrue);
+      expect(parentTraversal.output, contains('relative path traversal'));
+    });
+
+    test('host-rm blocks unsafe and non-empty directory removal', () async {
+      final commandService = CommandService(VirtualFileSystem(), 'workspace');
+      await commandService.execute('workspace-init demo');
+      await commandService.execute('workspace-cd demo');
+
+      await commandService.execute('host-mkdir src');
+      await commandService.execute('host-write src/main.txt hello');
+
+      final nonEmpty = await commandService.execute('host-rm src');
+      expect(nonEmpty.isError, isTrue);
+      expect(nonEmpty.output, contains('directory not empty'));
+
+      final traversal = await commandService.execute('host-rm ../bad');
+      expect(traversal.isError, isTrue);
+      expect(traversal.output, contains('relative path traversal'));
+
+      final dot = await commandService.execute('host-rm .');
+      expect(dot.isError, isTrue);
+      expect(dot.output, contains('protected Termode path'));
     });
 
     test('host-rm cannot delete protected files', () async {

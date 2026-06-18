@@ -3,7 +3,7 @@
 Termode is an Android terminal app built around a REAL PTY shell-first
 experience, script packages, workspace tools, and compact diagnostics.
 
-Current status: v0.37 Device QA Bug Bash.
+Current status: v0.37.1 Manual Android QA Fix Pass.
 
 ## Supported
 

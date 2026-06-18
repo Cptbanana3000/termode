@@ -1672,6 +1672,7 @@ class TerminalSessionService extends ChangeNotifier {
         ),
       );
     }
+    session.isLastLinePty = false;
     _touchSession(session);
     _trimSessionScrollback(session);
     notifyListeners();

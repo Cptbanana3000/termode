@@ -59,3 +59,14 @@ Use `beta-checklist` and `qa-checklist` for the manual pass.
 
 v0.37 adds `qa-run`, `qa-status`, `qa-report`, and `qa-reset` for the device
 bug-bash pass. See [DEVICE_QA_BUG_BASH.md](DEVICE_QA_BUG_BASH.md).
+
+v0.37.1 keeps the runtime decision frozen and focuses on QA rough edges:
+
+- `qa-status` reports `READY WITH LIMITATIONS` when only accepted LIMITED
+  statuses are present
+- `host-rm` can remove empty workspace directories created by `host-mkdir`
+- protected Termode roots remain blocked from host file deletion
+- host file commands reject explicit `..` parent traversal
+- unified doctor recognizes package `Status: HEALTHY`
+- `runtime-freeze doctor` works inside the installed APK using the embedded
+  freeze decision when repo markdown files are unavailable

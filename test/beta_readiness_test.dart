@@ -11,7 +11,7 @@ import 'package:termode/services/virtual_filesystem.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('Product Stabilization / Device QA (v0.36-v0.37)', () {
+  group('Product Stabilization / Device QA (v0.36-v0.37.1)', () {
     late Directory tempDir;
     late CommandService commandService;
 
@@ -161,8 +161,9 @@ void main() {
       final verbose = await commandService.execute('doctor --verbose');
 
       expect(compact.output, contains('=== Termode Doctor ==='));
-      expect(compact.output, contains('Package:'));
+      expect(compact.output, contains('Package: HEALTHY'));
       expect(compact.output, contains('Runtime freeze: HEALTHY'));
+      expect(compact.output, contains('Native tools: HEALTHY'));
       expect(compact.output, contains('Overall: LIMITED'));
       expect(verbose.output, contains('Verbose:'));
       expect(verbose.output, contains('run pkg doctor'));
@@ -207,8 +208,9 @@ void main() {
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
 
-      expect(version.output, contains('Termode v0.37'));
+      expect(version.output, contains('Termode v0.37.1'));
       expect(version.output, contains('Runtime: frozen'));
+      expect(notes.output, contains('v0.37.1 Manual Android QA Fix Pass'));
       expect(notes.output, contains('v0.37 Device QA Bug Bash'));
       expect(notes.output, contains('v0.35 Runtime Decision Freeze'));
       expect(changelog.output, contains('v0.31 JS Proof'));
@@ -218,7 +220,7 @@ void main() {
       final result = await commandService.execute('bug-report');
 
       expect(result.output, contains('=== Termode Bug Report ==='));
-      expect(result.output, contains('Termode version: v0.37'));
+      expect(result.output, contains('Termode version: v0.37.1'));
       expect(result.output, contains('Android ABI: arm64-v8a'));
       expect(result.output, isNot(contains('PATH=')));
       expect(result.output, isNot(contains('TOKEN')));
@@ -249,15 +251,16 @@ void main() {
       expect(result.output, contains('=== QA Status ==='));
       expect(result.output, contains('Doctor:'));
       expect(result.output, contains('Beta:'));
+      expect(result.output, contains('Packages: OK'));
       expect(result.output, contains('Runtime freeze: OK'));
-      expect(result.output, contains('Overall: READY FOR BUG BASH'));
+      expect(result.output, contains('Overall: READY WITH LIMITATIONS'));
     });
 
     test('qa-report output is compact and safe', () async {
       final result = await commandService.execute('qa-report');
 
       expect(result.output, contains('=== QA Bug Bash Report ==='));
-      expect(result.output, contains('Termode v0.37'));
+      expect(result.output, contains('Termode v0.37.1'));
       expect(result.output, contains('Doctor summary:'));
       expect(result.output, contains('Suggested next tests:'));
       expect(result.output, isNot(contains('PATH=')));

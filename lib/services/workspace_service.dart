@@ -73,10 +73,29 @@ class WorkspaceService {
   }
 
   String _normalizePath(String path) {
-    if (Platform.pathSeparator == r'\') {
-      return path.replaceAll('/', r'\');
+    final slashPath = path.replaceAll(r'\', '/');
+    final isAbsolute = slashPath.startsWith('/');
+    final parts = <String>[];
+    for (final part in slashPath.split('/')) {
+      if (part.isEmpty || part == '.') {
+        continue;
+      }
+      if (part == '..') {
+        if (parts.isNotEmpty && parts.last != '..') {
+          parts.removeLast();
+        } else if (!isAbsolute) {
+          parts.add(part);
+        }
+        continue;
+      }
+      parts.add(part);
     }
-    return path.replaceAll(r'\', '/');
+    final joined = parts.join(Platform.pathSeparator);
+    return isAbsolute ? '${Platform.pathSeparator}$joined' : joined;
+  }
+
+  bool _containsParentTraversal(String path) {
+    return path.replaceAll(r'\', '/').split('/').contains('..');
   }
 
   Future<String> currentWorkspaceName() async {
@@ -233,6 +252,12 @@ class WorkspaceService {
         ? Directory(session.preferredWorkingDirectory!)
         : home;
     final raw = input.trim().isEmpty ? '.' : input.trim();
+    if (_containsParentTraversal(raw)) {
+      throw FileSystemException(
+        'relative path traversal is not allowed',
+        input,
+      );
+    }
     final candidate = Directory(raw).isAbsolute
         ? Directory(raw).absolute
         : Directory('${base.path}/$raw').absolute;
@@ -244,6 +269,12 @@ class WorkspaceService {
 
   Future<File> resolveHostFile(String input) async {
     final dir = await resolveHostPath('.');
+    if (_containsParentTraversal(input)) {
+      throw FileSystemException(
+        'relative path traversal is not allowed',
+        input,
+      );
+    }
     final candidate = File(input).isAbsolute
         ? File(input).absolute
         : File('${dir.path}/${input.trim()}').absolute;
@@ -295,7 +326,13 @@ class WorkspaceService {
 
   Future<String> hostRm(String path) async {
     final runtimePaths = await _runtime.getPaths();
+    final workspacePaths = await paths();
+    final currentDirectory =
+        TerminalSessionService().activeSession.preferredWorkingDirectory;
     final protectedRoots = [
+      workspacePaths['home']!,
+      workspacePaths['projectsRoot']!,
+      ?currentDirectory,
       runtimePaths['usr']!,
       runtimePaths['bin']!,
       '${runtimePaths['usr']}/termode-packages.json',
@@ -310,8 +347,25 @@ class WorkspaceService {
         return 'host-rm: protected Termode file';
       }
     }
-    final file = await resolveHostFile(path);
-    if (!file.existsSync()) return 'host-rm: not found';
+
+    final target = await resolveHostPath(path);
+    final targetPath = _normalizePath(target.path);
+    for (final protected in protectedRoots) {
+      if (targetPath == _normalizePath(Directory(protected).absolute.path)) {
+        return 'host-rm: protected Termode path';
+      }
+    }
+
+    final file = File(targetPath);
+    if (!file.existsSync()) {
+      final dir = Directory(targetPath);
+      if (!dir.existsSync()) return 'host-rm: not found';
+      if (dir.listSync().isNotEmpty) {
+        return 'host-rm: directory not empty';
+      }
+      dir.deleteSync();
+      return 'Removed directory $path.';
+    }
     file.deleteSync();
     return 'Removed $path.';
   }

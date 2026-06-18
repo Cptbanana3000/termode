@@ -122,6 +122,19 @@ class CommandService {
 
   String _statusFromDoctorOutput(String output) {
     final upper = output.toUpperCase();
+    final explicitStatusMatches = RegExp(
+      r'(?:OVERALL|OVERALL STATUS|OVERALL READINESS|FINAL HEALTH|STATUS|RESULT):\s*(UNHEALTHY|FAIL|FAILED|LIMITED|HEALTHY|PASS|FROZEN)',
+    ).allMatches(upper).toList();
+    if (explicitStatusMatches.isNotEmpty) {
+      final status = explicitStatusMatches.last.group(1)!;
+      if (status == 'UNHEALTHY' || status == 'FAIL' || status == 'FAILED') {
+        return 'UNHEALTHY';
+      }
+      if (status == 'LIMITED') {
+        return 'LIMITED';
+      }
+      return 'HEALTHY';
+    }
     if (upper.contains('OVERALL: UNHEALTHY') ||
         upper.contains('OVERALL READINESS: UNHEALTHY') ||
         upper.contains('OVERALL: FAIL') ||
@@ -135,6 +148,7 @@ class CommandService {
     }
     if (upper.contains('OVERALL: FROZEN') ||
         upper.contains('OVERALL: HEALTHY') ||
+        upper.contains('STATUS: HEALTHY') ||
         upper.contains('OVERALL STATUS: HEALTHY') ||
         upper.contains('FINAL HEALTH: HEALTHY') ||
         upper.contains('RESULT: PASS') ||
@@ -373,7 +387,7 @@ class CommandService {
   }
 
   String _versionOutput() {
-    return 'Termode v0.37\n'
+    return 'Termode v0.37.1\n'
         'Runtime: frozen\n'
         'Shell: REAL PTY\n'
         'Packages: script-only';
@@ -381,6 +395,7 @@ class CommandService {
 
   String _releaseNotesOutput() {
     return '=== Termode Release Notes ===\n'
+        'v0.37.1 Manual Android QA Fix Pass\n'
         'v0.37 Device QA Bug Bash\n'
         'v0.36 Product Stabilization / Beta Readiness Pass\n'
         'v0.35 Runtime Decision Freeze\n'
@@ -410,7 +425,7 @@ class CommandService {
         ? 'REAL PTY'
         : 'NORMAL';
     return '=== Termode Bug Report ===\n'
-        'Termode version: v0.37\n'
+        'Termode version: v0.37.1\n'
         'Android ABI: $abi\n'
         'Runtime status: $runtimeStatus\n'
         'Package doctor: $packageStatus\n'
@@ -475,9 +490,11 @@ class CommandService {
     final runtimeFreeze = _statusFromDoctorOutput(
       (await execute('runtime-freeze doctor')).output,
     );
-    final overall = doctorStatus == 'UNHEALTHY'
-        ? 'NEEDS FIXES'
-        : 'READY FOR BUG BASH';
+    final overall = _qaOverallStatus(
+      doctorStatus: doctorStatus,
+      betaOverall: betaOverall,
+      runtimeFreeze: runtimeFreeze,
+    );
     return '=== QA Status ===\n'
         'Doctor: $doctorStatus\n'
         'Beta: $betaOverall\n'
@@ -486,6 +503,26 @@ class CommandService {
         'Sessions: ${_qaStatusLabel(doctorStatuses['Session'])}\n'
         'Runtime freeze: ${runtimeFreeze == 'HEALTHY' ? 'OK' : runtimeFreeze}\n'
         'Overall: $overall';
+  }
+
+  String _qaOverallStatus({
+    required String doctorStatus,
+    required String betaOverall,
+    required String runtimeFreeze,
+  }) {
+    final betaUpper = betaOverall.toUpperCase();
+    if (doctorStatus == 'UNHEALTHY' ||
+        runtimeFreeze == 'UNHEALTHY' ||
+        betaUpper.contains('UNHEALTHY') ||
+        betaUpper.contains('NOT READY')) {
+      return 'NEEDS FIXES';
+    }
+    if (doctorStatus == 'LIMITED' ||
+        runtimeFreeze == 'LIMITED' ||
+        betaUpper.contains('LIMITED')) {
+      return 'READY WITH LIMITATIONS';
+    }
+    return 'READY FOR BUG BASH';
   }
 
   Map<String, String> _doctorStatusesFromOutput(String output) {
@@ -908,7 +945,7 @@ class CommandService {
         );
       case 'host-rm':
         if (args.isEmpty) {
-          return CommandResult(output: 'Usage: host-rm <file>', isError: true);
+          return CommandResult(output: 'Usage: host-rm <path>', isError: true);
         }
         return _workspaceFileCommand(
           'host-rm',

@@ -122,6 +122,42 @@ QA:
 - deferred runtime probes do not mark the app broken
 - errors are short and actionable
 
+## v0.37.1 Manual QA Result
+
+On-device QA was run through Android SDK platform-tools against the debug APK.
+The first launch was blocked by the device lockscreen bouncer; after the device
+was unlocked, Termode launched in REAL PTY mode and command input worked.
+
+Observed:
+
+- `adb install -r build/app/outputs/flutter-apk/app-debug.apk` succeeded
+- `com.termode.termode/.MainActivity` launched
+- REAL PTY badge was visible and accurate
+- `qa-status` ran without crashing
+- `doctor` ran without crashing
+- beta, settings, package, workspace, session, preview, localhost,
+  native-tool, and js-proof doctors ran without crashing
+- no duplicate prompts were observed in the tested command path
+
+Fixed during the v0.37.1 pass:
+
+- `qa-status` now distinguishes ready, limited, and needs-fixes states
+- `host-rm` can remove empty directories created by `host-mkdir`
+- `host-rm` keeps protected Termode roots blocked
+- host file commands now reject explicit `..` parent traversal
+- unified doctor now prefers explicit `Overall:` / `Status:` lines over
+  incidental LIMITED text in doctor bodies
+- `runtime-freeze doctor` accepts the embedded freeze decision when repo docs
+  are not present inside the installed APK
+- host-intercepted package output no longer merges with the post-reload shell
+  prompt, fixing lines like `Try: hellotermode:$`
+
+Remaining manual work:
+
+- confirm REAL PTY focus, keyboard, copy/paste, and scroll behavior by hand
+- confirm package helper reload remains silent on device
+- capture any bad wrapping/readability issue visible only on the handset
+
 ## Acceptable LIMITED Statuses
 
 - storage is LIMITED when no Android folder is linked
@@ -144,6 +180,7 @@ QA:
 - native binary packages are not supported
 - closed preview ports show friendly errors
 - Android storage features depend on user-granted folder access
+- manual QA may be blocked if the device is locked or unavailable
 
 ## Bug Reports
 

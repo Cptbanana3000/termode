@@ -96,7 +96,12 @@ class RuntimeFreezeService {
   }
 
   String doctor() {
-    final docsOk = File('docs/RUNTIME_DECISION_FREEZE.md').existsSync();
+    final docsFileOk = File('docs/RUNTIME_DECISION_FREEZE.md').existsSync();
+    final embeddedDecisionOk =
+        decision().contains('Decision: Termode keeps') &&
+        deferredItems.contains('Node.js') &&
+        deferredItems.contains('npm');
+    final docsOk = docsFileOk || embeddedDecisionOk;
     final plan = RuntimeCapabilityService().plan();
     final planOk =
         plan.contains('11. Runtime decision freeze') &&

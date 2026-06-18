@@ -4732,6 +4732,10 @@ void main() {
             '${TerminalSessionService.helperReloadStatusMarker}:0\n'
             '${TerminalSessionService.helperReloadEndMarker}\n',
           );
+          sessionService.appendRealPtyOutput(
+            sessionService.activeSession.id,
+            r'termode:$ ',
+          );
 
           await sessionService.executeCommand('hello');
           sessionService.appendRealPtyOutput(
@@ -4743,6 +4747,7 @@ void main() {
               .map((l) => l.text)
               .join('\n');
           expect(output, contains('Reinstalled package hello'));
+          expect(output, isNot(contains('hellotermode:')));
           expect(output, contains('Hello from Termode package manager!'));
           expect(output, isNot(contains('Helper reload failed')));
 

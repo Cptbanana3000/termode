@@ -9,6 +9,18 @@ For the v0.37 device bug bash, start with:
 - `qa-report`
 - `bug-report`
 
+v0.37.1 notes:
+
+- debug APK install on the connected Android device succeeded
+- command execution worked after unlocking the device
+- `qa-status`, `doctor`, beta/settings/package/workspace/session/preview,
+  localhost, native-tool, and js-proof doctors ran without crashing
+- `host-rm` now removes empty directories while still blocking protected roots
+- host file commands now reject explicit `..` parent traversal
+- `qa-status` now reports limited readiness separately from needs-fixes
+- unified doctor now prefers explicit `Overall:` / `Status:` lines
+- package helper reload prompt refresh no longer merges into package output
+
 ## App Launch
 
 - launch app
@@ -75,3 +87,11 @@ For the v0.37 device bug bash, start with:
 - run `bug-report`
 - confirm it excludes private environment variables, tokens, and full sensitive
   paths
+
+## Release Blockers
+
+- app crash during common QA commands
+- duplicate REAL PTY shell starts or prompts
+- workspace path escape or protected path deletion
+- package helper reload leak/regression
+- doctor reporting healthy while a critical subsystem is broken
