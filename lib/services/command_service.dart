@@ -219,8 +219,8 @@ class CommandService {
   String _betaNextOutput() {
     return '=== Beta Next ===\n'
         'Recommended next milestone:\n'
-        'v0.37 Documentation / Onboarding Polish\n\n'
-        'Reason: v0.36 adds beta readiness commands and highlights docs/help cleanup as the remaining score gap.';
+        'v0.38 Documentation / Onboarding Polish\n\n'
+        'Reason: v0.37 adds the device QA bug-bash workflow and keeps docs/help cleanup as the remaining score gap.';
   }
 
   Future<String> _termodeDoctor({bool verbose = false}) async {
@@ -373,7 +373,7 @@ class CommandService {
   }
 
   String _versionOutput() {
-    return 'Termode v0.36\n'
+    return 'Termode v0.37\n'
         'Runtime: frozen\n'
         'Shell: REAL PTY\n'
         'Packages: script-only';
@@ -381,6 +381,7 @@ class CommandService {
 
   String _releaseNotesOutput() {
     return '=== Termode Release Notes ===\n'
+        'v0.37 Device QA Bug Bash\n'
         'v0.36 Product Stabilization / Beta Readiness Pass\n'
         'v0.35 Runtime Decision Freeze\n'
         'v0.34 Duktape Probe\n'
@@ -409,7 +410,7 @@ class CommandService {
         ? 'REAL PTY'
         : 'NORMAL';
     return '=== Termode Bug Report ===\n'
-        'Termode version: v0.36\n'
+        'Termode version: v0.37\n'
         'Android ABI: $abi\n'
         'Runtime status: $runtimeStatus\n'
         'Package doctor: $packageStatus\n'
@@ -434,6 +435,109 @@ class CommandService {
         '* force close/reopen\n'
         '* rotate screen\n'
         '* multiple tabs';
+  }
+
+  String _qaRunOutput() {
+    return '=== QA Run ===\n'
+        'Startup:\n'
+        '  welcome, doctor, beta-status, force close/reopen\n'
+        'Shell / PTY:\n'
+        '  default-shell, pwd, Ctrl+C, stop-shell, default-shell\n'
+        'Tabs / sessions:\n'
+        '  tabs, tab-new, tab-rename qa, tab-close, session-doctor\n'
+        'Packages:\n'
+        '  pkg doctor, pkg list, pkg install/remove hello, pkg repair\n'
+        'Workspaces/files:\n'
+        '  workspace-init qa, workspace-cd qa, host-write, host-cat, host-ls\n'
+        'Storage:\n'
+        '  storage-status, storage-link if available, storage-test if linked\n'
+        'Terminal UX:\n'
+        '  keyboard-test, ansi-test, scroll-test 300, copy-last, paste-force\n'
+        'Preview/localhost:\n'
+        '  preview-url 3000, preview-check 3000, preview-doctor, localhost-doctor\n'
+        'Restore/background:\n'
+        '  background app, reopen, verify no duplicate prompts or shells\n'
+        'Doctors:\n'
+        '  doctor, beta-doctor, runtime-freeze doctor, native-tool doctor, js-proof doctor';
+  }
+
+  Future<String> _qaStatusOutput() async {
+    final doctorOutput = await _termodeDoctor();
+    final doctorStatus = _statusFromDoctorOutput(doctorOutput);
+    final doctorStatuses = _doctorStatusesFromOutput(doctorOutput);
+    final betaOutput = await _betaStatusOutput();
+    final betaOverall =
+        RegExp(
+          r'Overall:\s*(.+)$',
+          multiLine: true,
+        ).firstMatch(betaOutput)?.group(1)?.trim() ??
+        'LIMITED';
+    final runtimeFreeze = _statusFromDoctorOutput(
+      (await execute('runtime-freeze doctor')).output,
+    );
+    final overall = doctorStatus == 'UNHEALTHY'
+        ? 'NEEDS FIXES'
+        : 'READY FOR BUG BASH';
+    return '=== QA Status ===\n'
+        'Doctor: $doctorStatus\n'
+        'Beta: $betaOverall\n'
+        'Packages: ${_qaStatusLabel(doctorStatuses['Package'])}\n'
+        'Workspaces: ${_qaStatusLabel(doctorStatuses['Workspace'])}\n'
+        'Sessions: ${_qaStatusLabel(doctorStatuses['Session'])}\n'
+        'Runtime freeze: ${runtimeFreeze == 'HEALTHY' ? 'OK' : runtimeFreeze}\n'
+        'Overall: $overall';
+  }
+
+  Map<String, String> _doctorStatusesFromOutput(String output) {
+    final statuses = <String, String>{};
+    final linePattern = RegExp(r'^([^:\n]+):\s*(HEALTHY|LIMITED|UNHEALTHY)$');
+    for (final line in output.split('\n')) {
+      final match = linePattern.firstMatch(line.trim());
+      if (match != null) {
+        statuses[match.group(1)!] = match.group(2)!;
+      }
+    }
+    return statuses;
+  }
+
+  String _qaStatusLabel(String? status) {
+    if (status == null) {
+      return 'UNKNOWN';
+    }
+    return status == 'HEALTHY' ? 'OK' : status;
+  }
+
+  Future<String> _qaReportOutput() async {
+    final session = TerminalSessionService().activeSession;
+    final diagnostics = await NativeCommandService().getDiagnostics();
+    final abi = diagnostics?['abi']?.toString() ?? 'unknown';
+    final doctor = await _termodeDoctor();
+    final doctorStatus = _statusFromDoctorOutput(doctor);
+    return '=== QA Bug Bash Report ===\n'
+        '${_versionOutput()}\n\n'
+        'Doctor summary: $doctorStatus\n'
+        '${_betaScoreOutput()}\n\n'
+        '${_betaKnownLimitsOutput()}\n\n'
+        'Last session info:\n'
+        '  Name: ${session.name}\n'
+        '  Mode: ${session.isPtyInteractionActive ? 'REAL PTY' : 'NORMAL'}\n'
+        '  Lines: ${session.lines.length}\n'
+        'Safe runtime info:\n'
+        '  ABI: $abi\n'
+        '  Runtime: frozen\n'
+        'Suggested next tests:\n'
+        '  qa-run\n'
+        '  doctor --verbose\n'
+        '  pkg doctor\n'
+        '  workspace-doctor\n'
+        '  preview-doctor\n\n'
+        'Copy this output when reporting a QA bug. Private env vars, tokens, and full paths are not included.';
+  }
+
+  String _qaResetOutput() {
+    return '=== QA Reset ===\n'
+        'QA tracking state reset.\n'
+        'Packages, workspaces, sessions, and user files were not changed.';
   }
 
   Future<Map<String, dynamic>> _getInstalledPackages(String usrDir) async {
@@ -497,7 +601,8 @@ class CommandService {
               '  beta-checklist, beta-known-limits, beta-next\n'
               '  settings-summary, settings-doctor\n'
               '  version, release-notes, changelog\n'
-              '  bug-report, qa-checklist\n\n'
+              '  bug-report, qa-checklist\n'
+              '  qa-run, qa-status, qa-report, qa-reset\n\n'
               'Runtime Research Commands:\n'
               '  runtime-candidates - Compare future runtime strategies\n'
               '  runtime-candidate <name> - Show one candidate in detail\n'
@@ -1414,6 +1519,22 @@ class CommandService {
 
       case 'qa-checklist':
         return CommandResult(output: _qaChecklistOutput());
+
+      case 'qa-run':
+        return CommandResult(output: _qaRunOutput());
+
+      case 'qa-status':
+        final output = await _qaStatusOutput();
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: NEEDS FIXES'),
+        );
+
+      case 'qa-report':
+        return CommandResult(output: await _qaReportOutput());
+
+      case 'qa-reset':
+        return CommandResult(output: _qaResetOutput());
 
       case 'runtime-doctor':
         final verbose = args.contains('--verbose');
@@ -3829,6 +3950,7 @@ class CommandService {
         );
         sb.writeln('  doctor         - Show unified Termode health summary');
         sb.writeln('  beta-*         - Show beta readiness and QA checklists');
+        sb.writeln('  qa-*           - Run device QA bug bash helpers');
         sb.writeln('  commands       - Show compact command categories');
         sb.writeln('  welcome        - Show first-run onboarding');
         sb.writeln('  settings-*     - Show settings summary/doctor');

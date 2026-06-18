@@ -11,7 +11,7 @@ import 'package:termode/services/virtual_filesystem.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('Product Stabilization / Beta Readiness (v0.36)', () {
+  group('Product Stabilization / Device QA (v0.36-v0.37)', () {
     late Directory tempDir;
     late CommandService commandService;
 
@@ -152,7 +152,7 @@ void main() {
 
       expect(
         result.output,
-        contains('v0.37 Documentation / Onboarding Polish'),
+        contains('v0.38 Documentation / Onboarding Polish'),
       );
     });
 
@@ -207,8 +207,9 @@ void main() {
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
 
-      expect(version.output, contains('Termode v0.36'));
+      expect(version.output, contains('Termode v0.37'));
       expect(version.output, contains('Runtime: frozen'));
+      expect(notes.output, contains('v0.37 Device QA Bug Bash'));
       expect(notes.output, contains('v0.35 Runtime Decision Freeze'));
       expect(changelog.output, contains('v0.31 JS Proof'));
     });
@@ -217,7 +218,7 @@ void main() {
       final result = await commandService.execute('bug-report');
 
       expect(result.output, contains('=== Termode Bug Report ==='));
-      expect(result.output, contains('Termode version: v0.36'));
+      expect(result.output, contains('Termode version: v0.37'));
       expect(result.output, contains('Android ABI: arm64-v8a'));
       expect(result.output, isNot(contains('PATH=')));
       expect(result.output, isNot(contains('TOKEN')));
@@ -230,6 +231,48 @@ void main() {
       expect(result.output, contains('launch app'));
       expect(result.output, contains('package install/remove'));
       expect(result.output, contains('multiple tabs'));
+    });
+
+    test('qa-run output', () async {
+      final result = await commandService.execute('qa-run');
+
+      expect(result.output, contains('=== QA Run ==='));
+      expect(result.output, contains('Startup:'));
+      expect(result.output, contains('Shell / PTY:'));
+      expect(result.output, contains('Packages:'));
+      expect(result.output, contains('Doctors:'));
+    });
+
+    test('qa-status output', () async {
+      final result = await commandService.execute('qa-status');
+
+      expect(result.output, contains('=== QA Status ==='));
+      expect(result.output, contains('Doctor:'));
+      expect(result.output, contains('Beta:'));
+      expect(result.output, contains('Runtime freeze: OK'));
+      expect(result.output, contains('Overall: READY FOR BUG BASH'));
+    });
+
+    test('qa-report output is compact and safe', () async {
+      final result = await commandService.execute('qa-report');
+
+      expect(result.output, contains('=== QA Bug Bash Report ==='));
+      expect(result.output, contains('Termode v0.37'));
+      expect(result.output, contains('Doctor summary:'));
+      expect(result.output, contains('Suggested next tests:'));
+      expect(result.output, isNot(contains('PATH=')));
+      expect(result.output, isNot(contains('TOKEN')));
+      expect(result.output, isNot(contains('SECRET')));
+    });
+
+    test('qa-reset does not delete user state', () async {
+      await commandService.execute('workspace-init qakeep');
+      final result = await commandService.execute('qa-reset');
+      final list = await commandService.execute('workspace-list');
+
+      expect(result.output, contains('QA tracking state reset'));
+      expect(result.output, contains('were not changed'));
+      expect(list.output, contains('qakeep'));
     });
 
     test('help cleanup includes key categories', () async {
@@ -261,6 +304,10 @@ void main() {
         'changelog',
         'bug-report',
         'qa-checklist',
+        'qa-run',
+        'qa-status',
+        'qa-report',
+        'qa-reset',
       ]) {
         expect(kTermodeCommands, contains(command));
       }
@@ -275,12 +322,15 @@ void main() {
 
       await sessionService.executeCommand('beta-status');
       await sessionService.executeCommand('commands');
+      await sessionService.executeCommand('qa-status');
 
       final output = session.lines.map((line) => line.text).join('\n');
       expect(output, contains('beta-status'));
       expect(output, contains('=== Termode Beta Status ==='));
       expect(output, contains('commands'));
       expect(output, contains('=== Termode Commands ==='));
+      expect(output, contains('qa-status'));
+      expect(output, contains('=== QA Status ==='));
 
       session.isPtyInteractionActive = false;
       session.isRealPtyActive = false;
@@ -290,6 +340,7 @@ void main() {
       expect(File('docs/BETA_READINESS.md').existsSync(), isTrue);
       expect(File('docs/COMMAND_GUIDE.md').existsSync(), isTrue);
       expect(File('docs/QA_CHECKLIST.md').existsSync(), isTrue);
+      expect(File('docs/DEVICE_QA_BUG_BASH.md').existsSync(), isTrue);
       expect(File('README.md').readAsStringSync(), contains('Termode'));
     });
   });

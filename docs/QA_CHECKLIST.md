@@ -2,6 +2,13 @@
 
 Use this checklist for v0.36 beta readiness testing on Android.
 
+For the v0.37 device bug bash, start with:
+
+- `qa-run`
+- `qa-status`
+- `qa-report`
+- `bug-report`
+
 ## App Launch
 
 - launch app

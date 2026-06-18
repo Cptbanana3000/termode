@@ -56,3 +56,6 @@ limited on device:
 - `js-proof doctor`
 
 Use `beta-checklist` and `qa-checklist` for the manual pass.
+
+v0.37 adds `qa-run`, `qa-status`, `qa-report`, and `qa-reset` for the device
+bug-bash pass. See [DEVICE_QA_BUG_BASH.md](DEVICE_QA_BUG_BASH.md).

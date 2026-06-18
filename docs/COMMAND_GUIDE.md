@@ -67,3 +67,7 @@ QuickJS and Duktape are probe surfaces only. Node.js and npm are not included.
 - `beta-checklist`
 - `beta-known-limits`
 - `qa-checklist`
+- `qa-run`
+- `qa-status`
+- `qa-report`
+- `qa-reset`
