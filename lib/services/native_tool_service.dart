@@ -228,7 +228,9 @@ class NativeToolService {
     sb.writeln('QuickJS probe: limited/unavailable via quickjs');
     sb.writeln('Duktape probe: limited/unavailable via duktape');
     sb.writeln('Runtime research: available via runtime-candidates');
-    sb.writeln('Recommended next proof: runtime-next');
+    sb.writeln(
+      'Recommended next milestone: v0.36 Product Stabilization / Beta Readiness Pass',
+    );
     sb.writeln('Node.js: not included');
     sb.write('Overall: $overall');
     return sb.toString();

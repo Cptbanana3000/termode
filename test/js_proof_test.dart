@@ -232,8 +232,9 @@ void main() {
         result.output,
         contains('4. Duktape probe/fallback command surface'),
       );
-      expect(result.output, contains('5. Runtime decision freeze'));
-      expect(result.output, contains('8. Vite later'));
+      expect(result.output, contains('5. Runtime decision freeze - complete'));
+      expect(result.output, contains('6. Product stabilization'));
+      expect(result.output, contains('9. Vite later'));
     });
 
     test('native bridge success mock', () async {
@@ -265,7 +266,7 @@ void main() {
       expect(plan.output, contains('10. Duktape probe/fallback'));
       expect(caps.output, contains('Tiny JS proof via native bridge'));
       expect(caps.output, contains('does not prove Node compatibility'));
-      expect(next.output, contains('v0.35 Runtime Decision Freeze'));
+      expect(next.output, contains('v0.36 Product Stabilization'));
     });
 
     test('help includes js-proof', () async {

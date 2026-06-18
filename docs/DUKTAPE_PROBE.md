@@ -108,9 +108,18 @@ available.
 ## Future Plan
 
 1. Duktape probe command/bridge surface
-2. Runtime decision freeze
-3. JS engine safety hardening if an engine is chosen
-4. Optional JS script package bridge much later
+2. Runtime decision freeze - complete; Duktape deferred
+3. Product stabilization
+4. Revisit only after source policy, sandboxing, timeout/interruption, ABI/build, APK size, update/security, and device QA are solved
 5. Node strategy much later
 6. npm later
 7. Vite later
+
+## v0.35 Runtime Freeze
+
+v0.35 freezes Duktape as deferred. The `duktape` command remains available as a
+probe surface only; Duktape source is not integrated and Duktape is not a
+package runtime.
+
+The recommended next step is `v0.36 Product Stabilization / Beta Readiness
+Pass`.

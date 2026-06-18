@@ -93,14 +93,16 @@ js-proof plan
 2. Embedded JS engine decision/probe
 3. QuickJS probe command/bridge surface
 4. Duktape probe/fallback command surface
-5. Runtime decision freeze
-6. Node runtime strategy
-7. npm strategy
-8. dev server workflow
+5. Runtime decision freeze - complete; `js-proof` remains active
+6. Product stabilization
+7. Node runtime strategy later
+8. npm strategy later
+9. dev server workflow later
 
 Remote packages remain script-only. `js-proof` is built in, not an installable
 package. Node.js and npm are not available yet.
 
 See [JS_ENGINE_DECISION.md](JS_ENGINE_DECISION.md) and
 [QUICKJS_PROBE.md](QUICKJS_PROBE.md) and
-[DUKTAPE_PROBE.md](DUKTAPE_PROBE.md) for the current engine plan.
+[DUKTAPE_PROBE.md](DUKTAPE_PROBE.md) for the current engine plan. See
+[RUNTIME_DECISION_FREEZE.md](RUNTIME_DECISION_FREEZE.md) for the v0.35 freeze.

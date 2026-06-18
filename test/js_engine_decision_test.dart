@@ -162,9 +162,12 @@ void main() {
       expect(result.output, contains('=== JS Engine Decision ==='));
       expect(
         result.output,
-        contains('QuickJS and Duktape remain limited probes'),
+        contains('QuickJS and Duktape remain deferred probes'),
       );
-      expect(result.output, contains('v0.35 Runtime Decision Freeze'));
+      expect(
+        result.output,
+        contains('v0.36 Product Stabilization / Beta Readiness Pass'),
+      );
       expect(result.output, contains('Node.js included: NO'));
     });
 
@@ -182,8 +185,11 @@ void main() {
       final result = await commandService.execute('js-engine-next');
 
       expect(result.isError, isFalse);
-      expect(result.output, contains('v0.35 Runtime Decision Freeze'));
-      expect(result.output, contains('limited quickjs/duktape probes'));
+      expect(
+        result.output,
+        contains('v0.36 Product Stabilization / Beta Readiness Pass'),
+      );
+      expect(result.output, contains('quickjs/duktape deferred'));
       expect(result.output, contains('Node.js/npm: still not included'));
     });
 
@@ -193,7 +199,8 @@ void main() {
       expect(result.isError, isFalse);
       expect(result.output, contains('=== JS Engine Doctor ==='));
       expect(result.output, contains('Current proof: js-proof'));
-      expect(result.output, contains('QuickJS probe: limited/unavailable'));
+      expect(result.output, contains('QuickJS probe: deferred'));
+      expect(result.output, contains('Duktape probe: deferred'));
       expect(result.output, contains('Real embedded engine: not integrated'));
       expect(result.output, contains('Overall: LIMITED'));
     });
@@ -209,15 +216,19 @@ void main() {
         );
         expect(result.output, contains('9. QuickJS probe'));
         expect(result.output, contains('10. Duktape probe/fallback'));
-        expect(result.output, contains('15. CalypsoIDE integration later'));
+        expect(result.output, contains('12. Product stabilization'));
+        expect(result.output, contains('16. CalypsoIDE integration later'));
       },
     );
 
-    test('runtime-next recommends v0.35 runtime decision freeze', () async {
+    test('runtime-next recommends v0.36 product stabilization', () async {
       final result = await commandService.execute('runtime-next');
 
-      expect(result.output, contains('v0.35 Runtime Decision Freeze'));
-      expect(result.output, contains('no local engine source'));
+      expect(
+        result.output,
+        contains('v0.36 Product Stabilization / Beta Readiness Pass'),
+      );
+      expect(result.output, contains('package polish'));
       expect(result.output, contains('Duktape'));
       expect(result.output, contains('Node.js/npm: still not included'));
     });
@@ -254,7 +265,7 @@ void main() {
       expect(output, contains('js-engine-candidates'));
       expect(output, contains('=== JS Engine Candidates ==='));
       expect(output, contains('js-engine-next'));
-      expect(output, contains('v0.35 Runtime Decision Freeze'));
+      expect(output, contains('v0.36 Product Stabilization'));
 
       session.isPtyInteractionActive = false;
       session.isRealPtyActive = false;

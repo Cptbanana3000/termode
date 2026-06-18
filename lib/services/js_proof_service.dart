@@ -135,13 +135,14 @@ class JsProofService {
 
   String plan() {
     return '=== JS Proof Plan ===\n'
-        '1. Tiny JS proof\n'
+        '1. Tiny JS proof - active current JS path\n'
         '2. Embedded JS engine decision/probe\n'
         '3. QuickJS probe command surface\n'
         '4. Duktape probe/fallback command surface\n'
-        '5. Runtime decision freeze\n'
-        '6. Node binary strategy later\n'
-        '7. npm later\n'
-        '8. Vite later';
+        '5. Runtime decision freeze - complete; js-proof remains active\n'
+        '6. Product stabilization\n'
+        '7. Node binary strategy later\n'
+        '8. npm later\n'
+        '9. Vite later';
   }
 }

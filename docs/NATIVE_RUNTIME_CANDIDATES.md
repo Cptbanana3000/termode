@@ -130,12 +130,16 @@ Current probe:
 - `v0.34 Duktape Probe / Engine Fallback` via `duktape`,
   limited/unavailable because no Duktape source snapshot is vendored
 
-Next proof:
-- `v0.35 Runtime Decision Freeze`
+Current freeze:
+- `v0.35 Runtime Decision Freeze` via `runtime-freeze`
+
+Next milestone:
+- `v0.36 Product Stabilization / Beta Readiness Pass`
 
 Later:
 - Attempt Node only after the runtime strategy is proven.
 
 See [JS_ENGINE_DECISION.md](JS_ENGINE_DECISION.md) for the detailed engine
-comparison, [QUICKJS_PROBE.md](QUICKJS_PROBE.md) for the v0.33 probe, and
-[DUKTAPE_PROBE.md](DUKTAPE_PROBE.md) for the v0.34 probe.
+comparison, [QUICKJS_PROBE.md](QUICKJS_PROBE.md) for the v0.33 probe,
+[DUKTAPE_PROBE.md](DUKTAPE_PROBE.md) for the v0.34 probe, and
+[RUNTIME_DECISION_FREEZE.md](RUNTIME_DECISION_FREEZE.md) for the v0.35 freeze.

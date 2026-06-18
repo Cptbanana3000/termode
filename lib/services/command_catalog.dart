@@ -33,6 +33,7 @@ const List<String> kTermodeCommands = [
   'runtime-capabilities',
   'runtime-exec-test',
   'runtime-plan',
+  'runtime-freeze',
   'runtime-candidates',
   'runtime-candidate',
   'runtime-decision',

@@ -6,8 +6,8 @@ Native binary packages are not supported. Both local and remote packages must be
 
 The tiny native tools (the `native-tool` commands, see [NATIVE_TOOL_PROOF.md](NATIVE_TOOL_PROOF.md)) are built into Termode and reached through the JNI/native bridge. They are **not** installable packages and cannot be added, removed, or downloaded through `pkg`. Remote packages remain script-only.
 
-Runtime candidate research is the current phase. Node.js, npm, Python, Git, and
-native package downloads are not included yet.
+Runtime direction is frozen for v0.35. Node.js, npm, Python, Git, native
+package downloads, and native binary package installs are deferred.
 
 `js-proof` is also built into Termode. It is not an installable package and does
 not make Node.js or npm available to packages.
@@ -20,6 +20,9 @@ not available, and packages cannot use `require`, `import`, `process`, `fs`, or
 `duktape` is also a built-in probe command surface, not an installable package.
 In this build Duktape source is not integrated. Remote packages remain
 script-only and cannot use embedded JavaScript engine APIs.
+
+The next focus is v0.36 Product Stabilization / Beta Readiness Pass, not a new
+runtime or package manager.
 
 ## Package Shape
 

@@ -613,6 +613,7 @@ class TerminalSessionService extends ChangeNotifier {
         'runtime-capabilities',
         'runtime-exec-test',
         'runtime-plan',
+        'runtime-freeze',
         'runtime-candidates',
         'runtime-candidate',
         'runtime-decision',

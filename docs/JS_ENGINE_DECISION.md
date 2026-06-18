@@ -100,11 +100,15 @@ Any real embedded engine must handle:
 If infinite loop protection cannot be implemented, loops should be blocked or
 the real engine should stay behind a research-only proof.
 
-## Current Decision
+## Runtime Decision Freeze (v0.35)
 
-Real engine integration is still deferred. The current working proof remains
-`js-proof`, while `quickjs` is a limited bridge/command probe.
+Real engine integration is deferred. The current working proof remains
+`js-proof`, while `quickjs` and `duktape` remain limited/unavailable probe
+surfaces only.
 
-Recommended next step: `v0.35 Runtime Decision Freeze`.
+Node.js and npm are future runtime goals, not current work. Python, Git, native
+binary package installs, and a native package manager are also deferred.
 
-Fallback: keep the current proof longer if no engine can be added safely.
+Recommended next step: `v0.36 Product Stabilization / Beta Readiness Pass`.
+
+See [RUNTIME_DECISION_FREEZE.md](RUNTIME_DECISION_FREEZE.md).

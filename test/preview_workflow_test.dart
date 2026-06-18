@@ -364,7 +364,7 @@ void main() {
         final result = await commandService.execute('runtime-plan');
         expect(result.output, contains('3. Localhost/preview workflow'));
         expect(result.output, contains('4. Bundled native proof'));
-        expect(result.output, contains('14. Vite proof later'));
+        expect(result.output, contains('15. Vite proof later'));
       },
     );
   });

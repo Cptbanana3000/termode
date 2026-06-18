@@ -258,9 +258,9 @@ void main() {
       final result = await commandService.execute('duktape plan');
 
       expect(result.output, contains('1. Duktape probe'));
-      expect(result.output, contains('2. Engine decision freeze'));
-      expect(result.output, contains('3. JS engine safety hardening'));
-      expect(result.output, contains('6. Vite later'));
+      expect(result.output, contains('Duktape integration deferred'));
+      expect(result.output, contains('3. Product stabilization'));
+      expect(result.output, contains('7. Vite later'));
     });
 
     test('Duktape bridge failure mock', () async {
@@ -300,9 +300,10 @@ void main() {
       final next = await commandService.execute('runtime-next');
 
       expect(plan.output, contains('10. Duktape probe/fallback'));
-      expect(plan.output, contains('15. CalypsoIDE integration later'));
+      expect(plan.output, contains('12. Product stabilization'));
+      expect(plan.output, contains('16. CalypsoIDE integration later'));
       expect(caps.output, contains('Duktape probe command surface'));
-      expect(next.output, contains('v0.35 Runtime Decision Freeze'));
+      expect(next.output, contains('v0.36 Product Stabilization'));
     });
 
     test('js-engine commands mention Duktape fallback status', () async {
@@ -310,9 +311,9 @@ void main() {
       final next = await commandService.execute('js-engine-next');
       final doctor = await commandService.execute('js-engine-doctor');
 
-      expect(decision.output, contains('QuickJS and Duktape remain limited'));
-      expect(next.output, contains('v0.35 Runtime Decision Freeze'));
-      expect(doctor.output, contains('Duktape probe: limited/unavailable'));
+      expect(decision.output, contains('QuickJS and Duktape remain deferred'));
+      expect(next.output, contains('v0.36 Product Stabilization'));
+      expect(doctor.output, contains('Duktape probe: deferred'));
       expect(doctor.output, contains('Overall: LIMITED'));
     });
 

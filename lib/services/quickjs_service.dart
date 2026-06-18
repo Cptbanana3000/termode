@@ -145,11 +145,12 @@ class QuickJsService {
     return '=== QuickJS Plan ===\n'
         '1. QuickJS probe\n'
         '2. Duktape fallback probe\n'
-        '3. Engine decision freeze\n'
-        '4. JS engine safety hardening if engine chosen\n'
-        '5. Node strategy later\n'
-        '6. npm later\n'
-        '7. Vite later';
+        '3. Runtime decision freeze - complete; QuickJS integration deferred\n'
+        '4. Product stabilization\n'
+        '5. Revisit only after source policy, sandboxing, timeout, ABI, APK size, update/security, and device QA are solved\n'
+        '6. Node strategy later\n'
+        '7. npm later\n'
+        '8. Vite later';
   }
 
   String? _validateCode(String code) {

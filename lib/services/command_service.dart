@@ -10,6 +10,7 @@ import 'settings_service.dart';
 import 'runtime_tool_service.dart';
 import 'runtime_capability_service.dart';
 import 'runtime_candidate_service.dart';
+import 'runtime_freeze_service.dart';
 import 'localhost_service.dart';
 import 'preview_service.dart';
 import 'bundled_runtime_service.dart';
@@ -159,6 +160,14 @@ class CommandService {
               '  runtime-capabilities - Show supported and unsupported runtimes\n'
               '  runtime-exec-test - Run shell/script/native bridge probes\n'
               '  runtime-plan - Show staged runtime roadmap\n\n'
+              'Runtime Freeze Commands:\n'
+              '  runtime-freeze - Show runtime freeze help\n'
+              '  runtime-freeze status - Show frozen runtime status\n'
+              '  runtime-freeze decision - Explain the runtime decision\n'
+              '  runtime-freeze deferred - List deferred runtimes\n'
+              '  runtime-freeze why - Explain why runtimes are deferred\n'
+              '  runtime-freeze next - Show product stabilization next milestone\n'
+              '  runtime-freeze doctor - Check runtime freeze health\n\n'
               'Runtime Research Commands:\n'
               '  runtime-candidates - Compare future runtime strategies\n'
               '  runtime-candidate <name> - Show one candidate in detail\n'
@@ -965,6 +974,7 @@ class CommandService {
               '  runtime-capabilities   - List supported and unsupported runtimes\n'
               '  runtime-exec-test      - Run runtime execution probes\n'
               '  runtime-plan           - Show native/runtime proof roadmap\n'
+              '  runtime-freeze [sub]   - Show frozen runtime direction\n'
               '  runtime-candidates     - Compare possible future runtime strategies\n'
               '  runtime-candidate <n>  - Show details for one runtime candidate\n'
               '  runtime-decision       - Show recommended runtime decision order\n'
@@ -1029,6 +1039,37 @@ class CommandService {
 
       case 'runtime-plan':
         return CommandResult(output: RuntimeCapabilityService().plan());
+
+      case 'runtime-freeze':
+        final freeze = RuntimeFreezeService();
+        final sub = args.isNotEmpty ? args[0].toLowerCase() : 'help';
+        switch (sub) {
+          case 'help':
+            return CommandResult(output: freeze.help());
+          case 'status':
+            return CommandResult(output: freeze.status());
+          case 'decision':
+            return CommandResult(output: freeze.decision());
+          case 'deferred':
+            return CommandResult(output: freeze.deferred());
+          case 'why':
+            return CommandResult(output: freeze.why());
+          case 'next':
+            return CommandResult(output: freeze.next());
+          case 'doctor':
+            final output = freeze.doctor();
+            return CommandResult(
+              output: output,
+              isError: output.contains('Overall: LIMITED'),
+            );
+          default:
+            return CommandResult(
+              output:
+                  'Unknown runtime-freeze subcommand: $sub\n'
+                  'Usage: runtime-freeze <help|status|decision|deferred|why|next|doctor>',
+              isError: true,
+            );
+        }
 
       case 'runtime-candidates':
         return CommandResult(
@@ -3379,6 +3420,9 @@ class CommandService {
         );
         sb.writeln(
           '  runtime-*      - Probe and explain Termode runtime capabilities',
+        );
+        sb.writeln(
+          '  runtime-freeze - Show the frozen runtime direction and deferred runtimes',
         );
         sb.writeln(
           '  js-proof       - Run the controlled JS-like native bridge proof',

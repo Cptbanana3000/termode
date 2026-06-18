@@ -29,7 +29,8 @@ class JsEngineCandidate {
 }
 
 class JsEngineDecisionService {
-  static const recommendedNextMilestone = 'v0.35 Runtime Decision Freeze';
+  static const recommendedNextMilestone =
+      'v0.36 Product Stabilization / Beta Readiness Pass';
 
   static const List<JsEngineCandidate> candidates = [
     JsEngineCandidate(
@@ -107,9 +108,9 @@ class JsEngineDecisionService {
       securityNotes:
           'Use a sealed global environment. Do not expose host APIs or Node APIs.',
       currentStatus:
-          'v0.34 command/bridge probe exists, but Duktape source is not integrated in this build.',
+          'v0.34 command/bridge probe exists, but Duktape source is not integrated in this build. v0.35 defers it.',
       recommendation:
-          'Keep as a limited fallback probe and freeze the runtime decision before adding more engine surfaces.',
+          'Keep as a deferred fallback probe during product stabilization.',
     ),
     JsEngineCandidate(
       id: 'javascriptcore',
@@ -196,7 +197,7 @@ class JsEngineDecisionService {
           'Avoids new native crash/resource risks while preserving current proof.',
       currentStatus: 'Chosen for v0.32 implementation scope.',
       recommendation:
-          'Use as fallback while QuickJS and Duktape remain limited/unavailable.',
+          'Use as the frozen v0.35 direction while QuickJS and Duktape remain deferred.',
     ),
   ];
 
@@ -245,8 +246,8 @@ class JsEngineDecisionService {
 
   String decision() {
     return '=== JS Engine Decision ===\n'
-        'Decision: QuickJS and Duktape remain limited probes because no local source snapshots were available to integrate safely.\n'
-        'Chosen path: keep js-proof as the safe current proof and keep quickjs/duktape as unavailable/limited probe surfaces.\n'
+        'Decision: v0.35 freezes runtime direction. QuickJS and Duktape remain deferred probes because no local source snapshots were available to integrate safely.\n'
+        'Chosen path: keep js-proof as the safe current proof and keep quickjs/duktape as unavailable/deferred probe surfaces.\n'
         'Recommended next milestone: $recommendedNextMilestone\n\n'
         'Why:\n'
         '  - QuickJS is still promising, but this repo does not contain a vendored source snapshot.\n'
@@ -273,9 +274,9 @@ class JsEngineDecisionService {
   String next() {
     return '=== JS Engine Next ===\n'
         'Recommended next milestone: $recommendedNextMilestone\n'
-        'Scope: freeze the runtime decision: choose js-proof-only for now, or pick one embedded engine path with source, timeout, and safety criteria.\n'
-        'Fallback: keep js-proof plus limited quickjs/duktape probes until timeout/resource limits are practical.\n'
-        'Safety gate: do not expose loops broadly until timeout or interrupt behavior is proven.\n'
+        'Scope: product stabilization after the runtime decision freeze.\n'
+        'Current path: keep js-proof active and keep quickjs/duktape deferred probe surfaces.\n'
+        'Safety gate before revisiting engines: source policy, sandboxing, timeout/interruption, ABI/build strategy, APK size, update/security policy, and device QA.\n'
         'Node.js/npm: still not included.';
   }
 
@@ -283,10 +284,11 @@ class JsEngineDecisionService {
     return '=== JS Engine Doctor ===\n'
         'Decision commands: OK\n'
         'Current proof: js-proof\n'
-        'QuickJS probe: limited/unavailable\n'
-        'Duktape probe: limited/unavailable\n'
+        'QuickJS probe: deferred\n'
+        'Duktape probe: deferred\n'
         'Real embedded engine: not integrated\n'
-        'Recommended next: runtime decision freeze\n'
+        'Runtime freeze: FROZEN\n'
+        'Recommended next: product stabilization\n'
         'Fallback candidate: no-engine-yet\n'
         'Node.js included: NO\n'
         'npm included: NO\n'

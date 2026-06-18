@@ -258,9 +258,9 @@ void main() {
 
       expect(result.output, contains('1. QuickJS probe'));
       expect(result.output, contains('2. Duktape fallback probe'));
-      expect(result.output, contains('3. Engine decision freeze'));
-      expect(result.output, contains('4. JS engine safety hardening'));
-      expect(result.output, contains('7. Vite later'));
+      expect(result.output, contains('QuickJS integration deferred'));
+      expect(result.output, contains('4. Product stabilization'));
+      expect(result.output, contains('8. Vite later'));
     });
 
     test('QuickJS bridge failure mock', () async {
@@ -301,9 +301,10 @@ void main() {
 
       expect(plan.output, contains('9. QuickJS probe'));
       expect(plan.output, contains('10. Duktape probe/fallback'));
-      expect(plan.output, contains('15. CalypsoIDE integration later'));
+      expect(plan.output, contains('12. Product stabilization'));
+      expect(plan.output, contains('16. CalypsoIDE integration later'));
       expect(caps.output, contains('QuickJS probe command surface'));
-      expect(next.output, contains('v0.35 Runtime Decision Freeze'));
+      expect(next.output, contains('v0.36 Product Stabilization'));
     });
 
     test('js-engine commands mention QuickJS fallback status', () async {
@@ -313,10 +314,10 @@ void main() {
 
       expect(
         decision.output,
-        contains('QuickJS and Duktape remain limited probes'),
+        contains('QuickJS and Duktape remain deferred probes'),
       );
-      expect(next.output, contains('v0.35 Runtime Decision Freeze'));
-      expect(doctor.output, contains('QuickJS probe: limited/unavailable'));
+      expect(next.output, contains('v0.36 Product Stabilization'));
+      expect(doctor.output, contains('QuickJS probe: deferred'));
       expect(doctor.output, contains('Overall: LIMITED'));
     });
 

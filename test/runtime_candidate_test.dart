@@ -128,7 +128,7 @@ void main() {
       expect(result.output, contains('Embedded JS Engine'));
       expect(result.output, contains('QuickJS'));
       expect(result.output, contains('v0.33 QuickJS and v0.34 Duktape'));
-      expect(result.output, contains('freeze the runtime decision'));
+      expect(result.output, contains('product stabilization'));
     });
 
     test('runtime-candidate node-binary details', () async {
@@ -180,9 +180,9 @@ void main() {
       final result = await commandService.execute('runtime-next');
 
       expect(result.isError, isFalse);
-      expect(result.output, contains('v0.35 Runtime Decision Freeze'));
-      expect(result.output, contains('QuickJS and v0.34 Duktape probes'));
-      expect(result.output, contains('no local engine source'));
+      expect(result.output, contains('v0.36 Product Stabilization'));
+      expect(result.output, contains('v0.35 froze the runtime direction'));
+      expect(result.output, contains('package polish'));
     });
 
     test('runtime-research-doctor output', () async {
@@ -198,6 +198,7 @@ void main() {
       expect(result.output, contains('Preview/localhost supported: YES'));
       expect(result.output, contains('QuickJS probe: limited/unavailable'));
       expect(result.output, contains('Duktape probe: limited/unavailable'));
+      expect(result.output, contains('Runtime freeze: frozen'));
       expect(result.output, contains('Overall readiness: LIMITED'));
     });
 
@@ -214,7 +215,8 @@ void main() {
         );
         expect(result.output, contains('9. QuickJS probe'));
         expect(result.output, contains('10. Duktape probe/fallback'));
-        expect(result.output, contains('15. CalypsoIDE integration later'));
+        expect(result.output, contains('12. Product stabilization'));
+        expect(result.output, contains('16. CalypsoIDE integration later'));
       },
     );
 
@@ -271,7 +273,7 @@ void main() {
         expect(output, contains('runtime-candidates'));
         expect(output, contains('=== Runtime Candidates ==='));
         expect(output, contains('runtime-next'));
-        expect(output, contains('v0.35 Runtime Decision Freeze'));
+        expect(output, contains('v0.36 Product Stabilization'));
 
         session.isPtyInteractionActive = false;
         session.isRealPtyActive = false;
@@ -287,6 +289,7 @@ void main() {
       expect(File('docs/JS_ENGINE_DECISION.md').existsSync(), isTrue);
       expect(File('docs/QUICKJS_PROBE.md').existsSync(), isTrue);
       expect(File('docs/DUKTAPE_PROBE.md').existsSync(), isTrue);
+      expect(File('docs/RUNTIME_DECISION_FREEZE.md').existsSync(), isTrue);
     });
   });
 }

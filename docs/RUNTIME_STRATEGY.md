@@ -75,12 +75,16 @@ management proofs before they become package types.
 - Long-running dev servers need careful PTY/session lifecycle handling.
 - Remote binaries require a much stricter trust model than remote scripts.
 
-## Recommended Next Proof
+## Runtime Decision Freeze (v0.35)
 
-The current runtime target is still the tiny `js-proof` evaluator, not Node.
-v0.33 adds the QuickJS command/bridge probe, and v0.34 adds the Duktape
-fallback probe. Neither source is integrated. The recommended next proof is a
-runtime decision freeze before adding more engine surfaces.
+The runtime direction is frozen. The current supported path is script packages
+through `/system/bin/sh`, built-in native tools through JNI, the controlled
+`js-proof` evaluator, and localhost/preview workflow.
+
+QuickJS and Duktape remain probe surfaces only. Node.js, npm, Python, Git,
+native binary package installs, and native package manager work are deferred.
+
+Recommended next milestone: v0.36 Product Stabilization / Beta Readiness Pass.
 
 ## Bundled Runtime Proof Findings (v0.28)
 
@@ -115,7 +119,7 @@ trying to drop and execute a binary in app storage. A future Node strategy
 should be evaluated as an APK-shipped native component driven through a native
 bridge.
 
-Recommended next step: v0.35 Runtime Decision Freeze (still no Node/npm), using
-the criteria in [JS_ENGINE_DECISION.md](JS_ENGINE_DECISION.md),
-[QUICKJS_PROBE.md](QUICKJS_PROBE.md), and
-[DUKTAPE_PROBE.md](DUKTAPE_PROBE.md).
+Recommended next step: v0.36 Product Stabilization / Beta Readiness Pass. See
+[RUNTIME_DECISION_FREEZE.md](RUNTIME_DECISION_FREEZE.md),
+[JS_ENGINE_DECISION.md](JS_ENGINE_DECISION.md),
+[QUICKJS_PROBE.md](QUICKJS_PROBE.md), and [DUKTAPE_PROBE.md](DUKTAPE_PROBE.md).

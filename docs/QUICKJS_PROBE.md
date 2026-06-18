@@ -100,15 +100,22 @@ available.
 v0.34 added the `duktape` fallback probe surface. Like `quickjs`, it is
 limited/unavailable in this build because no local source snapshot is vendored.
 
-The recommended next step is `v0.35 Runtime Decision Freeze`.
+## v0.35 Runtime Freeze
+
+v0.35 freezes QuickJS as deferred. The `quickjs` command remains available as a
+probe surface only; QuickJS source is not integrated and QuickJS is not a
+package runtime.
+
+The recommended next step is `v0.36 Product Stabilization / Beta Readiness
+Pass`.
 
 ## Future Plan
 
 1. QuickJS probe command/bridge surface
 2. Duktape fallback probe command/bridge surface
-3. Runtime decision freeze
-4. JS engine safety hardening if an engine is chosen
-5. Optional JS script package bridge much later
+3. Runtime decision freeze - complete; QuickJS deferred
+4. Product stabilization
+5. Revisit only after source policy, sandboxing, timeout/interruption, ABI/build, APK size, update/security, and device QA are solved
 6. Node strategy much later
 7. npm later
 8. Vite later

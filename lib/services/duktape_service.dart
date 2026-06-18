@@ -146,11 +146,12 @@ class DuktapeService {
   String plan() {
     return '=== Duktape Plan ===\n'
         '1. Duktape probe\n'
-        '2. Engine decision freeze\n'
-        '3. JS engine safety hardening if engine chosen\n'
-        '4. Node strategy later\n'
-        '5. npm later\n'
-        '6. Vite later';
+        '2. Runtime decision freeze - complete; Duktape integration deferred\n'
+        '3. Product stabilization\n'
+        '4. Revisit only after source policy, sandboxing, timeout, ABI, APK size, update/security, and device QA are solved\n'
+        '5. Node strategy later\n'
+        '6. npm later\n'
+        '7. Vite later';
   }
 
   String? _validateCode(String code) {

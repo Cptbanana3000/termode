@@ -178,7 +178,9 @@ class BundledRuntimeService {
     sb.writeln('JS engine decision: available (js-engine-decision)');
     sb.writeln('QuickJS probe: limited/unavailable (quickjs)');
     sb.writeln('Duktape probe: limited/unavailable (duktape)');
-    sb.writeln('Recommended next proof: runtime-next');
+    sb.writeln(
+      'Recommended next milestone: v0.36 Product Stabilization / Beta Readiness Pass',
+    );
     sb.writeln('Node.js: not included');
     if (verbose) {
       sb.writeln();
@@ -227,11 +229,12 @@ class BundledRuntimeService {
         '6. Real embedded JS engine decision/probe (v0.32) - choose QuickJS/Duktape/no-engine-yet before engine code.\n'
         '7. QuickJS probe (v0.33) - command/bridge surface; engine source not integrated in this build.\n'
         '8. Duktape probe (v0.34) - fallback command/bridge surface; engine source not integrated in this build.\n'
-        '9. Runtime decision freeze - choose engine path or keep js-proof longer.\n'
-        '10. Node as APK-shipped native component - investigate shipping Node in the APK native layer later.\n'
-        '11. Node via native bridge control - drive a runtime through JNI rather than direct exec later.\n'
-        '12. Standalone native executable - only if Android allows; app-private exec is blocked.\n'
-        '13. Fallback - no Node until a safe strategy is proven.\n'
+        '9. Runtime decision freeze (v0.35) - frozen; keep js-proof active and defer real runtimes.\n'
+        '10. Product stabilization (v0.36) - docs/help, onboarding, QA, package/workspace/terminal polish.\n'
+        '11. Node as APK-shipped native component - investigate shipping Node in the APK native layer later.\n'
+        '12. Node via native bridge control - drive a runtime through JNI rather than direct exec later.\n'
+        '13. Standalone native executable - only if Android allows; app-private exec is blocked.\n'
+        '14. Fallback - no Node until a safe strategy is proven.\n'
         'Node.js: not included.';
   }
 
