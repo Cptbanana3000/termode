@@ -23,6 +23,7 @@ import 'quickjs_service.dart';
 import 'duktape_service.dart';
 import 'package_manager_service.dart';
 import 'workspace_service.dart';
+import 'runtime_prefix_service.dart';
 
 class CommandResult {
   final String output;
@@ -234,8 +235,8 @@ class CommandService {
   String _betaNextOutput() {
     return '=== Beta Next ===\n'
         'Recommended next milestone:\n'
-        'v0.42 Release Polish\n\n'
-        'Reason: v0.41 is the beta feedback / release-candidate cleanup pass; next comes release polish.';
+        'v0.43 Prefix / PATH / Environment System\n\n'
+        'Reason: v0.42 lays the runtime expansion architecture; next builds the prefix/PATH/environment system.';
   }
 
   /// Computes beta-candidate readiness. Intentional limitations (frozen
@@ -274,13 +275,14 @@ class CommandService {
     final r = await _betaCandidateReadiness();
     String label(String s) => s == 'UNHEALTHY' ? 'UNHEALTHY' : 'OK';
     return '=== Termode Beta Candidate ===\n'
-        'Version: v0.41\n'
+        'Version: v0.42\n'
         'Core shell: OK\n'
         'Packages: ${label(r.packages)}\n'
         'Workspaces: ${label(r.workspaces)}\n'
         'Sessions: ${label(r.sessions)}\n'
         'Terminal UX: OK\n'
-        'Runtime: FROZEN\n'
+        'Runtime: FROZEN (architecture phase)\n'
+        'Toolchains: planned (not installed)\n'
         'Known limitations: yes\n'
         'Overall: ${r.ready ? 'BETA CANDIDATE' : 'NEEDS FIXES'}';
   }
@@ -309,7 +311,7 @@ class CommandService {
   }
 
   String _betaCandidateNotesOutput() {
-    return '=== Termode v0.41 Beta Candidate ===\n'
+    return '=== Termode v0.42 Beta Candidate ===\n'
         'Termode is a standalone Android terminal with a REAL PTY shell.\n\n'
         'Highlights:\n'
         '* REAL PTY shell with host command interception\n'
@@ -326,10 +328,11 @@ class CommandService {
 
   String _betaCandidateLimitsOutput() {
     return '=== Beta Candidate Limits ===\n'
-        '* Node.js/npm are not included.\n'
-        '* Python/Git are not included.\n'
-        '* Native binary packages are not supported.\n'
+        '* Node.js/npm are not included (planned, not installed).\n'
+        '* Python/Git are not included (planned, not installed).\n'
+        '* Native binary packages are not supported yet.\n'
         '* QuickJS/Duktape are deferred.\n'
+        '* Real toolchain installs are planned, not implemented (see runtime-install).\n'
         '* Direct app-bin execution may be blocked by Android.\n'
         '* Storage features need folder linking.\n'
         '* Beta software; bugs expected.';
@@ -337,7 +340,7 @@ class CommandService {
 
   String _betaCandidateHelpOutput() {
     return '=== Termode Beta Candidate ===\n'
-        'Termode v0.41 is a beta candidate / release-candidate cleanup build.\n\n'
+        'Termode v0.42 is a terminal-foundation beta (runtime expansion architecture).\n\n'
         'Subcommands:\n'
         '  beta-candidate status     - Show beta candidate readiness summary\n'
         '  beta-candidate checklist  - Show the beta candidate checklist\n'
@@ -412,11 +415,290 @@ class CommandService {
     ]);
     final coreLabel = coreSystems == 'HEALTHY' ? 'OK' : coreSystems;
     return '=== Release Candidate Status ===\n'
-        'Version: v0.41\n'
+        'Version: v0.42\n'
         'Beta candidate: yes\n'
         'Core systems: $coreLabel\n'
         'Known limitations: intentional\n'
         'Overall: ${r.ready ? 'RC CLEANUP READY' : 'NEEDS FIXES'}';
+  }
+
+  // --- v0.42 Runtime Expansion Architecture (planning only) ----------------
+  // These commands describe Termode's FUTURE runtime/toolchain layer. They do
+  // not install, download, or execute any external binary. They are a planning
+  // and capability surface so the experience can be guided and honest.
+
+  /// Planned toolchains. Display name, future role, the command users will run
+  /// once installed, the future install command, and notes/risks.
+  static const Map<String, Map<String, String>> _plannedToolchains = {
+    'git': {
+      'display': 'Git',
+      'role': 'clone, commit, and manage source repositories',
+      'command': 'git',
+      'install': 'runtime-install git',
+      'notes': 'needs a compatible prebuilt binary for the device ABI',
+    },
+    'node': {
+      'display': 'Node.js',
+      'role': 'run JavaScript/TypeScript tooling and local dev servers',
+      'command': 'node',
+      'install': 'runtime-install node',
+      'notes': 'Node comes before npm; npm reuses the Node runtime',
+    },
+    'npm': {
+      'display': 'npm',
+      'role': 'install and manage Node packages',
+      'command': 'npm',
+      'install': 'runtime-install npm',
+      'notes': 'requires Node first and a writable package/cache directory',
+    },
+    'python': {
+      'display': 'Python',
+      'role': 'run Python scripts and tooling',
+      'command': 'python',
+      'install': 'runtime-install python',
+      'notes': 'needs a compatible prebuilt interpreter for the device ABI',
+    },
+    'curl': {
+      'display': 'curl',
+      'role': 'fetch URLs and APIs from the shell',
+      'command': 'curl',
+      'install': 'runtime-install curl',
+      'notes': 'small native tool; useful for downloads in later milestones',
+    },
+    'wget': {
+      'display': 'wget',
+      'role': 'download files from the shell',
+      'command': 'wget',
+      'install': 'runtime-install wget',
+      'notes': 'alternative to curl for downloads',
+    },
+    'nano': {
+      'display': 'nano',
+      'role': 'simple full-screen text editor',
+      'command': 'nano',
+      'install': 'runtime-install nano',
+      'notes': 'needs mature full-screen PTY rendering',
+    },
+    'micro': {
+      'display': 'micro',
+      'role': 'modern terminal text editor',
+      'command': 'micro',
+      'install': 'runtime-install micro',
+      'notes': 'single-binary editor; needs full-screen PTY rendering',
+    },
+  };
+
+  static const List<String> _plannedToolchainOrder = [
+    'git',
+    'node',
+    'npm',
+    'python',
+    'curl',
+    'wget',
+    'nano',
+    'micro',
+  ];
+
+  String _toolchainStatusOutput() {
+    return '=== Toolchain Status ===\n'
+        'Git: planned\n'
+        'Node.js: planned\n'
+        'npm: planned\n'
+        'Python: planned\n'
+        'curl/wget: planned\n'
+        'Editors: planned\n'
+        'Overall: ARCHITECTURE PHASE';
+  }
+
+  String _toolchainListOutput() {
+    final sb = StringBuffer('=== Planned Toolchains ===\n');
+    for (final key in _plannedToolchainOrder) {
+      sb.writeln('* $key');
+    }
+    sb.write('Status: planned (not installed)');
+    return sb.toString();
+  }
+
+  String _toolchainInfoOutput(String name) {
+    final key = name.toLowerCase();
+    final tc = _plannedToolchains[key];
+    if (tc == null) {
+      return 'Unknown toolchain: $name\n'
+          'Run: toolchain-list';
+    }
+    final sb = StringBuffer();
+    sb.writeln('=== Toolchain: ${tc['display']} ===');
+    sb.writeln('Status: not installed yet');
+    sb.writeln('Future role: ${tc['role']}');
+    sb.writeln('Expected command: ${tc['command']}');
+    if (key == 'node') {
+      sb.writeln('Expected commands: node, npm later');
+      sb.writeln('Order: Node comes before npm');
+      sb.writeln('npm note: npm will need package/cache handling');
+    }
+    sb.writeln('Future install command: ${tc['install']}');
+    sb.write('Notes: ${tc['notes']}');
+    return sb.toString();
+  }
+
+  String _toolchainPlanOutput() {
+    return '=== Toolchain Plan ===\n'
+        'Planned rollout order:\n'
+        '  1. Prefix / PATH / environment (v0.43)\n'
+        '  2. Binary package installer prototype (v0.44)\n'
+        '  3. Git (v0.45)\n'
+        '  4. Node.js (v0.46)\n'
+        '  5. npm (v0.47)\n'
+        '  6. Python (v0.48)\n'
+        '  7. curl/wget and editors (nano/micro) alongside the above\n'
+        'Status: ARCHITECTURE PHASE';
+  }
+
+  Future<String> _toolchainDoctorOutput() async {
+    final initialized = await RuntimePrefixService().isInitialized();
+    return '=== Toolchain Doctor ===\n'
+        'Git: planned (not installed)\n'
+        'Node.js: planned (not installed)\n'
+        'npm: planned (not installed)\n'
+        'Python: planned (not installed)\n'
+        'curl/wget: planned (not installed)\n'
+        'Editors: planned (not installed)\n'
+        'Prefix: ${initialized ? 'OK' : 'NOT INITIALIZED'}\n'
+        'Note: missing toolchains are expected in this architecture phase.\n'
+        'Overall: ARCHITECTURE PHASE';
+  }
+
+  String _runtimeInstallHelpOutput() {
+    return '=== Runtime Install (planning) ===\n'
+        'Real installs are not enabled yet. This is a planning surface only.\n'
+        'Nothing is downloaded or executed.\n\n'
+        'Subcommands:\n'
+        '  runtime-install list          - List planned runtimes\n'
+        '  runtime-install plan <tool>   - Show the future install plan\n'
+        '  runtime-install status        - Show install mode and prefix status\n'
+        '  runtime-install doctor        - Check install readiness (planning)';
+  }
+
+  String _runtimeInstallListOutput() {
+    final sb = StringBuffer('Available planned runtimes:\n');
+    for (final key in _plannedToolchainOrder) {
+      sb.writeln('* $key');
+    }
+    return sb.toString().trimRight();
+  }
+
+  String _runtimeInstallPlanOutput(String tool) {
+    final key = tool.toLowerCase();
+    final tc = _plannedToolchains[key];
+    if (tc == null) {
+      return 'Unknown runtime: $tool\n'
+          'Run: runtime-install list';
+    }
+    return '=== Runtime Install Plan: ${tc['display']} ===\n'
+        'Status: planned\n'
+        'Install support: not implemented yet\n'
+        'Future steps:\n'
+        '1. Verify Android ABI.\n'
+        '2. Select compatible runtime source.\n'
+        '3. Install into Termode prefix.\n'
+        '4. Add command shim.\n'
+        '5. Run ${tc['command']} --version.\n'
+        '6. Run runtime doctor.\n'
+        'Run: toolchain-info $key';
+  }
+
+  Future<String> _runtimeInstallStatusOutput() async {
+    final initialized = await RuntimePrefixService().isInitialized();
+    return '=== Runtime Install Status ===\n'
+        'Mode: planning only\n'
+        'Real installs: not enabled yet\n'
+        'Prefix: ${initialized ? 'initialized' : 'not initialized'}\n'
+        'Next milestone: v0.43 Prefix / PATH / Environment System';
+  }
+
+  Future<String> _runtimeInstallDoctorOutput() async {
+    final initialized = await RuntimePrefixService().isInitialized();
+    final diagnostics = await NativeCommandService().getDiagnostics();
+    final abi = diagnostics?['abi']?.toString();
+    return '=== Runtime Install Doctor ===\n'
+        'Mode: planning only\n'
+        'Prefix plan: ${initialized ? 'OK' : 'NOT INITIALIZED (run prefix-init)'}\n'
+        'Android ABI: ${abi == null || abi.isEmpty ? 'unknown' : abi}\n'
+        'Runtime decision: frozen foundation; expansion architecture active\n'
+        'Safety: no downloads, no native execution\n'
+        'Note: real installs are not enabled yet.\n'
+        'Overall: ARCHITECTURE PHASE';
+  }
+
+  String _devSetupHelpOutput() {
+    return '=== Dev Setup (planning) ===\n'
+        'Planning only. Nothing is installed yet.\n\n'
+        'Subcommands:\n'
+        '  dev-setup list           - List planned dev presets\n'
+        '  dev-setup plan <preset>  - Show the future setup steps\n\n'
+        'Presets: web, node, python, basic-tools';
+  }
+
+  String _devSetupListOutput() {
+    return 'Available future presets:\n'
+        '* web\n'
+        '* node\n'
+        '* python\n'
+        '* basic-tools';
+  }
+
+  String _devSetupPlanOutput(String preset) {
+    switch (preset.toLowerCase()) {
+      case 'web':
+        return '=== Dev Setup Plan: web ===\n'
+            'Future setup:\n'
+            '1. Install Node.js.\n'
+            '2. Enable npm.\n'
+            '3. Prepare workspace.\n'
+            '4. Add package.json helper.\n'
+            '5. Run local preview server.\n'
+            '6. Open preview URL.';
+      case 'node':
+        return '=== Dev Setup Plan: node ===\n'
+            'Future setup:\n'
+            '1. Install Node.js.\n'
+            '2. Enable npm.\n'
+            '3. Prepare workspace.\n'
+            '4. Add a start script.\n'
+            '5. Run node --version.\n'
+            '6. Run dev-doctor.';
+      case 'python':
+        return '=== Dev Setup Plan: python ===\n'
+            'Future setup:\n'
+            '1. Install Python.\n'
+            '2. Prepare workspace.\n'
+            '3. Add a virtual-env helper.\n'
+            '4. Run python --version.\n'
+            '5. Run dev-doctor.';
+      case 'basic-tools':
+        return '=== Dev Setup Plan: basic-tools ===\n'
+            'Future setup:\n'
+            '1. Install curl/wget.\n'
+            '2. Install an editor (nano/micro).\n'
+            '3. Install git.\n'
+            '4. Run dev-doctor.';
+      default:
+        return 'Unknown dev-setup preset: $preset\n'
+            'Run: dev-setup list';
+    }
+  }
+
+  Future<String> _devDoctorOutput() async {
+    final initialized = await RuntimePrefixService().isInitialized();
+    return '=== Dev Doctor ===\n'
+        'Terminal: OK\n'
+        'REAL PTY: OK\n'
+        'Prefix: ${initialized ? 'OK' : 'LIMITED'}\n'
+        'Git: planned\n'
+        'Node.js: planned\n'
+        'npm: planned\n'
+        'Python: planned\n'
+        'Overall: ${initialized ? 'FOUNDATION READY' : 'ARCHITECTURE PHASE'}';
   }
 
   Future<String> _termodeDoctor({bool verbose = false}) async {
@@ -543,6 +825,10 @@ class CommandService {
         '  build-info, beta-candidate status, beta-candidate ready\n'
         'Beta feedback / RC:\n'
         '  feedback, feedback template, rc-checklist, rc-status\n'
+        'Runtime expansion (planning):\n'
+        '  prefix-info, prefix-init, prefix-doctor, path-info, env-info\n'
+        '  toolchain-status, toolchain-list, toolchain-info, toolchain-doctor\n'
+        '  runtime-install list, dev-setup list, dev-doctor\n'
         'Advanced probes:\n'
         '  runtime-candidates, js-engine-decision, quickjs, duktape\n\n'
         'Use commands --all for the full catalog.';
@@ -645,7 +931,7 @@ class CommandService {
     final docsOk = repoDocsOk || embeddedDocsOk;
     final readmeOk =
         !File('README.md').existsSync() ||
-        File('README.md').readAsStringSync().contains('v0.41');
+        File('README.md').readAsStringSync().contains('v0.42');
     final healthy = docsOk && readmeOk;
     return '=== Onboarding Doctor ===\n'
         'Welcome: OK\n'
@@ -752,12 +1038,13 @@ class CommandService {
         'Session: ${session.name}\n'
         'Workspace: $workspace\n'
         'Packages: $packages\n'
-        'Runtime: frozen\n'
+        'Runtime: architecture phase (frozen foundation)\n'
+        'Toolchains: planned (not installed)\n'
         'Beta: $beta';
   }
 
   String _versionOutput() {
-    return 'Termode v0.41\n'
+    return 'Termode v0.42\n'
         'Runtime: frozen\n'
         'Shell: REAL PTY\n'
         'Packages: script-only';
@@ -773,17 +1060,19 @@ class CommandService {
   String _buildInfoOutput() {
     return '=== Build Info ===\n'
         'App: Termode\n'
-        'Version: v0.41\n'
+        'Version: v0.42\n'
         'Build type: ${_buildTypeName()}\n'
-        'Runtime: frozen\n'
+        'Runtime: architecture phase (frozen foundation)\n'
+        'Toolchains: planned (not installed)\n'
         'Shell: REAL PTY\n'
         'Packages: script-only\n'
-        'Beta candidate: yes\n'
-        'Artifact: Termode-v0.41-rc-debug.apk';
+        'Beta candidate: terminal foundation beta\n'
+        'Artifact: Termode-v0.42-beta-debug.apk';
   }
 
   String _releaseNotesOutput() {
     return '=== Termode Release Notes ===\n'
+        'v0.42 Runtime Expansion Architecture\n'
         'v0.41 Beta Feedback Fixes / RC Cleanup\n'
         'v0.40 Beta Candidate Packaging\n'
         'v0.39 UI / Settings Polish\n'
@@ -818,7 +1107,7 @@ class CommandService {
         ? 'REAL PTY'
         : 'NORMAL';
     return '=== Termode Bug Report ===\n'
-        'Termode version: v0.41\n'
+        'Termode version: v0.42\n'
         'Android ABI: $abi\n'
         'Runtime status: $runtimeStatus\n'
         'Package doctor: $packageStatus\n'
@@ -1017,6 +1306,11 @@ class CommandService {
               '  beta-candidate ready\n'
               '  feedback\n'
               '  rc-status\n\n'
+              'Runtime expansion (planning):\n'
+              '  prefix-info\n'
+              '  toolchain-status\n'
+              '  runtime-install list\n'
+              '  dev-doctor\n\n'
               'Sub-help:\n'
               '  pkg help\n'
               '  workspace\n'
@@ -1866,6 +2160,118 @@ class CommandService {
           output: output,
           isError: output.contains('Overall: NEEDS FIXES'),
         );
+
+      case 'prefix-info':
+        return CommandResult(output: await RuntimePrefixService().prefixInfo());
+
+      case 'prefix-init':
+        final output = await RuntimePrefixService().initPrefix();
+        return CommandResult(
+          output: output,
+          isError: output.contains('Status: incomplete'),
+        );
+
+      case 'prefix-doctor':
+        final output = await RuntimePrefixService().prefixDoctor();
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: UNHEALTHY'),
+        );
+
+      case 'path-info':
+        return CommandResult(output: await RuntimePrefixService().pathInfo());
+
+      case 'env-info':
+        return CommandResult(output: await RuntimePrefixService().envInfo());
+
+      case 'toolchain-status':
+        return CommandResult(output: _toolchainStatusOutput());
+
+      case 'toolchain-list':
+        return CommandResult(output: _toolchainListOutput());
+
+      case 'toolchain-plan':
+        return CommandResult(output: _toolchainPlanOutput());
+
+      case 'toolchain-info':
+        if (args.isEmpty) {
+          return CommandResult(
+            output: 'Usage: toolchain-info <name>\nRun: toolchain-list',
+            isError: true,
+          );
+        }
+        final output = _toolchainInfoOutput(args[0]);
+        return CommandResult(
+          output: output,
+          isError: output.startsWith('Unknown toolchain:'),
+        );
+
+      case 'toolchain-doctor':
+        return CommandResult(output: await _toolchainDoctorOutput());
+
+      case 'runtime-install':
+        final sub = args.isNotEmpty ? args[0].toLowerCase() : 'help';
+        switch (sub) {
+          case 'help':
+            return CommandResult(output: _runtimeInstallHelpOutput());
+          case 'list':
+            return CommandResult(output: _runtimeInstallListOutput());
+          case 'plan':
+            if (args.length < 2) {
+              return CommandResult(
+                output: 'Usage: runtime-install plan <tool>\n'
+                    'Run: runtime-install list',
+                isError: true,
+              );
+            }
+            final output = _runtimeInstallPlanOutput(args[1]);
+            return CommandResult(
+              output: output,
+              isError: output.startsWith('Unknown runtime:'),
+            );
+          case 'status':
+            return CommandResult(output: await _runtimeInstallStatusOutput());
+          case 'doctor':
+            return CommandResult(output: await _runtimeInstallDoctorOutput());
+          default:
+            return CommandResult(
+              output:
+                  'Unknown runtime-install subcommand: $sub\n'
+                  'Usage: runtime-install <list|plan|status|doctor>',
+              isError: true,
+            );
+        }
+
+      case 'dev-setup':
+        final sub = args.isNotEmpty ? args[0].toLowerCase() : 'help';
+        switch (sub) {
+          case 'help':
+            return CommandResult(output: _devSetupHelpOutput());
+          case 'list':
+            return CommandResult(output: _devSetupListOutput());
+          case 'plan':
+            if (args.length < 2) {
+              return CommandResult(
+                output: 'Usage: dev-setup plan <preset>\nRun: dev-setup list',
+                isError: true,
+              );
+            }
+            final output = _devSetupPlanOutput(args[1]);
+            return CommandResult(
+              output: output,
+              isError: output.startsWith('Unknown dev-setup preset:'),
+            );
+          default:
+            return CommandResult(
+              output:
+                  'Unknown dev-setup subcommand: $sub\n'
+                  'Usage: dev-setup <list|plan>',
+              isError: true,
+            );
+        }
+
+      case 'dev-doctor':
+        return CommandResult(output: await _devDoctorOutput());
 
       case 'beta-candidate':
         final sub = args.isNotEmpty ? args[0].toLowerCase() : 'help';

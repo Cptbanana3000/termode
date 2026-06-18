@@ -100,6 +100,41 @@ Use `welcome`, `examples`, and `glossary` first if you are new.
 reports `RC CLEANUP READY` when core systems are healthy; the intentional frozen
 runtime and unlinked storage do not block it.
 
+## Runtime Expansion (Planning Only)
+
+These describe Termode's future runtime/toolchain layer. They do not install,
+download, or execute anything yet. See
+[Runtime Expansion Architecture](RUNTIME_EXPANSION_ARCHITECTURE.md).
+
+Prefix / environment:
+
+- `prefix-info`
+- `prefix-init`
+- `prefix-doctor`
+- `path-info`
+- `env-info`
+
+Toolchains (planned):
+
+- `toolchain-status`
+- `toolchain-list`
+- `toolchain-info <name>`
+- `toolchain-plan`
+- `toolchain-doctor`
+
+Install planning:
+
+- `runtime-install` (`list`, `plan <tool>`, `status`, `doctor`)
+
+Guided presets (planned):
+
+- `dev-setup` (`list`, `plan <preset>`)
+- `dev-doctor`
+
+`prefix-init` is idempotent and never deletes user files. Toolchain/runtime/dev
+doctors report `ARCHITECTURE PHASE` for planned-but-missing tools — that is
+expected, not a failure.
+
 `settings-reset-safe` restores visual/terminal settings to defaults and
 requires `--confirm`. It keeps packages, workspaces, sessions, history, repo
 config, and files. See [UI & Settings](UI_SETTINGS.md).

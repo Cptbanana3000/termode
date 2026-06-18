@@ -126,7 +126,7 @@ void main() {
       final result = await commandService.execute('rc-status');
 
       expect(result.output, contains('=== Release Candidate Status ==='));
-      expect(result.output, contains('Version: v0.41'));
+      expect(result.output, contains('Version: v0.42'));
       expect(result.output, contains('Beta candidate: yes'));
       expect(result.output, contains('Core systems: OK'));
       expect(result.output, contains('Known limitations: intentional'));
@@ -144,9 +144,9 @@ void main() {
       final version = await commandService.execute('version');
       final build = await commandService.execute('build-info');
 
-      expect(version.output, contains('Termode v0.41'));
-      expect(build.output, contains('Version: v0.41'));
-      expect(build.output, contains('Artifact: Termode-v0.41-rc-debug.apk'));
+      expect(version.output, contains('Termode v0.42'));
+      expect(build.output, contains('Version: v0.42'));
+      expect(build.output, contains('Artifact: Termode-v0.42-beta-debug.apk'));
     });
 
     test('settings-reset-safe stays protected by --confirm', () async {

@@ -7,7 +7,7 @@ How to install the Termode beta candidate debug APK on a real Android device.
 The beta build is distributed as a renamed debug APK:
 
 ```
-Termode-v0.41-rc-debug.apk
+Termode-v0.42-beta-debug.apk
 ```
 
 The raw Flutter output is `build/app/outputs/flutter-apk/app-debug.apk`. See
@@ -16,7 +16,7 @@ renamed file.
 
 ## Install the Debug APK Manually
 
-1. Copy `Termode-v0.41-rc-debug.apk` to the device (USB, download, or share).
+1. Copy `Termode-v0.42-beta-debug.apk` to the device (USB, download, or share).
 2. On the device, open the file with a file manager or your browser.
 3. When prompted, allow installation.
 
@@ -34,7 +34,7 @@ Android blocks installs from outside the Play Store by default:
 If you have developer tools:
 
 ```sh
-adb install -r Termode-v0.41-rc-debug.apk
+adb install -r Termode-v0.42-beta-debug.apk
 ```
 
 ## Clear App Data (if needed)
@@ -69,20 +69,20 @@ limited states, not failures.
 Beta artifacts use:
 
 ```
-Termode-v0.41-rc-debug.apk
+Termode-v0.42-beta-debug.apk
 ```
 
 After `flutter build apk --debug`, copy the output to the named file:
 
 ```sh
 # from the project root
-cp build/app/outputs/flutter-apk/app-debug.apk Termode-v0.41-rc-debug.apk
+cp build/app/outputs/flutter-apk/app-debug.apk Termode-v0.42-beta-debug.apk
 ```
 
 On Windows PowerShell:
 
 ```powershell
-Copy-Item build\app\outputs\flutter-apk\app-debug.apk Termode-v0.41-rc-debug.apk
+Copy-Item build\app\outputs\flutter-apk\app-debug.apk Termode-v0.42-beta-debug.apk
 ```
 
 This is a manual copy step on purpose — no fragile build automation is added.

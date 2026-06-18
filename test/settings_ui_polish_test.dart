@@ -133,7 +133,7 @@ void main() {
       expect(result.output, contains('Session:'));
       expect(result.output, contains('Workspace: none'));
       expect(result.output, contains('Packages: healthy'));
-      expect(result.output, contains('Runtime: frozen'));
+      expect(result.output, contains('Runtime: architecture phase'));
       expect(result.output, contains('Beta: ready with limitations'));
     });
 

@@ -133,3 +133,22 @@ v0.41 is a beta-feedback / release-candidate cleanup pass (no new features):
 
 A `LIMITED` doctor status is expected when the only issues are intentional
 (frozen runtime, unlinked storage); it does not mean Termode is broken.
+
+v0.42 begins the runtime expansion architecture (planning only, no real
+installs):
+
+- version is `v0.42` (Android `versionName 0.42.0` / `versionCode 42`)
+- a controlled Termode prefix under `TERMODE_HOME` with `prefix-info`,
+  `prefix-init`, `prefix-doctor`, `path-info`, `env-info`
+- toolchain planning: `toolchain-status`, `toolchain-list`, `toolchain-info`,
+  `toolchain-plan`, `toolchain-doctor`
+- install planning: `runtime-install list|plan|status|doctor`
+- guided presets planning: `dev-setup list|plan`, `dev-doctor`
+- runtime-freeze wording now clarifies that implementation is frozen for the
+  beta foundation while expansion architecture is active; real Node/Git/Python
+  are still not installed
+
+Beta readiness is unaffected by planned-but-missing toolchains: `beta-candidate
+ready` only blocks on a genuinely `UNHEALTHY` core subsystem (packages,
+workspaces, sessions). Toolchain/runtime-install/dev doctors report
+`ARCHITECTURE PHASE` / `LIMITED`, never `UNHEALTHY`, for missing planned tools.

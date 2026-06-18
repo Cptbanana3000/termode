@@ -135,7 +135,7 @@ class TerminalSessionService extends ChangeNotifier {
         ]);
       }
       lines.addAll([
-        TerminalLine(text: 'Termode v0.41', type: LineType.output),
+        TerminalLine(text: 'Termode v0.42', type: LineType.output),
         TerminalLine(
           text: 'Type "welcome" to get started.',
           type: LineType.output,
@@ -627,6 +627,19 @@ class TerminalSessionService extends ChangeNotifier {
         'feedback',
         'rc-checklist',
         'rc-status',
+        'prefix-info',
+        'prefix-init',
+        'prefix-doctor',
+        'path-info',
+        'env-info',
+        'toolchain-status',
+        'toolchain-doctor',
+        'toolchain-plan',
+        'toolchain-list',
+        'toolchain-info',
+        'runtime-install',
+        'dev-setup',
+        'dev-doctor',
         'settings-summary',
         'settings-doctor',
         'settings-reset-safe',

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'runtime_capability_service.dart';
 
 class RuntimeFreezeService {
-  static const nextMilestone = 'v0.42 Release Polish';
+  static const nextMilestone = 'v0.43 Prefix / PATH / Environment System';
 
   static const supportedRuntimeDirection = [
     'script packages through /system/bin/sh',
@@ -36,13 +36,16 @@ class RuntimeFreezeService {
 
   String status() {
     return '=== Runtime Freeze Status ===\n'
+        'Runtime implementation: frozen for current beta foundation.\n'
+        'Expansion architecture: active in v0.42.\n'
+        'Actual external runtimes: not installed yet.\n'
         'Decision: frozen\n'
         'Current JS path: js-proof\n'
         'QuickJS: deferred\n'
         'Duktape: deferred\n'
-        'Node.js: deferred\n'
-        'npm: deferred\n'
-        'Next focus: product stability\n'
+        'Node.js: planned (not installed)\n'
+        'npm: planned (not installed)\n'
+        'Next focus: runtime expansion architecture\n'
         'Overall: FROZEN';
   }
 
@@ -76,7 +79,9 @@ class RuntimeFreezeService {
         '* Real runtimes need source, sandboxing, timeout, and update policies.\n'
         '* Node/npm are much larger than the current script package model.\n'
         '* QuickJS/Duktape probes stay available for research history.\n'
-        '* Product stability matters first.';
+        '* Product stability matters first.\n'
+        '* Runtime expansion is now planned (see runtime-install, toolchain-status); '
+        'it was frozen for the v0.40 foundation, not forever.';
   }
 
   String next() {
@@ -84,11 +89,11 @@ class RuntimeFreezeService {
         'Recommended next milestone:\n'
         '$nextMilestone\n\n'
         'Focus:\n'
-        '  - release candidate cleanup\n'
-        '  - beta feedback fixes\n'
+        '  - prefix / PATH / environment system\n'
+        '  - binary package installer prototype\n'
+        '  - guided toolchain installs (git, node, python)\n'
         '  - package/workspace/terminal QA\n'
-        '  - documentation and release notes\n'
-        'Runtime experiments stay deferred.';
+        'Runtime implementation stays frozen for now; runtime expansion is planned.';
   }
 
   String doctor() {

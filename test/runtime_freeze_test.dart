@@ -115,10 +115,10 @@ void main() {
     test('runtime-freeze next output', () async {
       final result = await commandService.execute('runtime-freeze next');
 
-      expect(result.output, contains('v0.42 Release Polish'));
-      expect(result.output, contains('release candidate cleanup'));
-      expect(result.output, contains('beta feedback fixes'));
-      expect(result.output, contains('Runtime experiments stay deferred'));
+      expect(result.output, contains('v0.43 Prefix / PATH / Environment System'));
+      expect(result.output, contains('prefix / PATH / environment system'));
+      expect(result.output, contains('guided toolchain installs'));
+      expect(result.output, contains('runtime expansion is planned'));
     });
 
     test('runtime-freeze doctor output', () async {

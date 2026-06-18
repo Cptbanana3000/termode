@@ -3,15 +3,18 @@
 Termode is a standalone Android terminal project with a REAL PTY shell,
 script packages, workspace folders, and beta QA tooling.
 
-Current status: **v0.41 Release Candidate Cleanup** (beta candidate).
+Current status: **v0.42 Runtime Expansion Architecture** (terminal foundation beta).
 
 Termode is not a full Linux distribution and is not a Termux replacement yet,
-and it is not a stable v1.0. It is a focused terminal app that proves a
-shell-first mobile workflow while keeping runtime scope honest and testable.
+and it is not a stable v1.0. It is building a complete standalone Android
+terminal/dev environment — easier and more guided than Termux — and only later
+integrating into CalypsoIDE.
 
-v0.41 is a beta-feedback / release-candidate cleanup pass on top of the v0.40
-beta candidate: feature-stable for testing, but bugs are expected. See
-[Release Notes v0.41](docs/RELEASE_NOTES_v0.41.md),
+Termode has a strong terminal foundation today (REAL PTY, packages, workspaces,
+sessions, QA/beta tooling). It does **not** yet include Node.js, npm, Git,
+Python, compilers, or a full Linux package ecosystem — those are **planned, not
+installed**. v0.42 builds the architecture for them. See
+[Runtime Expansion Architecture](docs/RUNTIME_EXPANSION_ARCHITECTURE.md),
 [Beta Install](docs/BETA_INSTALL.md), and [Beta Testing](docs/BETA_TESTING.md).
 
 ## What Works Today
@@ -73,8 +76,8 @@ hello
 Termode ships as a debug APK for beta testing:
 
 1. Enable "Install unknown apps" for your file manager or browser.
-2. Copy `Termode-v0.41-rc-debug.apk` to the device and tap to install.
-3. Launch Termode and run `welcome`, then `doctor` and `rc-status`.
+2. Copy `Termode-v0.42-beta-debug.apk` to the device and tap to install.
+3. Launch Termode and run `welcome`, then `doctor` and `dev-doctor`.
 
 Full steps and how to clear app data are in
 [docs/BETA_INSTALL.md](docs/BETA_INSTALL.md).
@@ -150,10 +153,12 @@ after the UI polish pass.
 
 ## Roadmap
 
-- v0.40 Beta Candidate
-- v0.41 Beta Feedback Fixes / RC Cleanup (current)
-- v0.42 Release Polish
-- v1.0 later
+- v0.41 Beta Feedback Fixes / RC Cleanup
+- v0.42 Runtime Expansion Architecture (current)
+- v0.43 Prefix / PATH / Environment System
+- v0.44 Binary Package Installer Prototype
+- v0.45 Git · v0.46 Node.js · v0.47 npm · v0.48 Python
+- v0.49 Dev Stack Presets · v0.50 Full Terminal QA · v0.51 Complete Termode Beta
 - CalypsoIDE integration later
 
 Node/npm/Python/Git research stays deferred until after the standalone beta
@@ -161,6 +166,7 @@ stabilizes.
 
 ## Docs
 
+- [Runtime Expansion Architecture](docs/RUNTIME_EXPANSION_ARCHITECTURE.md)
 - [Release Notes v0.41](docs/RELEASE_NOTES_v0.41.md)
 - [Release Notes v0.40](docs/RELEASE_NOTES_v0.40.md)
 - [Beta Install](docs/BETA_INSTALL.md)

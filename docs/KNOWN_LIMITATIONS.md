@@ -1,10 +1,11 @@
 # Known Limitations
 
-Termode is beta software (v0.41 is a release-candidate cleanup pass). The
-current goal is to stabilize the standalone terminal experience before
-expanding runtimes. A `LIMITED` doctor status is often an intentional
-limitation (frozen runtime, unlinked storage) and does not mean Termode is
-broken.
+Termode is beta software. v0.42 builds the runtime expansion architecture: the
+foundation for future toolchains (Git, Node.js, npm, Python, editors). Those
+toolchains are **planned, not installed** — Termode does not run Node/npm/Git/
+Python yet. A `LIMITED` / `ARCHITECTURE PHASE` status is an intentional state
+(frozen runtime foundation, unlinked storage, planned toolchains) and does not
+mean Termode is broken.
 
 ## Runtime Freeze
 
@@ -27,6 +28,22 @@ Runtime direction is frozen. Termode currently supports:
 
 QuickJS and Duktape are probe surfaces only. They are not production runtimes.
 
+## Runtime Expansion (Planned, Not Installed)
+
+Git, Node.js, npm, Python, curl/wget, and editors (nano/micro) are planned for
+future milestones. v0.42 adds only the planning/architecture surface — no real
+installs, downloads, or native execution. Explore it with:
+
+```sh
+toolchain-status
+toolchain-list
+runtime-install list
+dev-doctor
+prefix-info
+```
+
+See [Runtime Expansion Architecture](RUNTIME_EXPANSION_ARCHITECTURE.md).
+
 ## Android / Storage Limits
 
 - Storage features need the user to link an Android folder.
@@ -39,8 +56,9 @@ QuickJS and Duktape are probe surfaces only. They are not production runtimes.
 ```sh
 beta-known-limits
 runtime-freeze status
-runtime-freeze deferred
 runtime-freeze why
+toolchain-status
+runtime-install status
 doctor
 qa-status
 ```
