@@ -3,11 +3,15 @@
 Termode is a standalone Android terminal project with a REAL PTY shell,
 script packages, workspace folders, and beta QA tooling.
 
-Current status: v0.39 UI / Settings Polish.
+Current status: **v0.40 Beta Candidate**.
 
-Termode is not a full Linux distribution and is not a Termux replacement yet.
-It is a focused terminal app that proves a shell-first mobile workflow while
-keeping runtime scope honest and testable.
+Termode is not a full Linux distribution and is not a Termux replacement yet,
+and it is not a stable v1.0. It is a focused terminal app that proves a
+shell-first mobile workflow while keeping runtime scope honest and testable.
+
+This build is a beta candidate: it is feature-stable for testing but bugs are
+expected. See [Release Notes](docs/RELEASE_NOTES_v0.40.md),
+[Beta Install](docs/BETA_INSTALL.md), and [Beta Testing](docs/BETA_TESTING.md).
 
 ## What Works Today
 
@@ -47,7 +51,8 @@ examples
 glossary
 commands
 status
-theme-test
+build-info
+beta-candidate status
 doctor
 qa-status
 ```
@@ -61,6 +66,31 @@ pkg list
 pkg install hello
 hello
 ```
+
+## Install (Beta)
+
+Termode ships as a debug APK for beta testing:
+
+1. Enable "Install unknown apps" for your file manager or browser.
+2. Copy `Termode-v0.40-beta-debug.apk` to the device and tap to install.
+3. Launch Termode and run `welcome`, then `doctor` and `beta-candidate status`.
+
+Full steps and how to clear app data are in
+[docs/BETA_INSTALL.md](docs/BETA_INSTALL.md).
+
+## Beta Testing Checklist
+
+```sh
+welcome
+doctor
+beta-candidate status
+beta-candidate ready
+qa-status
+```
+
+Report issues with `bug-report` (it omits private env vars, tokens, and full
+paths). See [docs/BETA_TESTING.md](docs/BETA_TESTING.md) for what to report and
+which behaviors are expected `LIMITED` versus release blockers.
 
 ## Package Basics
 
@@ -117,13 +147,20 @@ after the UI polish pass.
 
 ## Roadmap
 
-- v0.38 Documentation / Onboarding Polish
-- v0.39 UI / Settings Polish (current)
-- v0.40 Beta Candidate
-- Node/npm later, after product stability
+- v0.40 Beta Candidate (current)
+- v0.41 Beta Feedback Fixes
+- v0.42 Release Polish
+- v1.0 later
+- CalypsoIDE integration later
+
+Node/npm/Python/Git research stays deferred until after the standalone beta
+stabilizes.
 
 ## Docs
 
+- [Release Notes v0.40](docs/RELEASE_NOTES_v0.40.md)
+- [Beta Install](docs/BETA_INSTALL.md)
+- [Beta Testing](docs/BETA_TESTING.md)
 - [Getting Started](docs/GETTING_STARTED.md)
 - [UI & Settings](docs/UI_SETTINGS.md)
 - [Known Limitations](docs/KNOWN_LIMITATIONS.md)

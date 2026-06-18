@@ -132,3 +132,22 @@ v0.39 UI / settings checks:
 - Settings screen app version was corrected from the stale `0.4.0` string
 - automated `adb input text` remains unreliable against the live terminal, so
   the typed-command UI pass is still a manual hand check
+
+## v0.40 Beta Candidate checks
+
+- run `version` and `build-info` and confirm `v0.40`
+- run `beta-candidate` (overview), `beta-candidate status`, `beta-candidate
+  checklist`, `beta-candidate notes`, `beta-candidate limits`
+- run `beta-candidate ready` and confirm `Ready for beta testing.`
+- confirm `doctor`, `beta-status`, and `qa-status` still report healthy or an
+  accepted limited state (frozen runtime / unlinked storage are acceptable)
+- install the renamed beta artifact `Termode-v0.40-beta-debug.apk` and run the
+  first checks from `BETA_INSTALL.md`
+
+## v0.40 Device Note
+
+- startup banner and `version`/`build-info` report `Termode v0.40`
+- Android `versionName` is `0.40.0`, `versionCode` is `40`
+- `adb shell input text` works for the typed pass while the soft keyboard is
+  raised (tap the terminal body first); it drops characters when the keyboard
+  is dismissed

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'command_catalog.dart';
 import 'virtual_filesystem.dart';
@@ -233,8 +234,117 @@ class CommandService {
   String _betaNextOutput() {
     return '=== Beta Next ===\n'
         'Recommended next milestone:\n'
-        'v0.40 Beta Candidate\n\n'
-        'Reason: v0.39 polishes settings, theme, terminal layout, and status readouts.';
+        'v0.41 Beta Feedback Fixes\n\n'
+        'Reason: v0.40 packages Termode as a beta candidate; next comes tester feedback triage.';
+  }
+
+  /// Computes beta-candidate readiness. Intentional limitations (frozen
+  /// runtime, deferred QuickJS/Duktape, unlinked storage) are NOT blockers.
+  /// Only a genuinely UNHEALTHY core subsystem (packages, workspaces,
+  /// sessions) blocks beta readiness.
+  Future<({bool ready, String reason, String packages, String workspaces,
+      String sessions})> _betaCandidateReadiness() async {
+    final packages = _statusFromDoctorOutput(
+      (await execute('pkg doctor')).output,
+    );
+    final workspaces = _statusFromDoctorOutput(
+      (await execute('workspace-doctor')).output,
+    );
+    final sessions = _statusFromDoctorOutput(
+      (await execute('session-doctor')).output,
+    );
+    String? blocker;
+    if (packages == 'UNHEALTHY') {
+      blocker = 'package manager is unhealthy (run pkg doctor)';
+    } else if (workspaces == 'UNHEALTHY') {
+      blocker = 'workspace system is unhealthy (run workspace-doctor)';
+    } else if (sessions == 'UNHEALTHY') {
+      blocker = 'session system is unhealthy (run session-doctor)';
+    }
+    return (
+      ready: blocker == null,
+      reason: blocker ?? '',
+      packages: packages,
+      workspaces: workspaces,
+      sessions: sessions,
+    );
+  }
+
+  Future<String> _betaCandidateStatusOutput() async {
+    final r = await _betaCandidateReadiness();
+    String label(String s) => s == 'UNHEALTHY' ? 'UNHEALTHY' : 'OK';
+    return '=== Termode Beta Candidate ===\n'
+        'Version: v0.40\n'
+        'Core shell: OK\n'
+        'Packages: ${label(r.packages)}\n'
+        'Workspaces: ${label(r.workspaces)}\n'
+        'Sessions: ${label(r.sessions)}\n'
+        'Terminal UX: OK\n'
+        'Runtime: FROZEN\n'
+        'Known limitations: yes\n'
+        'Overall: ${r.ready ? 'BETA CANDIDATE' : 'NEEDS FIXES'}';
+  }
+
+  Future<String> _betaCandidateReadyOutput() async {
+    final r = await _betaCandidateReadiness();
+    return r.ready ? 'Ready for beta testing.' : 'Not ready: ${r.reason}';
+  }
+
+  String _betaCandidateChecklistOutput() {
+    return '=== Beta Candidate Checklist ===\n'
+        '* doctor\n'
+        '* beta-score\n'
+        '* qa-status\n'
+        '* pkg doctor\n'
+        '* workspace-doctor\n'
+        '* session-doctor\n'
+        '* runtime-freeze doctor\n'
+        '* preview-doctor\n'
+        '* localhost-doctor\n'
+        '* settings-doctor\n'
+        '* manual install test\n'
+        '* force close/reopen test\n'
+        '* package install/remove test\n'
+        '* workspace file test';
+  }
+
+  String _betaCandidateNotesOutput() {
+    return '=== Termode v0.40 Beta Candidate ===\n'
+        'Termode is a standalone Android terminal with a REAL PTY shell.\n\n'
+        'Highlights:\n'
+        '* REAL PTY shell with host command interception\n'
+        '* script packages (pkg) with trusted remote repo, verify, upgrade, repair\n'
+        '* workspaces and safe host file commands\n'
+        '* sessions, tabs, history, and scrollback persistence\n'
+        '* terminal UX: keyboard, ANSI, paste, copy, scrollback helpers\n'
+        '* settings/theme/status readouts and safe visual reset\n'
+        '* preview/localhost diagnostics\n'
+        '* QA/beta/onboarding tooling and doctors\n\n'
+        'Runtime remains frozen. Node/npm/Python/Git and native packages are not\n'
+        'included yet. Run beta-candidate limits for details.';
+  }
+
+  String _betaCandidateLimitsOutput() {
+    return '=== Beta Candidate Limits ===\n'
+        '* Node.js/npm are not included.\n'
+        '* Python/Git are not included.\n'
+        '* Native binary packages are not supported.\n'
+        '* QuickJS/Duktape are deferred.\n'
+        '* Direct app-bin execution may be blocked by Android.\n'
+        '* Storage features need folder linking.\n'
+        '* Beta software; bugs expected.';
+  }
+
+  String _betaCandidateHelpOutput() {
+    return '=== Termode Beta Candidate ===\n'
+        'Termode v0.40 is a beta candidate build.\n\n'
+        'Subcommands:\n'
+        '  beta-candidate status     - Show beta candidate readiness summary\n'
+        '  beta-candidate checklist  - Show the beta candidate checklist\n'
+        '  beta-candidate notes      - Show concise v0.40 release notes\n'
+        '  beta-candidate limits     - Show known beta limitations\n'
+        '  beta-candidate ready      - Show whether Termode is ready for beta\n\n'
+        'See also: build-info, doctor, qa-status, beta-status.';
   }
 
   Future<String> _termodeDoctor({bool verbose = false}) async {
@@ -357,6 +467,8 @@ class CommandService {
         '  runtime-freeze status, runtime-doctor, native-tool, js-proof\n'
         'QA / beta:\n'
         '  status, doctor, qa-status, qa-run, beta-status, onboarding-doctor\n'
+        'Beta candidate:\n'
+        '  build-info, beta-candidate status, beta-candidate ready\n'
         'Advanced probes:\n'
         '  runtime-candidates, js-engine-decision, quickjs, duktape\n\n'
         'Use commands --all for the full catalog.';
@@ -459,7 +571,7 @@ class CommandService {
     final docsOk = repoDocsOk || embeddedDocsOk;
     final readmeOk =
         !File('README.md').existsSync() ||
-        File('README.md').readAsStringSync().contains('v0.39');
+        File('README.md').readAsStringSync().contains('v0.40');
     final healthy = docsOk && readmeOk;
     return '=== Onboarding Doctor ===\n'
         'Welcome: OK\n'
@@ -571,14 +683,34 @@ class CommandService {
   }
 
   String _versionOutput() {
-    return 'Termode v0.39\n'
+    return 'Termode v0.40\n'
         'Runtime: frozen\n'
         'Shell: REAL PTY\n'
         'Packages: script-only';
   }
 
+  String _buildTypeName() {
+    if (kReleaseMode) return 'release';
+    if (kProfileMode) return 'profile';
+    if (kDebugMode) return 'debug';
+    return 'unknown';
+  }
+
+  String _buildInfoOutput() {
+    return '=== Build Info ===\n'
+        'App: Termode\n'
+        'Version: v0.40\n'
+        'Build type: ${_buildTypeName()}\n'
+        'Runtime: frozen\n'
+        'Shell: REAL PTY\n'
+        'Packages: script-only\n'
+        'Beta candidate: yes\n'
+        'Artifact: Termode-v0.40-beta-debug.apk';
+  }
+
   String _releaseNotesOutput() {
     return '=== Termode Release Notes ===\n'
+        'v0.40 Beta Candidate Packaging\n'
         'v0.39 UI / Settings Polish\n'
         'v0.38 Documentation / Onboarding Polish\n'
         'v0.37.1 Manual Android QA Fix Pass\n'
@@ -611,7 +743,7 @@ class CommandService {
         ? 'REAL PTY'
         : 'NORMAL';
     return '=== Termode Bug Report ===\n'
-        'Termode version: v0.39\n'
+        'Termode version: v0.40\n'
         'Android ABI: $abi\n'
         'Runtime status: $runtimeStatus\n'
         'Package doctor: $packageStatus\n'
@@ -804,6 +936,10 @@ class CommandService {
               '  doctor\n'
               '  qa-status\n'
               '  onboarding-doctor\n\n'
+              'Beta candidate:\n'
+              '  build-info\n'
+              '  beta-candidate status\n'
+              '  beta-candidate ready\n\n'
               'Sub-help:\n'
               '  pkg help\n'
               '  workspace\n'
@@ -1621,6 +1757,41 @@ class CommandService {
 
       case 'beta-next':
         return CommandResult(output: _betaNextOutput());
+
+      case 'build-info':
+        return CommandResult(output: _buildInfoOutput());
+
+      case 'beta-candidate':
+        final sub = args.isNotEmpty ? args[0].toLowerCase() : 'help';
+        switch (sub) {
+          case 'help':
+            return CommandResult(output: _betaCandidateHelpOutput());
+          case 'status':
+            final output = await _betaCandidateStatusOutput();
+            return CommandResult(
+              output: output,
+              isError: output.contains('Overall: NEEDS FIXES'),
+            );
+          case 'checklist':
+            return CommandResult(output: _betaCandidateChecklistOutput());
+          case 'notes':
+            return CommandResult(output: _betaCandidateNotesOutput());
+          case 'limits':
+            return CommandResult(output: _betaCandidateLimitsOutput());
+          case 'ready':
+            final output = await _betaCandidateReadyOutput();
+            return CommandResult(
+              output: output,
+              isError: output.startsWith('Not ready:'),
+            );
+          default:
+            return CommandResult(
+              output:
+                  'Unknown beta-candidate subcommand: $sub\n'
+                  'Usage: beta-candidate <status|checklist|notes|limits|ready>',
+              isError: true,
+            );
+        }
 
       case 'settings-summary':
         return CommandResult(output: _settingsSummaryOutput());

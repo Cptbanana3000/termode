@@ -11,7 +11,7 @@ import 'package:termode/services/virtual_filesystem.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('Product Stabilization / Device QA / Onboarding / UI (v0.36-v0.39)', () {
+  group('Product Stabilization / Device QA / Onboarding / UI / Beta (v0.36-v0.40)', () {
     late Directory tempDir;
     late CommandService commandService;
 
@@ -151,7 +151,7 @@ void main() {
     test('beta-next output', () async {
       final result = await commandService.execute('beta-next');
 
-      expect(result.output, contains('v0.40 Beta Candidate'));
+      expect(result.output, contains('v0.41 Beta Feedback Fixes'));
     });
 
     test('doctor compact and verbose output', () async {
@@ -247,8 +247,9 @@ void main() {
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
 
-      expect(version.output, contains('Termode v0.39'));
+      expect(version.output, contains('Termode v0.40'));
       expect(version.output, contains('Runtime: frozen'));
+      expect(notes.output, contains('v0.40 Beta Candidate Packaging'));
       expect(notes.output, contains('v0.39 UI / Settings Polish'));
       expect(notes.output, contains('v0.38 Documentation / Onboarding Polish'));
       expect(notes.output, contains('v0.37 Device QA Bug Bash'));
@@ -260,7 +261,7 @@ void main() {
       final result = await commandService.execute('bug-report');
 
       expect(result.output, contains('=== Termode Bug Report ==='));
-      expect(result.output, contains('Termode version: v0.39'));
+      expect(result.output, contains('Termode version: v0.40'));
       expect(result.output, contains('Android ABI: arm64-v8a'));
       expect(result.output, isNot(contains('PATH=')));
       expect(result.output, isNot(contains('TOKEN')));
@@ -300,7 +301,7 @@ void main() {
       final result = await commandService.execute('qa-report');
 
       expect(result.output, contains('=== QA Bug Bash Report ==='));
-      expect(result.output, contains('Termode v0.39'));
+      expect(result.output, contains('Termode v0.40'));
       expect(result.output, contains('Doctor summary:'));
       expect(result.output, contains('Suggested next tests:'));
       expect(result.output, isNot(contains('PATH=')));
@@ -400,7 +401,7 @@ void main() {
       expect(File('docs/QA_CHECKLIST.md').existsSync(), isTrue);
       expect(File('docs/ROADMAP.md').existsSync(), isTrue);
       expect(File('docs/DEVICE_QA_BUG_BASH.md').existsSync(), isTrue);
-      expect(File('README.md').readAsStringSync(), contains('v0.39'));
+      expect(File('README.md').readAsStringSync(), contains('v0.40'));
     });
   });
 }

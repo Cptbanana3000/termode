@@ -19,6 +19,8 @@ const List<String> kTermodeCommands = [
   'beta-checklist',
   'beta-known-limits',
   'beta-next',
+  'beta-candidate',
+  'build-info',
   'settings-summary',
   'settings-doctor',
   'settings-reset-safe',

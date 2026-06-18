@@ -103,3 +103,18 @@ v0.39 focuses on UI and settings polish (no new runtimes):
 
 The runtime decision remains frozen. Node.js, npm, Python, Git, QuickJS, and
 Duktape are still not added.
+
+v0.40 packages Termode as a beta candidate (no new features):
+
+- `build-info` reports app/version/build-type/runtime/shell/packages and the
+  expected beta artifact name
+- `beta-candidate` adds `status`, `checklist`, `notes`, `limits`, and `ready`
+- the startup banner and `version` report `Termode v0.40`; Android
+  `versionName` is `0.40.0` and `versionCode` is `40`
+- release/install/testing docs were added (`RELEASE_NOTES_v0.40.md`,
+  `BETA_INSTALL.md`, `BETA_TESTING.md`)
+
+Beta readiness treats intentional limitations as acceptable: a frozen runtime,
+deferred QuickJS/Duktape, and unlinked storage are reported as `FROZEN` /
+`LIMITED` and do NOT make Termode "not ready". Only a genuinely `UNHEALTHY`
+core subsystem (packages, workspaces, sessions) blocks `beta-candidate ready`.
