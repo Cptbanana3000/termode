@@ -113,11 +113,14 @@ Short term:
 - Keep script packages as the stable package system.
 - Keep JNI native tools for audited built-in capabilities.
 
+Current proof:
+- `v0.31 Tiny Embedded JS Engine Feasibility Probe` via `js-proof`
+
 Next proof:
-- `v0.31 Tiny Embedded JS Engine Feasibility Probe`
+- `v0.32 Embedded JS Engine Decision / Real Engine Probe`
 
 Fallback proof if embedded JS blocks:
-- `v0.31 Tiny APK Native Executable Probe`
+- `v0.32 Native Runtime Candidate Narrowing`
 
 Later:
 - Attempt Node only after the runtime strategy is proven.

@@ -721,6 +721,71 @@ class MainActivity: FlutterActivity() {
                         }
                     }
                 }
+                "jsProof" -> {
+                    val command = call.argument<String>("command") ?: ""
+                    val args = call.argument<String>("args") ?: ""
+                    thread {
+                        try {
+                            val response: Map<String, Any?> = when (command) {
+                                "info" -> mapOf(
+                                    "ok" to true,
+                                    "engine" to "tiny-js-proof",
+                                    "mode" to "native bridge",
+                                    "node" to false,
+                                    "npm" to false,
+                                    "shellExecution" to false,
+                                    "status" to "PROOF"
+                                )
+                                "eval" -> {
+                                    val raw = jsProofEvalNative(args)
+                                    if (raw.startsWith("OK:")) {
+                                        mapOf(
+                                            "ok" to true,
+                                            "result" to raw.removePrefix("OK:"),
+                                            "engine" to "tiny-js-proof",
+                                            "mode" to "native bridge"
+                                        )
+                                    } else {
+                                        mapOf(
+                                            "ok" to false,
+                                            "error" to raw.removePrefix("ERR:"),
+                                            "engine" to "tiny-js-proof",
+                                            "mode" to "native bridge"
+                                        )
+                                    }
+                                }
+                                "doctor" -> mapOf(
+                                    "ok" to true,
+                                    "bridgeOk" to true,
+                                    "evaluatorOk" to (jsProofEvalNative("1 + 2") == "OK:3"),
+                                    "errorsOk" to jsProofEvalNative("require('fs')").startsWith("ERR:"),
+                                    "engine" to "tiny-js-proof",
+                                    "mode" to "native bridge"
+                                )
+                                "limits" -> mapOf(
+                                    "ok" to true,
+                                    "engine" to "tiny-js-proof",
+                                    "mode" to "native bridge",
+                                    "maxCodeLength" to 4096,
+                                    "maxFileSize" to 32768
+                                )
+                                else -> mapOf(
+                                    "ok" to false,
+                                    "error" to "unknown js proof command: $command",
+                                    "engine" to "tiny-js-proof",
+                                    "mode" to "native bridge"
+                                )
+                            }
+                            Handler(Looper.getMainLooper()).post {
+                                result.success(response)
+                            }
+                        } catch (e: Throwable) {
+                            Handler(Looper.getMainLooper()).post {
+                                result.error("JS_PROOF_FAILED", e.message ?: "JS proof failed", null)
+                            }
+                        }
+                    }
+                }
                 "bundledRuntimeProof" -> {
                     thread {
                         try {
@@ -1445,6 +1510,10 @@ class MainActivity: FlutterActivity() {
     private external fun nativeToolAbi(): String
     private external fun nativeToolHash(input: String): String
     private external fun nativeToolTime(): Long
+
+    // Tiny JS proof (v0.31)
+    private external fun jsProofEvalNative(input: String): String
+    private external fun jsProofDoctorNative(): Boolean
 
     // Builds a safe, limited environment summary. Only a fixed whitelist of
     // keys is exposed; nothing else from the process environment is returned.

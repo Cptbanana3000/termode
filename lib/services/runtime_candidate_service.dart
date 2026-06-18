@@ -69,7 +69,7 @@ class RuntimeResearchDoctorResult {
 
 class RuntimeCandidateService {
   static const recommendedNextMilestone =
-      'v0.31 Tiny Embedded JS Engine Feasibility Probe';
+      'v0.32 Embedded JS Engine Decision / Real Engine Probe';
 
   static const List<RuntimeCandidate> candidates = [
     RuntimeCandidate(
@@ -215,7 +215,7 @@ class RuntimeCandidateService {
           'Must sandbox evaluation, limit exposed APIs, and avoid arbitrary native access.',
       currentStatus: 'Research candidate, not added yet.',
       recommendation:
-          'Best next experiment because it proves JS/runtime embedding before Node.',
+          'Tiny JS proof is available; use it to decide whether to embed a real engine next.',
       recommendedNextStep: recommendedNextMilestone,
       docsReference: 'docs/NATIVE_RUNTIME_CANDIDATES.md',
     ),
@@ -379,8 +379,8 @@ class RuntimeCandidateService {
   String next() {
     return '=== Runtime Next ===\n'
         'Recommended next milestone: $recommendedNextMilestone\n'
-        'Reason: a tiny embedded JS engine can prove JavaScript evaluation through the APK/native-library path without Node.js, npm, package downloads, or app-writable binary execution.\n'
-        'Fallback if embedding blocks: v0.31 Tiny APK Native Executable Probe.';
+        'Reason: js-proof proves controlled Dart -> Kotlin -> native evaluation without Node.js or npm; the next decision is whether to add a real embedded engine.\n'
+        'Fallback if real-engine scope is too large: v0.32 Native Runtime Candidate Narrowing.';
   }
 
   Future<String> researchDoctor(String sessionId) async {
@@ -423,6 +423,7 @@ class RuntimeCandidateService {
       'docs/NATIVE_TOOL_PROOF.md',
       'docs/PACKAGE_AUTHORING.md',
       'docs/NATIVE_RUNTIME_CANDIDATES.md',
+      'docs/JS_PROOF.md',
     ];
     return docs.every((path) => File(path).existsSync());
   }

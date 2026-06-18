@@ -151,6 +151,9 @@ class RuntimeCapabilityService {
     sb.writeln(
       'Native tools: ${report.nativeBridgeOk ? 'bridge-exposed' : 'unavailable'}',
     );
+    sb.writeln(
+      'Tiny JS proof: ${report.nativeBridgeOk ? 'available (js-proof)' : 'unavailable'}',
+    );
     sb.writeln('Runtime research: available (runtime-candidates)');
     sb.writeln('Workspace cwd: ${_ok(report.workspaceCwdOk)}');
     if (verbose) {
@@ -188,6 +191,7 @@ class RuntimeCapabilityService {
     sb.writeln('native bridge probe: ${_pass(report.nativeBridgeOk)}');
     sb.writeln('bundled native proof: ${_pass(report.nativeBridgeOk)}');
     sb.writeln('tiny native tool proof: ${_pass(report.nativeBridgeOk)}');
+    sb.writeln('tiny JS proof: ${_pass(report.nativeBridgeOk)}');
     sb.writeln('runtime candidate research: PASS');
     if (verbose) {
       sb.writeln();
@@ -212,6 +216,7 @@ class RuntimeCapabilityService {
         '  - Localhost diagnostics for ports, HTTP checks, and preview URLs\n'
         '  - Bundled native bridge proof (v0.28)\n'
         '  - Tiny native tools via the JNI bridge (v0.29): native-tool echo/cwd/pid/abi/hash/time/env\n'
+        '  - Tiny JS proof via native bridge (v0.31): js-proof eval/file/doctor\n'
         '  - Native runtime candidate research: runtime-candidates, runtime-next, runtime-research-doctor\n\n'
         'Not supported yet:\n'
         '  - Native binary packages\n'
@@ -220,6 +225,7 @@ class RuntimeCapabilityService {
         '  - Python\n'
         '  - Git\n\n'
         'Native tools are bridge-exposed, not package-installed binaries.\n'
+        'js-proof is built in and does not prove Node compatibility.\n'
         'Bundled runtime: native bridge proof available. Node.js not included.\n'
         'Next runtime phase: run runtime-next for the recommended proof.';
   }
@@ -232,11 +238,12 @@ class RuntimeCapabilityService {
         '4. Bundled native proof - tiny JNI/native bridge proof inside the APK (v0.28), no Node.\n'
         '5. Tiny native tool proof - audited native tools through the JNI bridge (v0.29), no Node.\n'
         '6. Native runtime candidate research - compare script, JNI, APK-native, embedded JS, Node, prefix, and remote paths.\n'
-        '7. Tiny JS/runtime feasibility proof - recommended next step before Node.\n'
-        '8. Node proof later - test ABI, extraction, and execution constraints.\n'
-        '9. npm proof later - prove package install/cache behavior in app storage.\n'
-        '10. Vite proof later - run a minimal dev server inside the sandbox.\n'
-        '11. CalypsoIDE integration later - wire editor workflows after runtime proof.\n'
+        '7. Tiny JS/runtime feasibility proof - controlled js-proof evaluator through the native bridge (v0.31), not Node.\n'
+        '8. Real embedded JS engine proof - decide whether to ship a small engine.\n'
+        '9. Node proof later - test ABI, extraction, and execution constraints.\n'
+        '10. npm proof later - prove package install/cache behavior in app storage.\n'
+        '11. Vite proof later - run a minimal dev server inside the sandbox.\n'
+        '12. CalypsoIDE integration later - wire editor workflows after runtime proof.\n'
         'Recommended next proof: runtime-next';
   }
 

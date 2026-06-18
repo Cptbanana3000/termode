@@ -10,7 +10,10 @@
 #include <string.h>
 #include <signal.h>
 #include <time.h>
+#include <ctype.h>
+#include <math.h>
 #include <string>
+#include <sstream>
 #include <vector>
 
 // ---------------------------------------------------------------------------
@@ -105,6 +108,163 @@ static std::string termode_sha256_hex(const std::string &input) {
     return std::string(buf, 64);
 }
 
+static std::string jsproof_trim(const std::string &input) {
+    size_t start = 0;
+    while (start < input.size() && isspace((unsigned char)input[start])) start++;
+    size_t end = input.size();
+    while (end > start && isspace((unsigned char)input[end - 1])) end--;
+    return input.substr(start, end - start);
+}
+
+static std::string jsproof_format_number(double value) {
+    if (!isfinite(value)) {
+        return "Error: Unsupported JS proof syntax.";
+    }
+    if (fabs(value - round(value)) < 0.000000001) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "%.0f", value);
+        return std::string(buf);
+    }
+    std::ostringstream out;
+    out.precision(12);
+    out << value;
+    return out.str();
+}
+
+class JsProofParser {
+public:
+    explicit JsProofParser(const std::string &src) : text(src), pos(0), failed(false) {}
+
+    bool parse(double &value) {
+        value = parseExpression();
+        skipSpaces();
+        if (failed || pos != text.size()) {
+            return false;
+        }
+        return true;
+    }
+
+private:
+    const std::string &text;
+    size_t pos;
+    bool failed;
+
+    void skipSpaces() {
+        while (pos < text.size() && isspace((unsigned char)text[pos])) pos++;
+    }
+
+    bool match(char c) {
+        skipSpaces();
+        if (pos < text.size() && text[pos] == c) {
+            pos++;
+            return true;
+        }
+        return false;
+    }
+
+    double parseExpression() {
+        double value = parseTerm();
+        while (!failed) {
+            if (match('+')) {
+                value += parseTerm();
+            } else if (match('-')) {
+                value -= parseTerm();
+            } else {
+                break;
+            }
+        }
+        return value;
+    }
+
+    double parseTerm() {
+        double value = parseFactor();
+        while (!failed) {
+            if (match('*')) {
+                value *= parseFactor();
+            } else if (match('/')) {
+                double divisor = parseFactor();
+                if (fabs(divisor) < 0.0000000001) {
+                    failed = true;
+                    return 0.0;
+                }
+                value /= divisor;
+            } else {
+                break;
+            }
+        }
+        return value;
+    }
+
+    double parseFactor() {
+        skipSpaces();
+        if (match('+')) return parseFactor();
+        if (match('-')) return -parseFactor();
+        if (match('(')) {
+            double value = parseExpression();
+            if (!match(')')) {
+                failed = true;
+            }
+            return value;
+        }
+        return parseNumber();
+    }
+
+    double parseNumber() {
+        skipSpaces();
+        const size_t start = pos;
+        bool hasDigit = false;
+        bool hasDot = false;
+        while (pos < text.size()) {
+            char c = text[pos];
+            if (isdigit((unsigned char)c)) {
+                hasDigit = true;
+                pos++;
+            } else if (c == '.' && !hasDot) {
+                hasDot = true;
+                pos++;
+            } else {
+                break;
+            }
+        }
+        if (!hasDigit) {
+            failed = true;
+            return 0.0;
+        }
+        return strtod(text.substr(start, pos - start).c_str(), nullptr);
+    }
+};
+
+static std::string termode_jsproof_eval(const std::string &input) {
+    std::string code = jsproof_trim(input);
+    if (code.empty() || code.size() > 4096) {
+        return "ERR:Unsupported JS proof syntax.";
+    }
+    const std::string lowered = [&code]() {
+        std::string out = code;
+        for (char &c : out) c = (char)tolower((unsigned char)c);
+        return out;
+    }();
+    const char *blocked[] = {"require", "import", "function", "=>", "process", "global", "fs", "http", "settimeout", "eval", ";"};
+    for (const char *token : blocked) {
+        if (lowered.find(token) != std::string::npos) {
+            return "ERR:Unsupported JS proof syntax.";
+        }
+    }
+    if ((code.size() >= 2 && code.front() == '\'' && code.back() == '\'') ||
+        (code.size() >= 2 && code.front() == '"' && code.back() == '"')) {
+        return "OK:" + code.substr(1, code.size() - 2);
+    }
+    if (code == "true" || code == "false") {
+        return "OK:" + code;
+    }
+    JsProofParser parser(code);
+    double value = 0.0;
+    if (!parser.parse(value)) {
+        return "ERR:Unsupported JS proof syntax.";
+    }
+    return "OK:" + jsproof_format_number(value);
+}
+
 extern "C" {
 
 // Bundled runtime proof (v0.28): a tiny, self-contained native bridge proof.
@@ -171,6 +331,29 @@ Java_com_termode_termode_MainActivity_nativeToolTime(
         return (jlong)-1;
     }
     return (jlong)ts.tv_sec * 1000 + (jlong)(ts.tv_nsec / 1000000);
+}
+
+// Tiny JS proof (v0.31): controlled JS-like evaluator. This is not Node.js
+// and not a real JS engine. It supports only arithmetic, simple literals, and
+// clean syntax errors. It spawns no shell and launches no external process.
+JNIEXPORT jstring JNICALL
+Java_com_termode_termode_MainActivity_jsProofEvalNative(
+    JNIEnv *env, jobject thiz, jstring input) {
+    const char *c_input = env->GetStringUTFChars(input, nullptr);
+    std::string code(c_input ? c_input : "");
+    if (c_input) {
+        env->ReleaseStringUTFChars(input, c_input);
+    }
+    return env->NewStringUTF(termode_jsproof_eval(code).c_str());
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_termode_termode_MainActivity_jsProofDoctorNative(
+    JNIEnv *env, jobject thiz) {
+    return termode_jsproof_eval("1 + 2 * 3") == "OK:7" &&
+           termode_jsproof_eval("require('fs')").rfind("ERR:", 0) == 0
+        ? JNI_TRUE
+        : JNI_FALSE;
 }
 
 // Tiny native-side command dispatcher proof. It only understands a literal

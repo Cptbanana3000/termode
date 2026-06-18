@@ -174,7 +174,7 @@ void main() {
         );
 
         expect(plan.output, contains('3. Localhost/preview workflow'));
-        expect(plan.output, contains('10. Vite proof later'));
+        expect(plan.output, contains('11. Vite proof later'));
         expect(capabilities.output, contains('Localhost diagnostics'));
       },
     );

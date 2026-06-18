@@ -9,6 +9,9 @@ The tiny native tools (the `native-tool` commands, see [NATIVE_TOOL_PROOF.md](NA
 Runtime candidate research is the current phase. Node.js, npm, Python, Git, and
 native package downloads are not included yet.
 
+`js-proof` is also built into Termode. It is not an installable package and does
+not make Node.js or npm available to packages.
+
 ## Package Shape
 
 Each package entry must include:

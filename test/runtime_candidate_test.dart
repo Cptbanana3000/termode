@@ -127,8 +127,8 @@ void main() {
       expect(result.isError, isFalse);
       expect(result.output, contains('Embedded JS Engine'));
       expect(result.output, contains('QuickJS'));
-      expect(result.output, contains('Best next experiment'));
-      expect(result.output, contains('v0.31 Tiny Embedded JS Engine'));
+      expect(result.output, contains('Tiny JS proof is available'));
+      expect(result.output, contains('v0.32 Embedded JS Engine'));
     });
 
     test('runtime-candidate node-binary details', () async {
@@ -182,9 +182,9 @@ void main() {
       final result = await commandService.execute('runtime-next');
 
       expect(result.isError, isFalse);
-      expect(result.output, contains('v0.31 Tiny Embedded JS Engine'));
+      expect(result.output, contains('v0.32 Embedded JS Engine Decision'));
       expect(result.output, contains('Fallback'));
-      expect(result.output, contains('Tiny APK Native Executable Probe'));
+      expect(result.output, contains('Native Runtime Candidate Narrowing'));
     });
 
     test('runtime-research-doctor output', () async {
@@ -208,8 +208,8 @@ void main() {
 
         expect(result.output, contains('6. Native runtime candidate research'));
         expect(result.output, contains('7. Tiny JS/runtime feasibility proof'));
-        expect(result.output, contains('8. Node proof later'));
-        expect(result.output, contains('11. CalypsoIDE integration later'));
+        expect(result.output, contains('8. Real embedded JS engine proof'));
+        expect(result.output, contains('12. CalypsoIDE integration later'));
       },
     );
 
@@ -266,7 +266,7 @@ void main() {
         expect(output, contains('runtime-candidates'));
         expect(output, contains('=== Runtime Candidates ==='));
         expect(output, contains('runtime-next'));
-        expect(output, contains('v0.31 Tiny Embedded JS Engine'));
+        expect(output, contains('v0.32 Embedded JS Engine Decision'));
 
         session.isPtyInteractionActive = false;
         session.isRealPtyActive = false;

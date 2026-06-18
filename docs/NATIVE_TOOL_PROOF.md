@@ -7,9 +7,8 @@ without adding a real runtime such as Node.js.
 **v0.29 does not include Node.js, npm, Python, Git, or a native package
 manager.**
 
-v0.30 runtime candidate research keeps native tools as built-in capabilities,
-not packages, and recommends a tiny embedded JS engine feasibility probe before
-attempting Node.js.
+v0.31 adds `js-proof`, a tiny built-in JS-like native bridge proof. It is not a
+package, not Node.js, and not npm.
 
 ## What `native-tool` Proves
 

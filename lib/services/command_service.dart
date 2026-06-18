@@ -14,6 +14,7 @@ import 'localhost_service.dart';
 import 'preview_service.dart';
 import 'bundled_runtime_service.dart';
 import 'native_tool_service.dart';
+import 'js_proof_service.dart';
 import 'package_manager_service.dart';
 import 'workspace_service.dart';
 
@@ -174,6 +175,14 @@ class CommandService {
               '  native-tool echo <text> - Echo text from native code\n'
               '  native-tool hash <text> - SHA-256 of text (native)\n'
               '  native-tool doctor - Diagnose the native tool bridge\n\n'
+              'JS Proof Commands:\n'
+              '  js-proof - Show tiny JS proof help\n'
+              '  js-proof info - Show proof engine status\n'
+              '  js-proof eval <code> - Evaluate tiny supported syntax\n'
+              '  js-proof file <path> - Evaluate a safe Termode file\n'
+              '  js-proof doctor - Diagnose the JS proof bridge\n'
+              '  js-proof limits - Show safety limits\n'
+              '  js-proof plan - Show staged JS/runtime plan\n\n'
               'Dev Server Commands:\n'
               '  localhost-doctor - Check localhost readiness\n'
               '  localhost-capabilities - Show localhost support\n'
@@ -942,6 +951,7 @@ class CommandService {
               '  bundled-runtime-paths  - Show native/runtime paths\n'
               '  bundled-runtime-plan   - Show bundled runtime roadmap\n'
               '  native-tool [sub]      - Run a tiny native bridge tool\n'
+              '  js-proof [sub]         - Run a tiny JS-like native bridge proof\n'
               '  localhost-doctor       - Check localhost readiness\n'
               '  localhost-capabilities - Show dev server readiness support\n'
               '  port-check <port>      - Check 127.0.0.1 port status\n'
@@ -1097,6 +1107,51 @@ class CommandService {
               output:
                   'Unknown native-tool subcommand: $sub\n'
                   'Usage: native-tool <help|info|echo|cwd|pid|abi|hash|time|env|doctor>',
+              isError: true,
+            );
+        }
+
+      case 'js-proof':
+        final proof = JsProofService();
+        final sub = args.isNotEmpty ? args[0].toLowerCase() : 'help';
+        switch (sub) {
+          case 'help':
+            return CommandResult(output: proof.help());
+          case 'info':
+            return CommandResult(output: await proof.info());
+          case 'eval':
+            final output = await proof.eval(args.sublist(1).join(' '));
+            return CommandResult(
+              output: output,
+              isError: output.startsWith('Error:'),
+            );
+          case 'file':
+            if (args.length < 2) {
+              return CommandResult(
+                output: 'Usage: js-proof file <path>',
+                isError: true,
+              );
+            }
+            final output = await proof.file(args[1]);
+            return CommandResult(
+              output: output,
+              isError: output.startsWith('Error:'),
+            );
+          case 'doctor':
+            final output = await proof.doctor();
+            return CommandResult(
+              output: output,
+              isError: output.contains('Overall: UNAVAILABLE'),
+            );
+          case 'limits':
+            return CommandResult(output: proof.limits());
+          case 'plan':
+            return CommandResult(output: proof.plan());
+          default:
+            return CommandResult(
+              output:
+                  'Unknown js-proof subcommand: $sub\n'
+                  'Usage: js-proof <help|info|eval|file|doctor|limits|plan>',
               isError: true,
             );
         }

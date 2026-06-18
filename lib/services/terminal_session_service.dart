@@ -625,6 +625,7 @@ class TerminalSessionService extends ChangeNotifier {
         'bundled-runtime-paths',
         'bundled-runtime-plan',
         'native-tool',
+        'js-proof',
         'localhost-doctor',
         'localhost-capabilities',
         'port-check',

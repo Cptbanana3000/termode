@@ -157,8 +157,9 @@ void main() {
       expect(result.output, contains('5. Tiny native tool proof'));
       expect(result.output, contains('6. Native runtime candidate research'));
       expect(result.output, contains('7. Tiny JS/runtime feasibility proof'));
-      expect(result.output, contains('10. Vite proof later'));
-      expect(result.output, contains('11. CalypsoIDE integration later'));
+      expect(result.output, contains('8. Real embedded JS engine proof'));
+      expect(result.output, contains('11. Vite proof later'));
+      expect(result.output, contains('12. CalypsoIDE integration later'));
     });
 
     test('runtime commands are intercepted inside REAL PTY mode', () async {

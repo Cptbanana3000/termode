@@ -45,6 +45,7 @@ const List<String> kTermodeCommands = [
   'bundled-runtime-paths',
   'bundled-runtime-plan',
   'native-tool',
+  'js-proof',
   'localhost-doctor',
   'localhost-capabilities',
   'port-check',

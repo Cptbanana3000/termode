@@ -50,11 +50,12 @@ management proofs before they become package types.
 4. Add one bundled native runtime proof binary to validate ABI and execution.
 5. Keep tiny native tools as built-in audited capabilities, not packages.
 6. Research native runtime candidates.
-7. Prove a tiny embedded JS/runtime path before Node.
-8. Add a Node runtime proof after native execution behavior is understood.
-9. Prove npm install/cache behavior inside app storage.
-10. Prove a minimal Vite dev server.
-11. Integrate CalypsoIDE workflows after runtime support is proven.
+7. Prove a tiny JS/runtime path before Node with `js-proof`.
+8. Decide whether to ship a real embedded JS engine.
+9. Add a Node runtime proof after native execution behavior is understood.
+10. Prove npm install/cache behavior inside app storage.
+11. Prove a minimal Vite dev server.
+12. Integrate CalypsoIDE workflows after runtime support is proven.
 
 ## Risks
 
@@ -67,9 +68,9 @@ management proofs before they become package types.
 
 ## Recommended Next Proof
 
-The next runtime target should be a tiny embedded JS engine feasibility probe,
-not Node. It should prove JavaScript evaluation through an Android-supported
-APK-native-library/JNI path before any large runtime is added.
+The current runtime target is the tiny `js-proof` evaluator, not Node. It proves
+controlled JavaScript-style evaluation through the APK-native-library/JNI path.
+The next target should decide whether to add a real embedded JS engine.
 
 ## Bundled Runtime Proof Findings (v0.28)
 
@@ -104,7 +105,6 @@ trying to drop and execute a binary in app storage. A future Node strategy
 should be evaluated as an APK-shipped native component driven through a native
 bridge.
 
-Recommended next step: native runtime candidate research, then a tiny embedded
-JS engine feasibility probe (still no Node), to confirm the native-library
-approach can support runtime-style evaluation before any large runtime is
-attempted.
+Recommended next step: embedded JS engine decision / real engine probe (still
+no Node), using the tiny `js-proof` results to decide whether a real engine is
+worth adding.
