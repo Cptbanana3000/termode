@@ -11,7 +11,7 @@ import 'package:termode/services/virtual_filesystem.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('QuickJS Probe (v0.33)', () {
+  group('Duktape Probe (v0.34)', () {
     late Directory tempDir;
     late RuntimeBootstrapService runtime;
     late CommandService commandService;
@@ -20,19 +20,19 @@ void main() {
     const nativeChannel = MethodChannel('com.termode/native_shell');
 
     setUp(() async {
-      tempDir = await Directory.systemTemp.createTemp('termode_quickjs');
+      tempDir = await Directory.systemTemp.createTemp('termode_duktape');
       runtime = RuntimeBootstrapService();
       runtime.overrideBaseDir = tempDir;
       await runtime.init();
-      commandService = CommandService(VirtualFileSystem(), 'quickjs_test');
+      commandService = CommandService(VirtualFileSystem(), 'duktape_test');
       bridgeMode = 'success';
 
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(nativeChannel, (call) async {
-            if (call.method == 'quickJs') {
+            if (call.method == 'duktape') {
               if (bridgeMode == 'throw') {
                 throw PlatformException(
-                  code: 'QUICKJS_FAILED',
+                  code: 'DUKTAPE_FAILED',
                   message: 'boom',
                 );
               }
@@ -45,7 +45,7 @@ void main() {
                 case 'info':
                   return {
                     'ok': true,
-                    'engine': 'QuickJS',
+                    'engine': 'Duktape',
                     'mode': 'native embedded engine',
                     'status': bridgeMode == 'limited' ? 'UNAVAILABLE' : 'PROBE',
                     'limited': bridgeMode == 'limited',
@@ -54,37 +54,37 @@ void main() {
                   if (bridgeMode == 'limited') {
                     return {
                       'ok': false,
-                      'engine': 'QuickJS',
+                      'engine': 'Duktape',
                       'mode': 'native embedded engine',
                       'limited': true,
                       'error':
-                          'QuickJS engine is not integrated in this build.',
+                          'Duktape engine is not integrated in this build.',
                     };
                   }
                   if (args.contains('bad')) {
                     return {
                       'ok': false,
-                      'engine': 'QuickJS',
+                      'engine': 'Duktape',
                       'error': 'SyntaxError: unexpected token',
                     };
                   }
                   if (args.contains('longOutput')) {
                     return {
                       'ok': true,
-                      'engine': 'QuickJS',
+                      'engine': 'Duktape',
                       'result': List.filled(9000, 'a').join(),
                     };
                   }
                   if (args.trim() == '1 + 2') {
-                    return {'ok': true, 'engine': 'QuickJS', 'result': '3'};
+                    return {'ok': true, 'engine': 'Duktape', 'result': '3'};
                   }
                   if (args.trim() == "'hello'.toUpperCase()") {
-                    return {'ok': true, 'engine': 'QuickJS', 'result': 'HELLO'};
+                    return {'ok': true, 'engine': 'Duktape', 'result': 'HELLO'};
                   }
-                  if (args.trim() == 'const x = 5; x * 2') {
-                    return {'ok': true, 'engine': 'QuickJS', 'result': '10'};
+                  if (args.trim() == 'var x = 5; x * 2') {
+                    return {'ok': true, 'engine': 'Duktape', 'result': '10'};
                   }
-                  return {'ok': true, 'engine': 'QuickJS', 'result': args};
+                  return {'ok': true, 'engine': 'Duktape', 'result': args};
                 case 'doctor':
                   return {
                     'ok': true,
@@ -111,24 +111,24 @@ void main() {
       }
     });
 
-    test('quickjs help output', () async {
-      final bare = await commandService.execute('quickjs');
-      final help = await commandService.execute('quickjs help');
+    test('duktape help output', () async {
+      final bare = await commandService.execute('duktape');
+      final help = await commandService.execute('duktape help');
 
       for (final output in [bare.output, help.output]) {
-        expect(output, contains('=== QuickJS Probe ==='));
-        expect(output, contains('quickjs eval <code>'));
-        expect(output, contains('quickjs file <path>'));
+        expect(output, contains('=== Duktape Probe ==='));
+        expect(output, contains('duktape eval <code>'));
+        expect(output, contains('duktape file <path>'));
         expect(output, contains('not Node.js'));
       }
     });
 
-    test('quickjs info output', () async {
-      final result = await commandService.execute('quickjs info');
+    test('duktape info output', () async {
+      final result = await commandService.execute('duktape info');
 
       expect(result.isError, isFalse);
-      expect(result.output, contains('=== QuickJS Probe Info ==='));
-      expect(result.output, contains('Engine: QuickJS'));
+      expect(result.output, contains('=== Duktape Probe Info ==='));
+      expect(result.output, contains('Engine: Duktape'));
       expect(result.output, contains('Mode: native embedded engine'));
       expect(result.output, contains('Node.js: not included'));
       expect(result.output, contains('npm: not included'));
@@ -137,97 +137,97 @@ void main() {
       expect(result.output, contains('Status: PROBE'));
     });
 
-    test('quickjs eval arithmetic success when mocked', () async {
-      final result = await commandService.execute('quickjs eval 1 + 2');
+    test('duktape eval arithmetic success when mocked', () async {
+      final result = await commandService.execute('duktape eval 1 + 2');
 
       expect(result.isError, isFalse);
-      expect(result.output, contains('Engine: QuickJS'));
+      expect(result.output, contains('Engine: Duktape'));
       expect(result.output, contains('Result: 3'));
     });
 
-    test('quickjs eval string success when mocked', () async {
+    test('duktape eval string success when mocked', () async {
       final result = await commandService.execute(
-        "quickjs eval 'hello'.toUpperCase()",
+        "duktape eval 'hello'.toUpperCase()",
       );
 
       expect(result.isError, isFalse);
       expect(result.output, contains('Result: HELLO'));
     });
 
-    test('quickjs eval const expression success when mocked', () async {
+    test('duktape eval var expression success when mocked', () async {
       final result = await commandService.execute(
-        'quickjs eval const x = 5; x * 2',
+        'duktape eval var x = 5; x * 2',
       );
 
       expect(result.isError, isFalse);
       expect(result.output, contains('Result: 10'));
     });
 
-    test('quickjs eval malformed JS does not crash', () async {
-      final result = await commandService.execute('quickjs eval bad !!!');
+    test('duktape eval malformed JS does not crash', () async {
+      final result = await commandService.execute('duktape eval bad !!!');
 
       expect(result.isError, isTrue);
       expect(result.output, contains('SyntaxError'));
     });
 
-    test('quickjs eval Node API blocked before bridge', () async {
-      final result = await commandService.execute("quickjs eval require('fs')");
+    test('duktape eval Node API blocked before bridge', () async {
+      final result = await commandService.execute("duktape eval require('fs')");
 
       expect(result.isError, isTrue);
       expect(result.output, contains('Node APIs are not available'));
       expect(result.output, contains('embedded JavaScript, not Node.js'));
     });
 
-    test('quickjs eval code length limit', () async {
+    test('duktape eval code length limit', () async {
       final longCode = List.filled(4097, '1').join();
-      final result = await commandService.execute('quickjs eval $longCode');
+      final result = await commandService.execute('duktape eval $longCode');
 
       expect(result.isError, isTrue);
       expect(result.output, contains('exceeds 4096 characters'));
     });
 
-    test('quickjs output length limit', () async {
-      final result = await commandService.execute('quickjs eval longOutput()');
+    test('duktape output length limit', () async {
+      final result = await commandService.execute('duktape eval longOutput()');
 
       expect(result.isError, isFalse);
       expect(result.output, contains('[Output truncated'));
       expect(result.output.length, lessThan(8300));
     });
 
-    test('quickjs file safe path', () async {
-      await commandService.execute('workspace-init quickdemo');
-      await commandService.execute('workspace-cd quickdemo');
+    test('duktape file safe path', () async {
+      await commandService.execute('workspace-init dukdemo');
+      await commandService.execute('workspace-cd dukdemo');
       await commandService.execute('host-write test.js 1 + 2');
 
-      final result = await commandService.execute('quickjs file test.js');
+      final result = await commandService.execute('duktape file test.js');
 
       expect(result.isError, isFalse);
       expect(result.output, contains('Result: 3'));
     });
 
-    test('quickjs file traversal blocked', () async {
-      final outside = File('${tempDir.parent.path}/outside-quickjs.js');
+    test('duktape file traversal blocked', () async {
+      final outside = File('${tempDir.parent.path}/outside-duktape.js');
       final result = await commandService.execute(
-        'quickjs file ${outside.path}',
+        'duktape file ${outside.path}',
       );
 
       expect(result.isError, isTrue);
       expect(result.output, contains('path escapes Termode workspace'));
     });
 
-    test('quickjs file size limit', () async {
+    test('duktape file size limit', () async {
       final paths = await runtime.getPaths();
       final big = File('${paths['home']}/big.js');
       await big.writeAsString('1' * 32769);
 
-      final result = await commandService.execute('quickjs file big.js');
+      final result = await commandService.execute('duktape file big.js');
 
       expect(result.isError, isTrue);
       expect(result.output, contains('exceeds 32768 bytes'));
     });
 
-    test('quickjs limits output', () async {
-      final result = await commandService.execute('quickjs limits');
+    test('duktape limits output', () async {
+      final result = await commandService.execute('duktape limits');
 
       expect(result.output, contains('Max inline code length: 4096 chars'));
       expect(result.output, contains('Max file size: 32768 bytes'));
@@ -236,15 +236,16 @@ void main() {
       expect(result.output, contains('Network: disabled'));
       expect(result.output, contains('Node APIs: disabled'));
       expect(result.output, contains('Timeout: not supported yet'));
+      expect(result.output, contains('Loop guard: limited'));
     });
 
-    test('quickjs doctor healthy and limited output', () async {
-      final healthy = await commandService.execute('quickjs doctor');
+    test('duktape doctor healthy and limited output', () async {
+      final healthy = await commandService.execute('duktape doctor');
       bridgeMode = 'limited';
-      final limited = await commandService.execute('quickjs doctor');
+      final limited = await commandService.execute('duktape doctor');
 
       expect(healthy.isError, isFalse);
-      expect(healthy.output, contains('=== QuickJS Doctor ==='));
+      expect(healthy.output, contains('=== Duktape Doctor ==='));
       expect(healthy.output, contains('Bridge: OK'));
       expect(healthy.output, contains('Engine: OK'));
       expect(healthy.output, contains('Overall: HEALTHY'));
@@ -253,40 +254,39 @@ void main() {
       expect(limited.output, contains('Overall: LIMITED'));
     });
 
-    test('quickjs plan output', () async {
-      final result = await commandService.execute('quickjs plan');
+    test('duktape plan output', () async {
+      final result = await commandService.execute('duktape plan');
 
-      expect(result.output, contains('1. QuickJS probe'));
-      expect(result.output, contains('2. Duktape fallback probe'));
-      expect(result.output, contains('3. Engine decision freeze'));
-      expect(result.output, contains('4. JS engine safety hardening'));
-      expect(result.output, contains('7. Vite later'));
+      expect(result.output, contains('1. Duktape probe'));
+      expect(result.output, contains('2. Engine decision freeze'));
+      expect(result.output, contains('3. JS engine safety hardening'));
+      expect(result.output, contains('6. Vite later'));
     });
 
-    test('QuickJS bridge failure mock', () async {
+    test('Duktape bridge failure mock', () async {
       bridgeMode = 'throw';
 
-      final result = await commandService.execute('quickjs info');
+      final result = await commandService.execute('duktape info');
 
       expect(result.isError, isFalse);
-      expect(result.output, contains('QuickJS bridge unavailable'));
+      expect(result.output, contains('Duktape bridge unavailable'));
       expect(result.output, contains('Runtime remains limited'));
     });
 
-    test('QuickJS bridge unavailable mock', () async {
+    test('Duktape bridge unavailable mock', () async {
       bridgeMode = 'unavailable';
 
-      final result = await commandService.execute('quickjs eval 1 + 2');
+      final result = await commandService.execute('duktape eval 1 + 2');
 
       expect(result.isError, isTrue);
-      expect(result.output, contains('QuickJS bridge unavailable'));
+      expect(result.output, contains('Duktape bridge unavailable'));
     });
 
-    test('QuickJS limited engine output', () async {
+    test('Duktape limited engine output', () async {
       bridgeMode = 'limited';
 
-      final info = await commandService.execute('quickjs info');
-      final eval = await commandService.execute('quickjs eval 1 + 2');
+      final info = await commandService.execute('duktape info');
+      final eval = await commandService.execute('duktape eval 1 + 2');
 
       expect(info.isError, isTrue);
       expect(info.output, contains('Status: UNAVAILABLE'));
@@ -294,57 +294,53 @@ void main() {
       expect(eval.output, contains('engine is not integrated'));
     });
 
-    test('runtime integration mentions QuickJS probe', () async {
+    test('runtime integration mentions Duktape probe', () async {
       final plan = await commandService.execute('runtime-plan');
       final caps = await commandService.execute('runtime-capabilities');
       final next = await commandService.execute('runtime-next');
 
-      expect(plan.output, contains('9. QuickJS probe'));
       expect(plan.output, contains('10. Duktape probe/fallback'));
       expect(plan.output, contains('15. CalypsoIDE integration later'));
-      expect(caps.output, contains('QuickJS probe command surface'));
+      expect(caps.output, contains('Duktape probe command surface'));
       expect(next.output, contains('v0.35 Runtime Decision Freeze'));
     });
 
-    test('js-engine commands mention QuickJS fallback status', () async {
+    test('js-engine commands mention Duktape fallback status', () async {
       final decision = await commandService.execute('js-engine-decision');
       final next = await commandService.execute('js-engine-next');
       final doctor = await commandService.execute('js-engine-doctor');
 
-      expect(
-        decision.output,
-        contains('QuickJS and Duktape remain limited probes'),
-      );
+      expect(decision.output, contains('QuickJS and Duktape remain limited'));
       expect(next.output, contains('v0.35 Runtime Decision Freeze'));
-      expect(doctor.output, contains('QuickJS probe: limited/unavailable'));
+      expect(doctor.output, contains('Duktape probe: limited/unavailable'));
       expect(doctor.output, contains('Overall: LIMITED'));
     });
 
-    test('help includes quickjs', () async {
+    test('help includes duktape', () async {
       final help = await commandService.execute('help');
       final runtimeHelp = await commandService.execute('runtime-help');
 
-      expect(help.output, contains('QuickJS Probe Commands:'));
-      expect(help.output, contains('quickjs eval <code>'));
-      expect(runtimeHelp.output, contains('quickjs [sub]'));
+      expect(help.output, contains('Duktape Probe Commands:'));
+      expect(help.output, contains('duktape eval <code>'));
+      expect(runtimeHelp.output, contains('duktape [sub]'));
     });
 
-    test('autocomplete includes quickjs', () {
-      expect(kTermodeCommands, contains('quickjs'));
+    test('autocomplete includes duktape', () {
+      expect(kTermodeCommands, contains('duktape'));
     });
 
-    test('REAL PTY host interception includes quickjs', () async {
+    test('REAL PTY host interception includes duktape', () async {
       final sessionService = TerminalSessionService();
       final session = sessionService.activeSession;
       session.lines.clear();
       session.isRealPtyActive = true;
       session.isPtyInteractionActive = true;
 
-      await sessionService.executeCommand('quickjs info');
+      await sessionService.executeCommand('duktape info');
 
       final output = session.lines.map((line) => line.text).join('\n');
-      expect(output, contains('quickjs info'));
-      expect(output, contains('=== QuickJS Probe Info ==='));
+      expect(output, contains('duktape info'));
+      expect(output, contains('=== Duktape Probe Info ==='));
 
       session.isPtyInteractionActive = false;
       session.isRealPtyActive = false;

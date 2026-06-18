@@ -127,8 +127,8 @@ void main() {
       expect(result.isError, isFalse);
       expect(result.output, contains('Embedded JS Engine'));
       expect(result.output, contains('QuickJS'));
-      expect(result.output, contains('v0.33 QuickJS command/bridge probe'));
-      expect(result.output, contains('v0.34 Duktape Probe'));
+      expect(result.output, contains('v0.33 QuickJS and v0.34 Duktape'));
+      expect(result.output, contains('freeze the runtime decision'));
     });
 
     test('runtime-candidate node-binary details', () async {
@@ -163,6 +163,7 @@ void main() {
       expect(result.output, contains('Keep script packages'));
       expect(result.output, contains('Keep JNI native tools'));
       expect(result.output, contains('Keep v0.33 QuickJS probe limited'));
+      expect(result.output, contains('Keep v0.34 Duktape probe limited'));
     });
 
     test('runtime-risks output', () async {
@@ -179,9 +180,9 @@ void main() {
       final result = await commandService.execute('runtime-next');
 
       expect(result.isError, isFalse);
-      expect(result.output, contains('v0.34 Duktape Probe'));
-      expect(result.output, contains('Fallback'));
-      expect(result.output, contains('quickjs limited'));
+      expect(result.output, contains('v0.35 Runtime Decision Freeze'));
+      expect(result.output, contains('QuickJS and v0.34 Duktape probes'));
+      expect(result.output, contains('no local engine source'));
     });
 
     test('runtime-research-doctor output', () async {
@@ -196,6 +197,7 @@ void main() {
       expect(result.output, contains('Script packages supported: YES'));
       expect(result.output, contains('Preview/localhost supported: YES'));
       expect(result.output, contains('QuickJS probe: limited/unavailable'));
+      expect(result.output, contains('Duktape probe: limited/unavailable'));
       expect(result.output, contains('Overall readiness: LIMITED'));
     });
 
@@ -211,7 +213,8 @@ void main() {
           contains('8. Real embedded JS engine decision/probe'),
         );
         expect(result.output, contains('9. QuickJS probe'));
-        expect(result.output, contains('14. CalypsoIDE integration later'));
+        expect(result.output, contains('10. Duktape probe/fallback'));
+        expect(result.output, contains('15. CalypsoIDE integration later'));
       },
     );
 
@@ -268,7 +271,7 @@ void main() {
         expect(output, contains('runtime-candidates'));
         expect(output, contains('=== Runtime Candidates ==='));
         expect(output, contains('runtime-next'));
-        expect(output, contains('v0.34 Duktape Probe'));
+        expect(output, contains('v0.35 Runtime Decision Freeze'));
 
         session.isPtyInteractionActive = false;
         session.isRealPtyActive = false;
@@ -283,6 +286,7 @@ void main() {
       expect(File('docs/PACKAGE_AUTHORING.md').existsSync(), isTrue);
       expect(File('docs/JS_ENGINE_DECISION.md').existsSync(), isTrue);
       expect(File('docs/QUICKJS_PROBE.md').existsSync(), isTrue);
+      expect(File('docs/DUKTAPE_PROBE.md').existsSync(), isTrue);
     });
   });
 }

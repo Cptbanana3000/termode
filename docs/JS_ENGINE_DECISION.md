@@ -23,9 +23,10 @@ such as `require`, `import`, `process`, `fs`, `http`, and `eval`.
 route and safety model, not compatibility with browser JavaScript, Node, npm,
 or packages.
 
-`quickjs` is now available as a limited/unavailable probe surface. It reports
-cleanly that the engine source is not integrated in this build. See
-[QUICKJS_PROBE.md](QUICKJS_PROBE.md).
+`quickjs` and `duktape` are now available as limited/unavailable probe
+surfaces. They report cleanly that their engine sources are not integrated in
+this build. See [QUICKJS_PROBE.md](QUICKJS_PROBE.md) and
+[DUKTAPE_PROBE.md](DUKTAPE_PROBE.md).
 
 ## Candidate Summary
 
@@ -56,7 +57,7 @@ Cons:
 - Native crashes can affect the app process.
 
 v0.33 result: the command/bridge surface was added, but engine integration was
-deferred because no source snapshot was available locally.
+deferred because no QuickJS source snapshot was available locally.
 
 Recommendation: do not expose QuickJS evaluation until source vendoring,
 timeout/interruption, memory/output limits, and crash behavior are solved.
@@ -66,8 +67,10 @@ timeout/interruption, memory/output limits, and crash behavior are solved.
 Duktape is a simpler mature embeddable JavaScript engine. It is less modern
 than QuickJS, but may be easier to integrate as a first real-engine fallback.
 
-Recommendation: use Duktape as the v0.34 fallback if QuickJS remains too large,
-unavailable, or hard to interrupt safely.
+v0.34 result: the command/bridge surface was added, but engine integration was
+deferred because no Duktape source snapshot was available locally.
+
+Recommendation: freeze the runtime decision before adding more engine surfaces.
 
 ## JavaScriptCore, V8, And Node
 
@@ -102,6 +105,6 @@ the real engine should stay behind a research-only proof.
 Real engine integration is still deferred. The current working proof remains
 `js-proof`, while `quickjs` is a limited bridge/command probe.
 
-Recommended next step: `v0.34 Duktape Probe / Engine fallback`.
+Recommended next step: `v0.35 Runtime Decision Freeze`.
 
 Fallback: keep the current proof longer if no engine can be added safely.

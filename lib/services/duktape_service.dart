@@ -4,10 +4,10 @@ import 'package:flutter/services.dart';
 
 import 'workspace_service.dart';
 
-class QuickJsService {
-  static final QuickJsService _instance = QuickJsService._internal();
-  factory QuickJsService() => _instance;
-  QuickJsService._internal();
+class DuktapeService {
+  static final DuktapeService _instance = DuktapeService._internal();
+  factory DuktapeService() => _instance;
+  DuktapeService._internal();
 
   static const String channelName = 'com.termode/native_shell';
   static const int maxCodeLength = 4096;
@@ -15,7 +15,7 @@ class QuickJsService {
   static const int maxOutputLength = 8192;
 
   static const String unavailable =
-      'QuickJS bridge unavailable.\nRuntime remains limited.';
+      'Duktape bridge unavailable.\nRuntime remains limited.';
 
   Future<Map<String, dynamic>?> _call(
     String command, [
@@ -24,7 +24,7 @@ class QuickJsService {
     try {
       final dynamic res = await const MethodChannel(
         channelName,
-      ).invokeMethod('quickJs', {'command': command, 'args': args});
+      ).invokeMethod('duktape', {'command': command, 'args': args});
       if (res is Map) {
         return Map<String, dynamic>.from(res);
       }
@@ -39,25 +39,25 @@ class QuickJsService {
   }
 
   String help() {
-    return '=== QuickJS Probe ===\n'
-        'Real embedded JavaScript engine probe command surface.\n'
+    return '=== Duktape Probe ===\n'
+        'Embedded JavaScript engine fallback probe command surface.\n'
         'This is not Node.js and not npm.\n\n'
         'Commands:\n'
-        '  quickjs help        - Show this help\n'
-        '  quickjs info        - Show QuickJS probe status\n'
-        '  quickjs eval <code> - Evaluate code if the engine is available\n'
-        '  quickjs file <path> - Evaluate a small safe Termode file\n'
-        '  quickjs limits      - Show safety limits\n'
-        '  quickjs doctor      - Diagnose the QuickJS bridge/engine\n'
-        '  quickjs plan        - Show staged QuickJS/runtime plan';
+        '  duktape help        - Show this help\n'
+        '  duktape info        - Show Duktape probe status\n'
+        '  duktape eval <code> - Evaluate code if the engine is available\n'
+        '  duktape file <path> - Evaluate a small safe Termode file\n'
+        '  duktape limits      - Show safety limits\n'
+        '  duktape doctor      - Diagnose the Duktape bridge/engine\n'
+        '  duktape plan        - Show staged Duktape/runtime plan';
   }
 
   Future<String> info() async {
     final r = await _call('info');
     if (r == null) return unavailable;
     final sb = StringBuffer();
-    sb.writeln('=== QuickJS Probe Info ===');
-    sb.writeln('Engine: ${r['engine'] ?? 'QuickJS'}');
+    sb.writeln('=== Duktape Probe Info ===');
+    sb.writeln('Engine: ${r['engine'] ?? 'Duktape'}');
     sb.writeln('Mode: ${r['mode'] ?? 'native embedded engine'}');
     sb.writeln('Node.js: not included');
     sb.writeln('npm: not included');
@@ -76,9 +76,9 @@ class QuickJsService {
     if (r == null) return unavailable;
     if (r['ok'] == true) {
       final value = _limitOutput(r['result']?.toString() ?? '');
-      return 'Engine: ${r['engine'] ?? 'QuickJS'}\nResult: $value';
+      return 'Engine: ${r['engine'] ?? 'Duktape'}\nResult: $value';
     }
-    final error = r['error']?.toString() ?? 'QuickJS evaluation failed.';
+    final error = r['error']?.toString() ?? 'Duktape evaluation failed.';
     if (_isNodeApiError(error)) {
       return 'Error: Node APIs are not available.\n'
           'This is embedded JavaScript, not Node.js.';
@@ -88,27 +88,27 @@ class QuickJsService {
 
   Future<String> file(String path) async {
     if (path.trim().isEmpty) {
-      return 'Usage: quickjs file <path>';
+      return 'Usage: duktape file <path>';
     }
     final File file;
     try {
       file = await WorkspaceService().resolveHostFile(path);
     } on FileSystemException {
-      return 'Error: quickjs file path escapes Termode workspace.';
+      return 'Error: duktape file path escapes Termode workspace.';
     }
     if (!await file.exists()) {
-      return 'Error: QuickJS file not found: $path';
+      return 'Error: Duktape file not found: $path';
     }
     final length = await file.length();
     if (length > maxFileSize) {
-      return 'Error: QuickJS file exceeds $maxFileSize bytes.';
+      return 'Error: Duktape file exceeds $maxFileSize bytes.';
     }
     final code = await file.readAsString();
     return eval(code);
   }
 
   String limits() {
-    return '=== QuickJS Limits ===\n'
+    return '=== Duktape Limits ===\n'
         'Max inline code length: $maxCodeLength chars\n'
         'Max file size: $maxFileSize bytes\n'
         'Max output length: $maxOutputLength chars\n'
@@ -117,7 +117,7 @@ class QuickJsService {
         'Node APIs: disabled\n'
         'npm: unavailable\n'
         'Timeout: not supported yet\n'
-        'Loop guard: obvious while(true) and for(;;) patterns are blocked';
+        'Loop guard: limited - obvious while(true) and for(;;) patterns are blocked';
   }
 
   Future<String> doctor() async {
@@ -131,9 +131,11 @@ class QuickJsService {
         ? 'HEALTHY'
         : (bridgeOk ? 'LIMITED' : 'UNAVAILABLE');
     final sb = StringBuffer();
-    sb.writeln('=== QuickJS Doctor ===');
+    sb.writeln('=== Duktape Doctor ===');
     sb.writeln('Bridge: ${bridgeOk ? 'OK' : 'FAIL'}');
-    sb.writeln('Engine: ${engineOk ? 'OK' : 'LIMITED'}');
+    sb.writeln(
+      'Engine: ${engineOk ? 'OK' : (bridgeOk ? 'LIMITED' : 'UNAVAILABLE')}',
+    );
     sb.writeln('Eval: ${evalOk ? 'OK' : 'LIMITED'}');
     sb.writeln('Errors: ${errorsOk ? 'OK' : 'FAIL'}');
     sb.writeln('Node APIs: disabled');
@@ -142,23 +144,22 @@ class QuickJsService {
   }
 
   String plan() {
-    return '=== QuickJS Plan ===\n'
-        '1. QuickJS probe\n'
-        '2. Duktape fallback probe\n'
-        '3. Engine decision freeze\n'
-        '4. JS engine safety hardening if engine chosen\n'
-        '5. Node strategy later\n'
-        '6. npm later\n'
-        '7. Vite later';
+    return '=== Duktape Plan ===\n'
+        '1. Duktape probe\n'
+        '2. Engine decision freeze\n'
+        '3. JS engine safety hardening if engine chosen\n'
+        '4. Node strategy later\n'
+        '5. npm later\n'
+        '6. Vite later';
   }
 
   String? _validateCode(String code) {
     final trimmed = code.trim();
     if (trimmed.isEmpty) {
-      return 'Usage: quickjs eval <code>';
+      return 'Usage: duktape eval <code>';
     }
     if (code.length > maxCodeLength) {
-      return 'Error: QuickJS code exceeds $maxCodeLength characters.';
+      return 'Error: Duktape code exceeds $maxCodeLength characters.';
     }
     final lower = code.toLowerCase();
     if (RegExp(r'\b(require|import|process|fs|http|eval)\b').hasMatch(lower)) {
@@ -166,7 +167,7 @@ class QuickJsService {
           'This is embedded JavaScript, not Node.js.';
     }
     if (lower.contains('while(true)') || lower.contains('for(;;)')) {
-      return 'Error: QuickJS execution timed out.';
+      return 'Error: Duktape execution timed out.';
     }
     return null;
   }

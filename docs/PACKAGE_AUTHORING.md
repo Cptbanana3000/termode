@@ -17,6 +17,10 @@ this build QuickJS source is not integrated, Node.js is not available, npm is
 not available, and packages cannot use `require`, `import`, `process`, `fs`, or
 `http` APIs.
 
+`duktape` is also a built-in probe command surface, not an installable package.
+In this build Duktape source is not integrated. Remote packages remain
+script-only and cannot use embedded JavaScript engine APIs.
+
 ## Package Shape
 
 Each package entry must include:

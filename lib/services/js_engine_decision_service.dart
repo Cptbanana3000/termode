@@ -29,8 +29,7 @@ class JsEngineCandidate {
 }
 
 class JsEngineDecisionService {
-  static const recommendedNextMilestone =
-      'v0.34 Duktape Probe / Engine fallback';
+  static const recommendedNextMilestone = 'v0.35 Runtime Decision Freeze';
 
   static const List<JsEngineCandidate> candidates = [
     JsEngineCandidate(
@@ -107,9 +106,10 @@ class JsEngineDecisionService {
       buildComplexity: 'Low to medium compared with QuickJS.',
       securityNotes:
           'Use a sealed global environment. Do not expose host APIs or Node APIs.',
-      currentStatus: 'Not integrated.',
+      currentStatus:
+          'v0.34 command/bridge probe exists, but Duktape source is not integrated in this build.',
       recommendation:
-          'Use as v0.34 fallback if QuickJS cannot be integrated safely.',
+          'Keep as a limited fallback probe and freeze the runtime decision before adding more engine surfaces.',
     ),
     JsEngineCandidate(
       id: 'javascriptcore',
@@ -196,7 +196,7 @@ class JsEngineDecisionService {
           'Avoids new native crash/resource risks while preserving current proof.',
       currentStatus: 'Chosen for v0.32 implementation scope.',
       recommendation:
-          'Use as fallback while QuickJS remains limited/unavailable.',
+          'Use as fallback while QuickJS and Duktape remain limited/unavailable.',
     ),
   ];
 
@@ -245,17 +245,18 @@ class JsEngineDecisionService {
 
   String decision() {
     return '=== JS Engine Decision ===\n'
-        'Decision: QuickJS remains a limited v0.33 probe because no local source snapshot was available to integrate safely.\n'
-        'Chosen path: keep js-proof as the safe current proof and keep quickjs as an unavailable/limited probe surface.\n'
+        'Decision: QuickJS and Duktape remain limited probes because no local source snapshots were available to integrate safely.\n'
+        'Chosen path: keep js-proof as the safe current proof and keep quickjs/duktape as unavailable/limited probe surfaces.\n'
         'Recommended next milestone: $recommendedNextMilestone\n\n'
         'Why:\n'
         '  - QuickJS is still promising, but this repo does not contain a vendored source snapshot.\n'
-        '  - Duktape is a good fallback if QuickJS cannot be sourced and limited cleanly.\n'
+        '  - Duktape is simpler, but this repo also does not contain a vendored source snapshot.\n'
         '  - V8 and JavaScriptCore are too large or platform-dependent for this stage.\n'
         '  - Node.js is a future runtime goal, not this engine probe.\n\n'
         'Node.js included: NO\n'
         'npm included: NO\n'
-        'QuickJS source integrated: NO';
+        'QuickJS source integrated: NO\n'
+        'Duktape source integrated: NO';
   }
 
   String risks() {
@@ -272,8 +273,8 @@ class JsEngineDecisionService {
   String next() {
     return '=== JS Engine Next ===\n'
         'Recommended next milestone: $recommendedNextMilestone\n'
-        'Scope: test Duktape or another smaller source-vendored engine path if QuickJS remains too large or unavailable.\n'
-        'Fallback: keep js-proof and quickjs limited until timeout/resource limits are practical.\n'
+        'Scope: freeze the runtime decision: choose js-proof-only for now, or pick one embedded engine path with source, timeout, and safety criteria.\n'
+        'Fallback: keep js-proof plus limited quickjs/duktape probes until timeout/resource limits are practical.\n'
         'Safety gate: do not expose loops broadly until timeout or interrupt behavior is proven.\n'
         'Node.js/npm: still not included.';
   }
@@ -283,8 +284,9 @@ class JsEngineDecisionService {
         'Decision commands: OK\n'
         'Current proof: js-proof\n'
         'QuickJS probe: limited/unavailable\n'
+        'Duktape probe: limited/unavailable\n'
         'Real embedded engine: not integrated\n'
-        'Recommended candidate: duktape fallback\n'
+        'Recommended next: runtime decision freeze\n'
         'Fallback candidate: no-engine-yet\n'
         'Node.js included: NO\n'
         'npm included: NO\n'

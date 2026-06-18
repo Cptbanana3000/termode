@@ -69,6 +69,8 @@ Node. v0.32 adds `js-engine-*` decision commands comparing QuickJS, Duktape,
 JavaScriptCore, V8, Node, the current proof, and no-engine-yet.
 v0.33 adds the `quickjs` command/bridge probe, but QuickJS source is not
 integrated in this build.
+v0.34 adds the `duktape` fallback command/bridge probe, but Duktape source is
+not integrated in this build.
 
 Strengths:
 - Proves JavaScript evaluation without npm.
@@ -125,12 +127,15 @@ Current decision:
 Current probe:
 - `v0.33 QuickJS Probe` via `quickjs`, limited/unavailable because no QuickJS
   source snapshot is vendored
+- `v0.34 Duktape Probe / Engine Fallback` via `duktape`,
+  limited/unavailable because no Duktape source snapshot is vendored
 
 Next proof:
-- `v0.34 Duktape Probe / Engine fallback`
+- `v0.35 Runtime Decision Freeze`
 
 Later:
 - Attempt Node only after the runtime strategy is proven.
 
 See [JS_ENGINE_DECISION.md](JS_ENGINE_DECISION.md) for the detailed engine
-comparison and [QUICKJS_PROBE.md](QUICKJS_PROBE.md) for the v0.33 probe.
+comparison, [QUICKJS_PROBE.md](QUICKJS_PROBE.md) for the v0.33 probe, and
+[DUKTAPE_PROBE.md](DUKTAPE_PROBE.md) for the v0.34 probe.

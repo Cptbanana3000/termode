@@ -226,6 +226,7 @@ class NativeToolService {
     sb.writeln('Tiny JS proof: available via js-proof');
     sb.writeln('JS engine decision: available via js-engine-decision');
     sb.writeln('QuickJS probe: limited/unavailable via quickjs');
+    sb.writeln('Duktape probe: limited/unavailable via duktape');
     sb.writeln('Runtime research: available via runtime-candidates');
     sb.writeln('Recommended next proof: runtime-next');
     sb.writeln('Node.js: not included');

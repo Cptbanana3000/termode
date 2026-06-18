@@ -162,8 +162,9 @@ void main() {
         contains('8. Real embedded JS engine decision/probe'),
       );
       expect(result.output, contains('9. QuickJS probe'));
-      expect(result.output, contains('13. Vite proof later'));
-      expect(result.output, contains('14. CalypsoIDE integration later'));
+      expect(result.output, contains('10. Duktape probe/fallback'));
+      expect(result.output, contains('14. Vite proof later'));
+      expect(result.output, contains('15. CalypsoIDE integration later'));
     });
 
     test('runtime commands are intercepted inside REAL PTY mode', () async {

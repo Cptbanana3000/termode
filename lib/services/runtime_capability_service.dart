@@ -156,6 +156,7 @@ class RuntimeCapabilityService {
     );
     sb.writeln('JS engine decision: available (js-engine-decision)');
     sb.writeln('QuickJS probe: limited/unavailable (quickjs)');
+    sb.writeln('Duktape probe: limited/unavailable (duktape)');
     sb.writeln('Runtime research: available (runtime-candidates)');
     sb.writeln('Workspace cwd: ${_ok(report.workspaceCwdOk)}');
     if (verbose) {
@@ -196,6 +197,7 @@ class RuntimeCapabilityService {
     sb.writeln('tiny JS proof: ${_pass(report.nativeBridgeOk)}');
     sb.writeln('JS engine decision/probe: PASS');
     sb.writeln('QuickJS probe command surface: PASS');
+    sb.writeln('Duktape probe command surface: PASS');
     sb.writeln('runtime candidate research: PASS');
     if (verbose) {
       sb.writeln();
@@ -223,6 +225,7 @@ class RuntimeCapabilityService {
         '  - Tiny JS proof via native bridge (v0.31): js-proof eval/file/doctor\n'
         '  - JS engine decision/probe commands (v0.32): js-engine-candidates, js-engine-decision, js-engine-next\n'
         '  - QuickJS probe command surface (v0.33): quickjs info/eval/file/doctor; engine source not integrated yet\n'
+        '  - Duktape probe command surface (v0.34): duktape info/eval/file/doctor; engine source not integrated yet\n'
         '  - Native runtime candidate research: runtime-candidates, runtime-next, runtime-research-doctor\n\n'
         'Not supported yet:\n'
         '  - Native binary packages\n'
@@ -233,6 +236,7 @@ class RuntimeCapabilityService {
         'Native tools are bridge-exposed, not package-installed binaries.\n'
         'js-proof is built in and does not prove Node compatibility.\n'
         'QuickJS is a built-in probe surface, not a package; current engine status is limited/unavailable until source is integrated.\n'
+        'Duktape is a built-in fallback probe surface, not a package; current engine status is limited/unavailable until source is integrated.\n'
         'Real embedded JS is being evaluated separately and is not Node.\n'
         'Bundled runtime: native bridge proof available. Node.js not included.\n'
         'Next runtime phase: run runtime-next for the recommended proof.';
@@ -249,11 +253,12 @@ class RuntimeCapabilityService {
         '7. Tiny JS/runtime feasibility proof - controlled js-proof evaluator through the native bridge (v0.31), not Node.\n'
         '8. Real embedded JS engine decision/probe - v0.32 decision commands, real engine deferred to scoped proof.\n'
         '9. QuickJS probe - command/bridge surface added; engine source not integrated in this build.\n'
-        '10. QuickJS safety hardening - timeout, memory, output, and crash isolation before broad use.\n'
-        '11. Node proof later - test ABI, extraction, and execution constraints.\n'
-        '12. npm proof later - prove package install/cache behavior in app storage.\n'
-        '13. Vite proof later - run a minimal dev server inside the sandbox.\n'
-        '14. CalypsoIDE integration later - wire editor workflows after runtime proof.\n'
+        '10. Duktape probe/fallback - command/bridge surface added; engine source not integrated in this build.\n'
+        '11. Runtime decision freeze - choose engine path or keep js-proof longer.\n'
+        '12. Node proof later - test ABI, extraction, and execution constraints.\n'
+        '13. npm proof later - prove package install/cache behavior in app storage.\n'
+        '14. Vite proof later - run a minimal dev server inside the sandbox.\n'
+        '15. CalypsoIDE integration later - wire editor workflows after runtime proof.\n'
         'Recommended next proof: runtime-next';
   }
 

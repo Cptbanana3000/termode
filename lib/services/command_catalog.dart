@@ -53,6 +53,7 @@ const List<String> kTermodeCommands = [
   'js-engine-next',
   'js-engine-doctor',
   'quickjs',
+  'duktape',
   'localhost-doctor',
   'localhost-capabilities',
   'port-check',

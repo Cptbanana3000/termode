@@ -95,12 +95,20 @@ Remote packages remain script-only. QuickJS is built into Termode as a probe
 surface, not an installable package. QuickJS is not Node.js, and npm is not
 available.
 
+## v0.34 Update
+
+v0.34 added the `duktape` fallback probe surface. Like `quickjs`, it is
+limited/unavailable in this build because no local source snapshot is vendored.
+
+The recommended next step is `v0.35 Runtime Decision Freeze`.
+
 ## Future Plan
 
 1. QuickJS probe command/bridge surface
-2. QuickJS safety hardening if a source snapshot is integrated later
-3. Duktape or smaller embedded-engine fallback if QuickJS remains too large
-4. Optional JS script package bridge much later
-5. Node strategy much later
-6. npm later
-7. Vite later
+2. Duktape fallback probe command/bridge surface
+3. Runtime decision freeze
+4. JS engine safety hardening if an engine is chosen
+5. Optional JS script package bridge much later
+6. Node strategy much later
+7. npm later
+8. Vite later

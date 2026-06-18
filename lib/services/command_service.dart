@@ -17,6 +17,7 @@ import 'native_tool_service.dart';
 import 'js_proof_service.dart';
 import 'js_engine_decision_service.dart';
 import 'quickjs_service.dart';
+import 'duktape_service.dart';
 import 'package_manager_service.dart';
 import 'workspace_service.dart';
 
@@ -200,6 +201,14 @@ class CommandService {
               '  quickjs limits - Show QuickJS safety limits\n'
               '  quickjs doctor - Diagnose QuickJS bridge/engine\n'
               '  quickjs plan - Show staged QuickJS/runtime plan\n\n'
+              'Duktape Probe Commands:\n'
+              '  duktape - Show Duktape probe help\n'
+              '  duktape info - Show Duktape probe status\n'
+              '  duktape eval <code> - Evaluate code if engine is available\n'
+              '  duktape file <path> - Evaluate a safe Termode JS file\n'
+              '  duktape limits - Show Duktape safety limits\n'
+              '  duktape doctor - Diagnose Duktape bridge/engine\n'
+              '  duktape plan - Show staged Duktape/runtime plan\n\n'
               'Dev Server Commands:\n'
               '  localhost-doctor - Check localhost readiness\n'
               '  localhost-capabilities - Show localhost support\n'
@@ -971,6 +980,7 @@ class CommandService {
               '  js-proof [sub]         - Run a tiny JS-like native bridge proof\n'
               '  js-engine-*            - Show embedded JS engine decision/research\n'
               '  quickjs [sub]          - Run the QuickJS embedded-engine probe\n'
+              '  duktape [sub]          - Run the Duktape fallback-engine probe\n'
               '  localhost-doctor       - Check localhost readiness\n'
               '  localhost-capabilities - Show dev server readiness support\n'
               '  port-check <port>      - Check 127.0.0.1 port status\n'
@@ -1260,6 +1270,61 @@ class CommandService {
               output:
                   'Unknown quickjs subcommand: $sub\n'
                   'Usage: quickjs <help|info|eval|file|limits|doctor|plan>',
+              isError: true,
+            );
+        }
+
+      case 'duktape':
+        final duktape = DuktapeService();
+        final sub = args.isNotEmpty ? args[0].toLowerCase() : 'help';
+        switch (sub) {
+          case 'help':
+            return CommandResult(output: duktape.help());
+          case 'info':
+            final output = await duktape.info();
+            return CommandResult(
+              output: output,
+              isError: output.contains('Status: UNAVAILABLE'),
+            );
+          case 'eval':
+            final output = await duktape.eval(args.sublist(1).join(' '));
+            return CommandResult(
+              output: output,
+              isError:
+                  output.startsWith('Error:') ||
+                  output.startsWith('Duktape bridge unavailable'),
+            );
+          case 'file':
+            if (args.length < 2) {
+              return CommandResult(
+                output: 'Usage: duktape file <path>',
+                isError: true,
+              );
+            }
+            final output = await duktape.file(args[1]);
+            return CommandResult(
+              output: output,
+              isError:
+                  output.startsWith('Error:') ||
+                  output.startsWith('Duktape bridge unavailable'),
+            );
+          case 'limits':
+            return CommandResult(output: duktape.limits());
+          case 'doctor':
+            final output = await duktape.doctor();
+            return CommandResult(
+              output: output,
+              isError:
+                  output.contains('Overall: UNAVAILABLE') ||
+                  output.startsWith('Duktape bridge unavailable'),
+            );
+          case 'plan':
+            return CommandResult(output: duktape.plan());
+          default:
+            return CommandResult(
+              output:
+                  'Unknown duktape subcommand: $sub\n'
+                  'Usage: duktape <help|info|eval|file|limits|doctor|plan>',
               isError: true,
             );
         }
@@ -3320,6 +3385,9 @@ class CommandService {
         );
         sb.writeln(
           '  quickjs        - Run the limited QuickJS embedded-engine probe',
+        );
+        sb.writeln(
+          '  duktape        - Run the limited Duktape fallback-engine probe',
         );
         sb.writeln(
           '  localhost-*    - Check local ports and future dev server readiness',

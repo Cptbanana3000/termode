@@ -37,8 +37,7 @@ Tiny JS proof:
 Embedded JS engine:
 - Tracked by the v0.32 `js-engine-*` decision commands.
 - `quickjs` is available as a v0.33 limited/unavailable probe surface.
-- Duktape is the recommended fallback if QuickJS source cannot be integrated
-  safely.
+- `duktape` is available as a v0.34 limited/unavailable fallback probe surface.
 - Would need a new size, ABI, API, timeout, safety, and lifecycle review.
 
 Node.js:
@@ -93,13 +92,15 @@ js-proof plan
 1. Tiny JS proof
 2. Embedded JS engine decision/probe
 3. QuickJS probe command/bridge surface
-4. Duktape/engine fallback if QuickJS source remains unavailable
-5. Node runtime strategy
-6. npm strategy
-7. dev server workflow
+4. Duktape probe/fallback command surface
+5. Runtime decision freeze
+6. Node runtime strategy
+7. npm strategy
+8. dev server workflow
 
 Remote packages remain script-only. `js-proof` is built in, not an installable
 package. Node.js and npm are not available yet.
 
 See [JS_ENGINE_DECISION.md](JS_ENGINE_DECISION.md) and
-[QUICKJS_PROBE.md](QUICKJS_PROBE.md) for the current engine plan.
+[QUICKJS_PROBE.md](QUICKJS_PROBE.md) and
+[DUKTAPE_PROBE.md](DUKTAPE_PROBE.md) for the current engine plan.

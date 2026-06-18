@@ -20,6 +20,8 @@ script packages executed through shell helper functions.
   Node, and no-engine-yet before any real engine is added.
 - `quickjs` is a v0.33 limited/unavailable probe surface. QuickJS source is
   not integrated in this build.
+- `duktape` is a v0.34 limited/unavailable fallback probe surface. Duktape
+  source is not integrated in this build.
 
 ## Android Execution Restrictions
 
@@ -57,11 +59,12 @@ management proofs before they become package types.
 7. Prove a tiny JS/runtime path before Node with `js-proof`.
 8. Decide whether to ship a real embedded JS engine with `js-engine-*`.
 9. Add the QuickJS probe command/bridge surface.
-10. Harden embedded-engine safety before broad script execution.
-11. Add a Node runtime proof after native execution behavior is understood.
-12. Prove npm install/cache behavior inside app storage.
-13. Prove a minimal Vite dev server.
-14. Integrate CalypsoIDE workflows after runtime support is proven.
+10. Add the Duktape fallback probe command/bridge surface.
+11. Freeze the runtime decision before adding more engine probes.
+12. Add a Node runtime proof after native execution behavior is understood.
+13. Prove npm install/cache behavior inside app storage.
+14. Prove a minimal Vite dev server.
+15. Integrate CalypsoIDE workflows after runtime support is proven.
 
 ## Risks
 
@@ -75,9 +78,9 @@ management proofs before they become package types.
 ## Recommended Next Proof
 
 The current runtime target is still the tiny `js-proof` evaluator, not Node.
-v0.33 adds the QuickJS command/bridge probe, but QuickJS source is not
-integrated. The recommended next proof is a Duktape or smaller engine-source
-fallback, unless QuickJS can be safely vendored with timeout/resource limits.
+v0.33 adds the QuickJS command/bridge probe, and v0.34 adds the Duktape
+fallback probe. Neither source is integrated. The recommended next proof is a
+runtime decision freeze before adding more engine surfaces.
 
 ## Bundled Runtime Proof Findings (v0.28)
 
@@ -112,6 +115,7 @@ trying to drop and execute a binary in app storage. A future Node strategy
 should be evaluated as an APK-shipped native component driven through a native
 bridge.
 
-Recommended next step: v0.34 Duktape Probe / Engine fallback (still no
-Node/npm), using the criteria in [JS_ENGINE_DECISION.md](JS_ENGINE_DECISION.md)
-and [QUICKJS_PROBE.md](QUICKJS_PROBE.md).
+Recommended next step: v0.35 Runtime Decision Freeze (still no Node/npm), using
+the criteria in [JS_ENGINE_DECISION.md](JS_ENGINE_DECISION.md),
+[QUICKJS_PROBE.md](QUICKJS_PROBE.md), and
+[DUKTAPE_PROBE.md](DUKTAPE_PROBE.md).

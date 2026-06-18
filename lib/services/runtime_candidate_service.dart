@@ -68,8 +68,7 @@ class RuntimeResearchDoctorResult {
 }
 
 class RuntimeCandidateService {
-  static const recommendedNextMilestone =
-      'v0.34 Duktape Probe / Engine fallback';
+  static const recommendedNextMilestone = 'v0.35 Runtime Decision Freeze';
 
   static const List<RuntimeCandidate> candidates = [
     RuntimeCandidate(
@@ -214,9 +213,9 @@ class RuntimeCandidateService {
       securityNotes:
           'Must sandbox evaluation, limit exposed APIs, and avoid arbitrary native access.',
       currentStatus:
-          'v0.33 QuickJS command/bridge probe is available, but no QuickJS source is integrated yet.',
+          'v0.33 QuickJS and v0.34 Duktape command/bridge probes are available, but no engine source is integrated yet.',
       recommendation:
-          'Keep js-proof stable, keep QuickJS probe limited, and try Duktape or a smaller engine-source path next.',
+          'Keep js-proof stable, keep QuickJS/Duktape probes limited, and freeze the runtime decision before adding more engine surfaces.',
       recommendedNextStep: recommendedNextMilestone,
       docsReference: 'docs/NATIVE_RUNTIME_CANDIDATES.md',
     ),
@@ -361,8 +360,9 @@ class RuntimeCandidateService {
         '3. Research APK-native-library based runtime embedding.\n'
         '4. Use v0.32 JS engine decision commands before adding engine code.\n'
         '5. Keep v0.33 QuickJS probe limited until source and safety limits are solved.\n'
-        '6. Try Duktape or an engine-source fallback before Node.\n'
-        '7. Only attempt Node after executable/runtime strategy is proven.\n\n'
+        '6. Keep v0.34 Duktape probe limited until source and safety limits are solved.\n'
+        '7. Freeze the embedded engine decision before Node.\n'
+        '8. Only attempt Node after executable/runtime strategy is proven.\n\n'
         'Recommended path: script packages + JNI tools now, embedded JS engine next, Node later.';
   }
 
@@ -382,8 +382,8 @@ class RuntimeCandidateService {
   String next() {
     return '=== Runtime Next ===\n'
         'Recommended next milestone: $recommendedNextMilestone\n'
-        'Reason: v0.33 added the QuickJS command/bridge probe, but no QuickJS source was available locally to integrate safely.\n'
-        'Fallback: keep current js-proof and quickjs limited while testing Duktape or a smaller vendored engine path.\n'
+        'Reason: v0.33 QuickJS and v0.34 Duktape probes both have command/bridge surfaces, but no local engine source was available to integrate safely.\n'
+        'Fallback: keep current js-proof and limited engine probes while documenting the chosen runtime path.\n'
         'Node.js/npm: still not included.';
   }
 
@@ -416,6 +416,7 @@ class RuntimeCandidateService {
     );
     sb.writeln('JS engine decision/probe: available');
     sb.writeln('QuickJS probe: limited/unavailable');
+    sb.writeln('Duktape probe: limited/unavailable');
     sb.writeln('Recommended next proof: $recommendedNextMilestone');
     sb.writeln('Node.js included: NO');
     sb.write('Overall readiness: ${result.overall}');
@@ -432,6 +433,7 @@ class RuntimeCandidateService {
       'docs/JS_PROOF.md',
       'docs/JS_ENGINE_DECISION.md',
       'docs/QUICKJS_PROBE.md',
+      'docs/DUKTAPE_PROBE.md',
     ];
     return docs.every((path) => File(path).existsSync());
   }
