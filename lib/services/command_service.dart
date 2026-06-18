@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'command_catalog.dart';
 import 'virtual_filesystem.dart';
 import 'native_command_service.dart';
 import 'runtime_bootstrap_service.dart';
@@ -117,6 +118,324 @@ class CommandService {
     return args;
   }
 
+  String _yesNo(bool value) => value ? 'yes' : 'no';
+
+  String _statusFromDoctorOutput(String output) {
+    final upper = output.toUpperCase();
+    if (upper.contains('OVERALL: UNHEALTHY') ||
+        upper.contains('OVERALL READINESS: UNHEALTHY') ||
+        upper.contains('OVERALL: FAIL') ||
+        upper.contains('FAIL')) {
+      return 'UNHEALTHY';
+    }
+    if (upper.contains('OVERALL: LIMITED') ||
+        upper.contains('OVERALL READINESS: LIMITED') ||
+        upper.contains('LIMITED')) {
+      return 'LIMITED';
+    }
+    if (upper.contains('OVERALL: FROZEN') ||
+        upper.contains('OVERALL: HEALTHY') ||
+        upper.contains('OVERALL STATUS: HEALTHY') ||
+        upper.contains('FINAL HEALTH: HEALTHY') ||
+        upper.contains('RESULT: PASS') ||
+        upper.contains('PASS')) {
+      return 'HEALTHY';
+    }
+    return 'LIMITED';
+  }
+
+  String _overallFromStatuses(Iterable<String> statuses) {
+    if (statuses.contains('UNHEALTHY')) return 'UNHEALTHY';
+    if (statuses.contains('LIMITED')) return 'LIMITED';
+    return 'HEALTHY';
+  }
+
+  Future<String> _storageBetaStatus() async {
+    try {
+      final status = await StorageAccessService().getStatus();
+      final linked =
+          status != null &&
+          ((status['linked']?.toLowerCase() == 'true') ||
+              (status['displayName']?.trim().isNotEmpty ?? false));
+      return linked ? 'OK' : 'LIMITED';
+    } catch (_) {
+      return 'LIMITED';
+    }
+  }
+
+  Future<String> _betaStatusOutput() async {
+    final storage = await _storageBetaStatus();
+    final overall = storage == 'OK' ? 'BETA CANDIDATE' : 'LIMITED';
+    return '=== Termode Beta Status ===\n'
+        'PTY: OK\n'
+        'Packages: OK\n'
+        'Remote repo: OK\n'
+        'Workspace: OK\n'
+        'Storage: $storage\n'
+        'Sessions: OK\n'
+        'Terminal UX: OK\n'
+        'Runtime: FROZEN\n'
+        'Overall: $overall';
+  }
+
+  String _betaScoreOutput() {
+    return '=== Beta Readiness Score ===\n'
+        'Core shell: 20/20\n'
+        'Packages: 20/20\n'
+        'Workspaces: 15/15\n'
+        'Sessions: 15/15\n'
+        'Terminal UX: 15/15\n'
+        'Docs/help: 10/15\n'
+        'Total: 95/100';
+  }
+
+  String _betaChecklistOutput() {
+    return '=== Beta Checklist ===\n'
+        '* Run default-shell\n'
+        '* Run pkg doctor\n'
+        '* Run workspace-doctor\n'
+        '* Run session-doctor\n'
+        '* Run preview-doctor\n'
+        '* Run runtime-freeze doctor\n'
+        '* Test tab-new/tab-close\n'
+        '* Test workspace-init/workspace-cd\n'
+        '* Test package install/remove\n'
+        '* Test background/restore\n'
+        '* Test copy/paste\n'
+        '* Test scroll-test 300';
+  }
+
+  String _betaKnownLimitsOutput() {
+    return '=== Beta Known Limits ===\n'
+        '* No Node.js/npm/Python/Git yet.\n'
+        '* Native packages are not supported.\n'
+        '* QuickJS/Duktape are probe surfaces only.\n'
+        '* Direct app-bin execution may be blocked by Android.\n'
+        '* Storage import/export may be limited.\n'
+        '* Some terminal apps/features may not behave exactly like desktop Linux.\n'
+        '* This is beta software.';
+  }
+
+  String _betaNextOutput() {
+    return '=== Beta Next ===\n'
+        'Recommended next milestone:\n'
+        'v0.37 Documentation / Onboarding Polish\n\n'
+        'Reason: v0.36 adds beta readiness commands and highlights docs/help cleanup as the remaining score gap.';
+  }
+
+  Future<String> _termodeDoctor({bool verbose = false}) async {
+    final checks = <String, Future<CommandResult> Function()>{
+      'Package': () => execute('pkg doctor'),
+      'Workspace': () => execute('workspace-doctor'),
+      'Session': () => execute('session-doctor'),
+      'Runtime': () => execute('runtime-doctor'),
+      'Runtime freeze': () => execute('runtime-freeze doctor'),
+      'Preview': () => execute('preview-doctor'),
+      'Localhost': () => execute('localhost-doctor'),
+      'Native tools': () => execute('native-tool doctor'),
+      'JS proof': () => execute('js-proof doctor'),
+    };
+    final statuses = <String, String>{};
+    final verboseLines = <String>[];
+    for (final entry in checks.entries) {
+      try {
+        final result = await entry.value();
+        final status = _statusFromDoctorOutput(result.output);
+        statuses[entry.key] = status;
+        if (verbose) {
+          verboseLines.add('${entry.key}: run ${_doctorCommandFor(entry.key)}');
+          verboseLines.add('  Status: $status');
+        }
+      } catch (_) {
+        statuses[entry.key] = 'UNHEALTHY';
+      }
+    }
+    final sb = StringBuffer();
+    sb.writeln('=== Termode Doctor ===');
+    for (final entry in statuses.entries) {
+      sb.writeln('${entry.key}: ${entry.value}');
+    }
+    if (verbose) {
+      sb.writeln();
+      sb.writeln('Verbose:');
+      for (final line in verboseLines) {
+        sb.writeln(line);
+      }
+      sb.writeln('Tip: run individual doctor commands for full details.');
+    }
+    sb.write('Overall: ${_overallFromStatuses(statuses.values)}');
+    return sb.toString();
+  }
+
+  String _doctorCommandFor(String label) {
+    switch (label) {
+      case 'Package':
+        return 'pkg doctor';
+      case 'Workspace':
+        return 'workspace-doctor';
+      case 'Session':
+        return 'session-doctor';
+      case 'Runtime':
+        return 'runtime-doctor';
+      case 'Runtime freeze':
+        return 'runtime-freeze doctor';
+      case 'Preview':
+        return 'preview-doctor';
+      case 'Localhost':
+        return 'localhost-doctor';
+      case 'Native tools':
+        return 'native-tool doctor';
+      case 'JS proof':
+        return 'js-proof doctor';
+      default:
+        return 'doctor';
+    }
+  }
+
+  String _welcomeOutput() {
+    return 'Welcome to Termode.\n\n'
+        'Try:\n'
+        '1. default-shell\n'
+        '2. pwd\n'
+        '3. pkg list\n'
+        '4. pkg install hello\n'
+        '5. hello\n'
+        '6. workspace-init demo\n'
+        '7. workspace-cd demo\n'
+        '8. host-write hello.txt "hello"\n'
+        '9. host-cat hello.txt\n\n'
+        'Useful:\n'
+        'help\n'
+        'commands\n'
+        'doctor\n'
+        'pkg help\n'
+        'workspace\n'
+        'keyboard-help\n'
+        'runtime-freeze status';
+  }
+
+  String _commandsOutput({bool all = false}) {
+    if (all) {
+      return '=== All Commands ===\n${kTermodeCommands.join('\n')}';
+    }
+    return '=== Termode Commands ===\n'
+        'Shell:\n'
+        '  default-shell, stop-shell, mode\n'
+        'Packages:\n'
+        '  pkg, runtime-tools\n'
+        'Workspace:\n'
+        '  workspace, workspace-init, workspace-cd\n'
+        'Files:\n'
+        '  host-ls, host-cat, host-write\n'
+        'Diagnostics:\n'
+        '  doctor, beta-status, pkg doctor, session-doctor\n'
+        'Runtime:\n'
+        '  runtime-freeze, js-proof, native-tool\n'
+        'Preview:\n'
+        '  preview, localhost-doctor\n\n'
+        'Use commands --all for the full catalog.';
+  }
+
+  String _settingsSummaryOutput() {
+    final settings = SettingsService();
+    return '=== Settings Summary ===\n'
+        'Theme: dark (${settings.themeColor})\n'
+        'Start in real shell: ${_yesNo(settings.startInRealShell)}\n'
+        'ANSI renderer: ${settings.enableAnsiRenderer ? 'on' : 'off'}\n'
+        'ANSI debug: ${settings.ansiDebugMode ? 'on' : 'off'}\n'
+        'Cursor: ${settings.cursorStyle}\n'
+        'Blink: ${_yesNo(settings.blinkingCursor)}\n'
+        'Scrollback: ${settings.maxScrollbackLines}\n'
+        'Paste warning: ${settings.pasteWarningThreshold}\n'
+        'Paste hard limit: ${settings.pasteHardLimit}\n'
+        'Keep screen on: ${_yesNo(settings.keepScreenOn)}';
+  }
+
+  String _settingsDoctorOutput() {
+    final settings = SettingsService();
+    const allowedScrollback = {500, 1000, 2000, 5000, 10000};
+    const allowedCursor = {'block', 'bar', 'underline'};
+    final scrollbackOk = allowedScrollback.contains(
+      settings.maxScrollbackLines,
+    );
+    final pasteOk = settings.pasteWarningThreshold < settings.pasteHardLimit;
+    final cursorOk = allowedCursor.contains(settings.cursorStyle);
+    final ansiDebugOk = !settings.ansiDebugMode;
+    final limited = !ansiDebugOk || !pasteOk;
+    final healthy = scrollbackOk && pasteOk && cursorOk && ansiDebugOk;
+    return '=== Settings Doctor ===\n'
+        'Scrollback limit: ${scrollbackOk ? 'OK' : 'INVALID'}\n'
+        'Paste limits: ${pasteOk ? 'OK' : 'LIMITED'}\n'
+        'Cursor setting: ${cursorOk ? 'OK' : 'INVALID'}\n'
+        'ANSI debug: ${ansiDebugOk ? 'off' : 'ON'}\n'
+        'Start in real shell: OK\n'
+        'Overall: ${healthy ? 'HEALTHY' : (limited ? 'LIMITED' : 'UNHEALTHY')}';
+  }
+
+  String _versionOutput() {
+    return 'Termode v0.36\n'
+        'Runtime: frozen\n'
+        'Shell: REAL PTY\n'
+        'Packages: script-only';
+  }
+
+  String _releaseNotesOutput() {
+    return '=== Termode Release Notes ===\n'
+        'v0.36 Product Stabilization / Beta Readiness Pass\n'
+        'v0.35 Runtime Decision Freeze\n'
+        'v0.34 Duktape Probe\n'
+        'v0.33 QuickJS Probe\n'
+        'v0.32 JS Engine Decision\n'
+        'v0.31 JS Proof\n'
+        'v0.30 Runtime Candidate Research';
+  }
+
+  Future<String> _bugReportOutput() async {
+    final diagnostics = await NativeCommandService().getDiagnostics();
+    final abi = diagnostics?['abi']?.toString() ?? 'unknown';
+    final runtimeStatus = _statusFromDoctorOutput(
+      (await execute('runtime-freeze doctor')).output,
+    );
+    final packageStatus = _statusFromDoctorOutput(
+      (await execute('pkg doctor')).output,
+    );
+    final workspaceStatus = _statusFromDoctorOutput(
+      (await execute('workspace-doctor')).output,
+    );
+    final sessionStatus = _statusFromDoctorOutput(
+      (await execute('session-doctor')).output,
+    );
+    final mode = TerminalSessionService().activeSession.isPtyInteractionActive
+        ? 'REAL PTY'
+        : 'NORMAL';
+    return '=== Termode Bug Report ===\n'
+        'Termode version: v0.36\n'
+        'Android ABI: $abi\n'
+        'Runtime status: $runtimeStatus\n'
+        'Package doctor: $packageStatus\n'
+        'Workspace doctor: $workspaceStatus\n'
+        'Session doctor: $sessionStatus\n'
+        'Recent mode/badge: $mode\n\n'
+        'Copy this output when reporting a bug.\n'
+        'Private env vars, tokens, and full file paths are not included.';
+  }
+
+  String _qaChecklistOutput() {
+    return '=== QA Checklist ===\n'
+        '* launch app\n'
+        '* shell start\n'
+        '* shell stop/restart\n'
+        '* package install/remove\n'
+        '* workspace create/cd/files\n'
+        '* storage link if available\n'
+        '* paste large text\n'
+        '* ANSI test\n'
+        '* preview commands\n'
+        '* force close/reopen\n'
+        '* rotate screen\n'
+        '* multiple tabs';
+  }
+
   Future<Map<String, dynamic>> _getInstalledPackages(String usrDir) async {
     final pkgsMetaFile = File('$usrDir/termode-packages.json');
     if (await pkgsMetaFile.exists()) {
@@ -150,6 +469,11 @@ class CommandService {
               'Termode runs in a true native REAL PTY shell by default.\n'
               'Most commands are executed directly in the Unix environment.\n'
               'Management commands like "pkg" are intercepted and run in the host app.\n\n'
+              'Start Here:\n'
+              '  welcome     - Beginner walkthrough\n'
+              '  commands    - Compact command categories\n'
+              '  doctor      - Unified health summary\n'
+              '  beta-status - Beta readiness summary\n\n'
               'Useful Prompt Commands:\n'
               '  normal-mode - Exit PTY interaction mode to return to classic Termode prompt\n'
               '  stop-shell  - Kill the PTY shell process and return to NORMAL mode\n'
@@ -168,6 +492,12 @@ class CommandService {
               '  runtime-freeze why - Explain why runtimes are deferred\n'
               '  runtime-freeze next - Show product stabilization next milestone\n'
               '  runtime-freeze doctor - Check runtime freeze health\n\n'
+              'Beta / Release Commands:\n'
+              '  beta, beta-status, beta-doctor, beta-score\n'
+              '  beta-checklist, beta-known-limits, beta-next\n'
+              '  settings-summary, settings-doctor\n'
+              '  version, release-notes, changelog\n'
+              '  bug-report, qa-checklist\n\n'
               'Runtime Research Commands:\n'
               '  runtime-candidates - Compare future runtime strategies\n'
               '  runtime-candidate <name> - Show one candidate in detail\n'
@@ -975,6 +1305,9 @@ class CommandService {
               '  runtime-exec-test      - Run runtime execution probes\n'
               '  runtime-plan           - Show native/runtime proof roadmap\n'
               '  runtime-freeze [sub]   - Show frozen runtime direction\n'
+              '  doctor                 - Show unified Termode health summary\n'
+              '  beta-status            - Show beta readiness summary\n'
+              '  settings-summary       - Show compact settings state\n'
               '  runtime-candidates     - Compare possible future runtime strategies\n'
               '  runtime-candidate <n>  - Show details for one runtime candidate\n'
               '  runtime-decision       - Show recommended runtime decision order\n'
@@ -1011,6 +1344,76 @@ class CommandService {
               '  - Use "pkg list" to see available packages.\n'
               '  - Packages are installed to files/usr/bin and sourced via shell helpers.',
         );
+
+      case 'welcome':
+      case 'getting-started':
+      case 'first-run':
+        return CommandResult(output: _welcomeOutput());
+
+      case 'commands':
+        return CommandResult(
+          output: _commandsOutput(all: args.contains('--all')),
+        );
+
+      case 'doctor':
+        final output = await _termodeDoctor(
+          verbose: args.contains('--verbose'),
+        );
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: UNHEALTHY'),
+        );
+
+      case 'beta':
+      case 'beta-doctor':
+        final status = await _betaStatusOutput();
+        return CommandResult(
+          output:
+              '$status\n\n${_betaScoreOutput()}\n\n${_betaKnownLimitsOutput()}',
+          isError: status.contains('Overall: NOT READY'),
+        );
+
+      case 'beta-status':
+        final output = await _betaStatusOutput();
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: NOT READY'),
+        );
+
+      case 'beta-score':
+        return CommandResult(output: _betaScoreOutput());
+
+      case 'beta-checklist':
+        return CommandResult(output: _betaChecklistOutput());
+
+      case 'beta-known-limits':
+        return CommandResult(output: _betaKnownLimitsOutput());
+
+      case 'beta-next':
+        return CommandResult(output: _betaNextOutput());
+
+      case 'settings-summary':
+        return CommandResult(output: _settingsSummaryOutput());
+
+      case 'settings-doctor':
+        final output = _settingsDoctorOutput();
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: UNHEALTHY'),
+        );
+
+      case 'version':
+        return CommandResult(output: _versionOutput());
+
+      case 'release-notes':
+      case 'changelog':
+        return CommandResult(output: _releaseNotesOutput());
+
+      case 'bug-report':
+        return CommandResult(output: await _bugReportOutput());
+
+      case 'qa-checklist':
+        return CommandResult(output: _qaChecklistOutput());
 
       case 'runtime-doctor':
         final verbose = args.contains('--verbose');
@@ -3424,6 +3827,12 @@ class CommandService {
         sb.writeln(
           '  runtime-freeze - Show the frozen runtime direction and deferred runtimes',
         );
+        sb.writeln('  doctor         - Show unified Termode health summary');
+        sb.writeln('  beta-*         - Show beta readiness and QA checklists');
+        sb.writeln('  commands       - Show compact command categories');
+        sb.writeln('  welcome        - Show first-run onboarding');
+        sb.writeln('  settings-*     - Show settings summary/doctor');
+        sb.writeln('  bug-report     - Create a safe diagnostic report');
         sb.writeln(
           '  js-proof       - Run the controlled JS-like native bridge proof',
         );

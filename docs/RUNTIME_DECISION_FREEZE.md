@@ -77,6 +77,9 @@ Focus:
 - workspace polish
 - terminal UX polish
 
+v0.36 adds `beta-status`, `doctor`, `commands`, `settings-summary`,
+`settings-doctor`, `bug-report`, and `qa-checklist` to support that pass.
+
 ## Revisit Conditions
 
 Real runtime work should only resume after these conditions are defined:
