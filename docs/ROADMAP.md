@@ -25,12 +25,13 @@ CalypsoIDE as a plug-and-play terminal/runtime engine.
 - compilers
 - full Termux-replacement status
 
-These are **planned, not installed**. v0.47 adds the Git artifact
-acquisition/build pipeline and manifest template, but still ships no verified
-Git artifact, so Git is reported planned/not installed and the installer
-refuses safely. See [Git Support Strategy](GIT_SUPPORT_STRATEGY.md),
+These are **planned, not installed**. v0.48 adds verified Git bundle checks and
+a smoke-test path, but still ships no real Git artifact, so Git is reported
+planned/not installed and the installer refuses safely. See
+[Git Support Strategy](GIT_SUPPORT_STRATEGY.md),
 [Git Artifact Acquisition](GIT_ARTIFACT_ACQUISITION.md),
 [Git Build Pipeline](GIT_BUILD_PIPELINE.md),
+[Git Bundle Smoke Test](GIT_BUNDLE_SMOKE_TEST.md),
 [Binary Package Installer Prototype](BINARY_PACKAGE_INSTALLER_PROTOTYPE.md),
 [Prefix / PATH / Environment](PREFIX_PATH_ENVIRONMENT.md) and
 [Runtime Expansion Architecture](RUNTIME_EXPANSION_ARCHITECTURE.md).
@@ -43,16 +44,19 @@ refuses safely. See [Git Support Strategy](GIT_SUPPORT_STRATEGY.md),
 - v0.44 Binary Package Installer Prototype
 - v0.45 Git Support Feasibility / Installer Path
 - v0.46 Real Git Package Artifact / Execution Probe
-- v0.47 Git Artifact Acquisition / Build Pipeline (current)
-- v0.48 Verified Git Artifact Bundle / Smoke Test
-- v0.49+ Node.js / npm / Python / Dev Stack Presets
+- v0.47 Git Artifact Acquisition / Build Pipeline
+- v0.48 Verified Git Artifact Bundle / Smoke Test (current)
+- v0.49 Git Artifact Build / arm64-v8a Production
+- v0.50+ Node.js / npm / Python / Dev Stack Presets
 - v0.52 Full Terminal QA
 - v0.53 Complete Termode Beta
 - CalypsoIDE integration later
 
-v0.47 defines the acquisition/build pipeline; no verified Git artifact is
-bundled yet, so the next Git milestone bundles and validates one before real
-Git workspace QA. See [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md).
+v0.48 validates project-controlled Git artifacts when present and refuses safely
+when they are missing, invalid, incompatible, or fail `git --version`. No real
+Git artifact is bundled yet, so the next Git milestone builds a trusted
+arm64-v8a payload before real Git workspace QA. See
+[Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md).
 
 ## Product First
 

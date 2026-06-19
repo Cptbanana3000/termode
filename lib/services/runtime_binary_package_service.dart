@@ -81,6 +81,19 @@ class RuntimeBinaryPackageService {
         normalized.startsWith('share/termode/runtime-packages/');
   }
 
+  bool _isSafeGitRelativePath(String path) {
+    final normalized = path.replaceAll('\\', '/');
+    if (normalized.isEmpty) return false;
+    if (normalized.startsWith('/')) return false;
+    if (RegExp(r'^[A-Za-z]:').hasMatch(normalized)) return false;
+    if (normalized.split('/').contains('..')) return false;
+    if (normalized.endsWith('/')) return false;
+    return normalized.startsWith('bin/') ||
+        normalized.startsWith('lib/') ||
+        normalized.startsWith('libexec/') ||
+        normalized.startsWith('share/');
+  }
+
   List<String> validateManifest(Map<String, dynamic> manifest) {
     final errors = <String>[];
     final name = manifest['name']?.toString() ?? '';
@@ -160,6 +173,19 @@ class RuntimeBinaryPackageService {
 
   File? _resolvePrefixFile(String relPath, Map<String, String> paths) {
     if (!_isSafeRelativePath(relPath)) return null;
+    final prefix = Directory(
+      paths['prefix']!,
+    ).absolute.path.replaceAll('\\', '/');
+    final file = File('${paths['prefix']}/$relPath');
+    final normalized = file.absolute.path.replaceAll('\\', '/');
+    if (normalized == prefix || !normalized.startsWith('$prefix/')) {
+      return null;
+    }
+    return file;
+  }
+
+  File? _resolveGitPrefixFile(String relPath, Map<String, String> paths) {
+    if (!_isSafeGitRelativePath(relPath)) return null;
     final prefix = Directory(
       paths['prefix']!,
     ).absolute.path.replaceAll('\\', '/');
@@ -258,7 +284,8 @@ class RuntimeBinaryPackageService {
           'Description: Distributed version control tool.\n'
           'Install support: enabled only with a verified package artifact.\n'
           'Current artifact state: ${artifact.status}\n'
-          'Next step: git-artifact pipeline\n'
+          'Bundle state: ${artifact.status}\n'
+          'Next step: git-artifact bundle-status\n'
           'Run: git-artifact next';
     }
     if (name != helloBinName) {
@@ -284,11 +311,22 @@ class RuntimeBinaryPackageService {
     if (name == gitName) {
       final artifact = await RuntimeArtifactRegistryService()
           .gitArtifactStatus();
+      if (artifact.status == 'INVALID' || artifact.status == 'INCOMPATIBLE') {
+        return RuntimeBinaryPackageResult(
+          'Git artifact failed verification.\n'
+          'Current state: ${artifact.status}\n'
+          'Reason: ${artifact.reason}\n'
+          'Run: git-artifact bundle-check\n'
+          'Run: git-artifact doctor',
+          isError: true,
+        );
+      }
       if (!artifact.available) {
         return RuntimeBinaryPackageResult(
           'Git artifact is not available in this build.\n'
           'Current state: ${artifact.status}\n'
-          'Run: git-artifact pipeline\n'
+          'Run: git-artifact bundle-status\n'
+          'Run: git-artifact bundle-plan\n'
           'Run: git-artifact next',
         );
       }
@@ -296,19 +334,12 @@ class RuntimeBinaryPackageService {
         return RuntimeBinaryPackageResult(
           'Git artifact failed verification.\n'
           'Reason: ${artifact.reason}\n'
+          'Run: git-artifact bundle-check\n'
           'Run: git-artifact doctor',
           isError: true,
         );
       }
-      // A verified, installable Git artifact would be installed here: validate
-      // manifest, verify checksums, copy files under TERMODE_PREFIX, register the
-      // git shim, run `git --version`, and mark installed only on success
-      // (rolling back a partial install on failure). No such artifact is bundled
-      // in this build, so this branch is unreachable today.
-      return const RuntimeBinaryPackageResult(
-        'Git install is not enabled yet in this build.\n'
-        'Run: git-artifact doctor',
-      );
+      return _installGitArtifact(artifact);
     }
     if (name != helloBinName) {
       return RuntimeBinaryPackageResult(
@@ -400,6 +431,146 @@ class RuntimeBinaryPackageService {
     );
   }
 
+  Future<RuntimeBinaryPackageResult> _installGitArtifact(
+    GitArtifactStatus artifact,
+  ) async {
+    final registry = RuntimeArtifactRegistryService();
+    final abi = artifact.abi;
+    final manifest = artifact.location == 'project'
+        ? registry.readProjectGitManifest(abi)
+        : registry.bundledGitManifest();
+    if (manifest == null) {
+      return const RuntimeBinaryPackageResult(
+        'Git install blocked: manifest missing.\n'
+        'Run: git-artifact bundle-check',
+        isError: true,
+      );
+    }
+    final validation = artifact.location == 'project'
+        ? registry.validateProjectGitArtifact(manifest, abi)
+        : registry.validateGitManifest(manifest, abi);
+    if (validation.isNotEmpty) {
+      return RuntimeBinaryPackageResult(
+        'Git install blocked: ${validation.first}\n'
+        'Run: git-artifact bundle-check',
+        isError: true,
+      );
+    }
+
+    await _prefix.initPrefix();
+    await _ensureStructures();
+    final paths = await _paths();
+    final files = manifest['files'] as List;
+    final installedFiles = <String>[];
+    final copiedFiles = <File>[];
+    final checksums = <String, String>{};
+    try {
+      for (final item in files) {
+        final meta = Map<String, dynamic>.from(item as Map);
+        final relPath = meta['path'].toString();
+        final source = artifact.location == 'project'
+            ? File(
+                '${RuntimeArtifactRegistryService.gitProjectFilesRoot(abi)}/$relPath',
+              )
+            : null;
+        final destination = _resolveGitPrefixFile(relPath, paths);
+        if (source == null || destination == null) {
+          throw StateError('unsafe artifact path: $relPath');
+        }
+        await destination.parent.create(recursive: true);
+        await source.copy(destination.path);
+        copiedFiles.add(destination);
+        installedFiles.add(relPath);
+        final actual = _calculateSha256(await destination.readAsBytes());
+        if (actual.toLowerCase() != meta['sha256'].toString().toLowerCase()) {
+          throw StateError('checksum mismatch: $relPath');
+        }
+        checksums[relPath] = actual;
+        if (!Platform.isWindows) {
+          try {
+            await Process.run('chmod', ['700', destination.path]);
+          } catch (e) {
+            debugPrint('runtime-pkg git chmod failed: $e');
+          }
+        }
+      }
+
+      final entrypoint = manifest['entrypoint']?.toString() ?? 'bin/git';
+      final gitFile = _resolveGitPrefixFile(entrypoint, paths);
+      if (gitFile == null) throw StateError('invalid Git entrypoint');
+      final probe = await _runInstalledGitVersion(gitFile.path);
+      if (probe.exitCode != 0 || !probe.output.toLowerCase().contains('git')) {
+        throw StateError('git --version failed: ${probe.output}');
+      }
+
+      final metadata = await _readMetadata();
+      final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+      packages[gitName] = {
+        'name': gitName,
+        'version': manifest['version'],
+        'kind': manifest['kind'],
+        'abi': manifest['abi'],
+        'entrypoint': entrypoint,
+        'entrypoints': ['git'],
+        'files': installedFiles,
+        'sha256': checksums,
+        'installed_at': DateTime.now().toUtc().toIso8601String(),
+        'source': manifest['source'],
+        'status': 'installed',
+        'verification': probe.output,
+      };
+      metadata['schema'] = metadataSchema;
+      metadata['packages'] = packages;
+      await _writeMetadata(metadata);
+      await _prefix.generateEnvScript();
+      return RuntimeBinaryPackageResult(
+        'Installed: git\n'
+        'Command: git\n'
+        '${probe.output}\n'
+        'Overall: HEALTHY',
+      );
+    } catch (e) {
+      for (final file in copiedFiles.reversed) {
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+      return RuntimeBinaryPackageResult(
+        'Git install failed and was rolled back.\n'
+        'Reason: $e\n'
+        'Run: git-artifact bundle-check',
+        isError: true,
+      );
+    }
+  }
+
+  Future<({int exitCode, String output})> _runInstalledGitVersion(
+    String gitPath,
+  ) async {
+    if (Platform.isAndroid) {
+      final result = await NativeCommandService().execute(
+        '/system/bin/sh "$gitPath" --version',
+        'runtime_pkg_git',
+        timeoutMs: 5000,
+      );
+      final output = result.stdout.trim().isNotEmpty
+          ? result.stdout.trim()
+          : result.stderr.trim();
+      return (exitCode: result.exitCode, output: output);
+    }
+    try {
+      final result = await Process.run(gitPath, [
+        '--version',
+      ]).timeout(const Duration(seconds: 5));
+      final out = result.stdout.toString().trim().isNotEmpty
+          ? result.stdout.toString().trim()
+          : result.stderr.toString().trim();
+      return (exitCode: result.exitCode, output: out);
+    } catch (e) {
+      return (exitCode: 1, output: e.toString());
+    }
+  }
+
   Future<RuntimeBinaryPackageResult> remove(String name) async {
     final metadata = await _readMetadata();
     final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
@@ -414,7 +585,9 @@ class RuntimeBinaryPackageService {
     for (final relPath in (pkg['files'] as List? ?? []).map(
       (v) => v.toString(),
     )) {
-      final file = _resolvePrefixFile(relPath, paths);
+      final file = name == gitName
+          ? _resolveGitPrefixFile(relPath, paths)
+          : _resolvePrefixFile(relPath, paths);
       if (file != null && await file.exists()) {
         await file.delete();
       }
@@ -441,7 +614,9 @@ class RuntimeBinaryPackageService {
     for (final relPath in (pkg['files'] as List? ?? []).map(
       (v) => v.toString(),
     )) {
-      final file = _resolvePrefixFile(relPath, paths);
+      final file = name == gitName
+          ? _resolveGitPrefixFile(relPath, paths)
+          : _resolvePrefixFile(relPath, paths);
       if (file == null) {
         issues.add('$relPath unsafe');
         continue;
@@ -464,6 +639,32 @@ class RuntimeBinaryPackageService {
         'Run: runtime-pkg repair',
         isError: true,
       );
+    }
+    if (name == gitName) {
+      final entrypoint = pkg['entrypoint']?.toString() ?? 'bin/git';
+      final gitFile = _resolveGitPrefixFile(entrypoint, paths);
+      if (gitFile == null || !await gitFile.exists()) {
+        return const RuntimeBinaryPackageResult(
+          '=== Runtime Package Verify: git ===\n'
+          'Status: UNHEALTHY\n'
+          'Issue: git entrypoint missing\n'
+          'Run: runtime-pkg repair',
+          isError: true,
+        );
+      }
+      final probe = await _runInstalledGitVersion(gitFile.path);
+      if (probe.exitCode != 0 || !probe.output.toLowerCase().contains('git')) {
+        return RuntimeBinaryPackageResult(
+          '=== Runtime Package Verify: git ===\n'
+          'Metadata: OK\n'
+          'Files: OK\n'
+          'Checksum: OK\n'
+          'Command: FAIL\n'
+          'Output: ${probe.output}\n'
+          'Status: UNHEALTHY',
+          isError: true,
+        );
+      }
     }
     return RuntimeBinaryPackageResult(
       '=== Runtime Package Verify: $name ===\n'

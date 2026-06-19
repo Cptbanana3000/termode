@@ -237,3 +237,19 @@ Beta readiness remains unaffected: a missing Git artifact is an intentional
 limitation, not a broken installed tool. See
 [Git Artifact Acquisition](GIT_ARTIFACT_ACQUISITION.md) and
 [Git Build Pipeline](GIT_BUILD_PIPELINE.md).
+
+v0.48 adds verified Git artifact bundle checks and a smoke-test path:
+
+- version is `v0.48` (Android `versionName 0.48.0` / `versionCode 48`)
+- `git-artifact` adds `bundle-status`, `bundle-plan`, `bundle-check`, and
+  `smoke-plan`
+- project artifacts under `tools/runtime-artifacts/git/<abi>/` are validated
+  for manifest shape, ABI, safe paths, file existence, byte count, and SHA-256
+- `runtime-pkg install git` revalidates before install, copies only
+  manifest-owned files, runs `git --version`, and rolls back on failure
+- no real Git artifact is bundled yet, so normal APKs still report Git as
+  unavailable/not installed
+
+Beta readiness remains unaffected: the v0.48 Git path is ready for a trusted
+artifact, while missing Git remains an intentional limitation. See
+[Git Bundle Smoke Test](GIT_BUNDLE_SMOKE_TEST.md).

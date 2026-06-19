@@ -1,7 +1,8 @@
-# Git Build Pipeline (v0.47)
+# Git Build Pipeline (v0.47, verified in v0.48)
 
 v0.47 defines the build-side pipeline for a future Git artifact. It does not
-build, download, or install Git.
+build, download, or install Git. v0.48 adds the validation and smoke-test gate
+that a future artifact must pass before Termode reports Git as installed.
 
 Pipeline stages:
 
@@ -31,6 +32,15 @@ Pipeline stages:
    - Register the `git` shim.
    - Run `git --version`.
    - Run workspace smoke tests (`git init`, `git status`).
+
+v0.48 checks:
+
+- `git-artifact bundle-status` reports project and bundled artifact readiness.
+- `git-artifact bundle-check` validates manifest, ABI, paths, existence, bytes,
+  and SHA-256 values without installing.
+- `runtime-pkg install git` revalidates, copies only manifest-owned files,
+  rechecks copied checksums, runs `git --version`, and rolls back on failure.
+- `git-artifact smoke-plan` documents the on-device smoke path.
 
 Release gate:
 

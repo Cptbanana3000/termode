@@ -6,16 +6,22 @@ Expected layout:
 
 ```text
 tools/runtime-artifacts/git/
-  manifest.json
   manifest.template.json
   checksums/
   arm64-v8a/
+    manifest.json
+    files/
   armeabi-v7a/
+    manifest.json
+    files/
   x86_64/
+    manifest.json
+    files/
 ```
 
-v0.47 ships only the template and placeholders. There is no executable Git
-payload here, and the template is not installable.
+v0.48 ships only the template and placeholders. There is no executable Git
+payload here, and the template is not installable. A project-side candidate
+uses the per-ABI `manifest.json` plus `files/` directory shown above.
 
 A real artifact must include:
 
@@ -25,3 +31,9 @@ A real artifact must include:
 - a supported ABI
 - `source` set to `termode-built` or `termode-vendored`
 - a working `git --version` smoke test before release
+
+Validate a candidate with:
+
+```sh
+git-artifact bundle-check
+```

@@ -118,7 +118,7 @@ void main() {
 
       expect(
         result.output,
-        contains('v0.48 Verified Git Artifact Bundle / Smoke Test'),
+        contains('v0.49 Git Artifact Build / arm64-v8a Production'),
       );
       expect(result.output, contains('bundle only a trusted Git artifact'));
       expect(result.output, contains('prove git --version on device'));

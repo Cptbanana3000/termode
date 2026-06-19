@@ -216,3 +216,17 @@ trusted Git artifact is bundled, checksum-verified, ABI-compatible, and proven
 with `git --version` on device. See
 [Git Artifact Acquisition](GIT_ARTIFACT_ACQUISITION.md) and
 [Git Build Pipeline](GIT_BUILD_PIPELINE.md).
+
+## v0.48 Update: Verified Git Bundle / Smoke Test
+
+v0.48 hardens the Git path without adding a real Git payload:
+
+- project artifacts under `tools/runtime-artifacts/git/<abi>/` can be validated
+- `git-artifact bundle-status`, `bundle-plan`, `bundle-check`, and `smoke-plan`
+  describe the trusted bundle path
+- `runtime-pkg install git` refuses missing/invalid/incompatible artifacts,
+  revalidates available artifacts, copies only manifest-owned files into the
+  prefix, runs `git --version`, and rolls back on failure
+
+No runtime download, fake Git script, or arbitrary archive install is enabled.
+See [Git Bundle Smoke Test](GIT_BUNDLE_SMOKE_TEST.md).

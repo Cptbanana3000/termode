@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -58,6 +59,15 @@ void main() {
             null,
           );
       SettingsService().loadFromJson(null);
+      await File(
+        RuntimeArtifactRegistryService.gitProjectManifestPath('arm64-v8a'),
+      ).delete().catchError((_) => File(''));
+      final filesDir = Directory(
+        RuntimeArtifactRegistryService.gitProjectFilesRoot('arm64-v8a'),
+      );
+      if (await filesDir.exists()) {
+        await filesDir.delete(recursive: true);
+      }
       if (await tempDir.exists()) {
         await tempDir.delete(recursive: true);
       }
@@ -71,6 +81,8 @@ void main() {
         expect(out, contains('git-artifact status'));
         expect(out, contains('git-artifact doctor'));
         expect(out, contains('git-artifact pipeline'));
+        expect(out, contains('git-artifact bundle-status'));
+        expect(out, contains('git-artifact smoke-plan'));
       }
     });
 
@@ -96,7 +108,7 @@ void main() {
       expect(result.output, contains('verified, ABI-matched Git package'));
       expect(result.output, contains('git --version'));
       expect(result.output, contains('This build has it: no'));
-      expect(result.output, contains('git-artifact pipeline'));
+      expect(result.output, contains('git-artifact bundle-status'));
     });
 
     test('git-artifact manifest reports template state', () async {
@@ -113,7 +125,7 @@ void main() {
       final result = await commandService.execute('git-artifact verify');
       expect(result.output, contains('=== Git Artifact Verify ==='));
       expect(result.output, contains('Nothing installable to verify'));
-      expect(result.output, contains('git-artifact pipeline'));
+      expect(result.output, contains('git-artifact bundle-status'));
     });
 
     test('git-artifact doctor reports missing artifact as non-fatal', () async {
@@ -162,7 +174,7 @@ void main() {
     test('git-exec-probe when Git not installed', () async {
       final result = await commandService.execute('git-exec-probe');
       expect(result.output, contains('Git is not installed yet.'));
-      expect(result.output, contains('git-artifact pipeline'));
+      expect(result.output, contains('git-artifact bundle-status'));
       expect(result.output, contains('runtime-pkg install git'));
       expect(result.output, isNot(contains('git version')));
     });
@@ -192,8 +204,134 @@ void main() {
 
     test('runtime-install status mentions Git artifact state', () async {
       final result = await commandService.execute('runtime-install status');
-      expect(result.output, contains('Git artifact state:'));
+      expect(result.output, contains('Git artifact:'));
       expect(result.output, contains('Real Git installed: no'));
+      expect(result.output, contains('Git execution: not verified'));
+    });
+
+    test(
+      'git-artifact bundle commands report missing/template bundle',
+      () async {
+        final status = await commandService.execute(
+          'git-artifact bundle-status',
+        );
+        final plan = await commandService.execute('git-artifact bundle-plan');
+        final check = await commandService.execute('git-artifact bundle-check');
+        final smoke = await commandService.execute('git-artifact smoke-plan');
+
+        expect(status.output, contains('=== Git Bundle Status ==='));
+        expect(status.output, contains('Project artifact:'));
+        expect(status.output, contains('Bundled artifact:'));
+        expect(status.output, contains('Installable: no'));
+        expect(status.output, contains('Overall: NOT READY'));
+        expect(
+          plan.output,
+          contains('Place files under tools/runtime-artifacts/git/<abi>/files'),
+        );
+        expect(plan.output, contains('Run git --version'));
+        expect(check.output, contains('=== Git Bundle Check ==='));
+        expect(
+          check.output,
+          anyOf(
+            contains('Overall: TEMPLATE_ONLY'),
+            contains('Overall: UNAVAILABLE'),
+          ),
+        );
+        expect(smoke.output, contains('=== Git Smoke Plan ==='));
+        expect(smoke.output, contains('Git is not installed yet.'));
+        expect(smoke.output, contains('git-artifact bundle-status'));
+      },
+    );
+
+    test('project artifact manifest with missing files is INVALID', () async {
+      final manifest = {
+        'name': 'git',
+        'version': '2.44.0',
+        'kind': 'native-tool',
+        'abi': 'arm64-v8a',
+        'command': 'git',
+        'entrypoint': 'bin/git',
+        'source': 'termode-built',
+        'source_url': 'https://example.invalid/git-source',
+        'build_method': 'termode test fixture',
+        'license': 'GPL-2.0-only',
+        'trusted_by': 'Termode',
+        'verification_command': 'git --version',
+        'smoke_tests': ['git --version'],
+        'dependencies': <String>[],
+        'created_at': '2026-06-19T00:00:00Z',
+        'files': [
+          {
+            'path': 'bin/git',
+            'sha256': List.filled(64, 'a').join(),
+            'bytes': 10,
+          },
+        ],
+      };
+      final manifestFile = File(
+        RuntimeArtifactRegistryService.gitProjectManifestPath('arm64-v8a'),
+      );
+      await manifestFile.parent.create(recursive: true);
+      await manifestFile.writeAsString(jsonEncode(manifest));
+
+      final status = await RuntimeArtifactRegistryService()
+          .projectGitArtifactStatus();
+      final check = await commandService.execute('git-artifact bundle-check');
+
+      expect(status.status, 'INVALID');
+      expect(status.installable, isFalse);
+      expect(status.reason, contains('artifact files directory missing'));
+      expect(check.output, contains('Overall: INVALID'));
+
+      final install = await commandService.execute('runtime-pkg install git');
+      expect(install.isError, isTrue);
+      expect(install.output, contains('Git artifact failed verification.'));
+      expect(install.output, contains('git-artifact bundle-check'));
+    });
+
+    test('project artifact with matching checksum can be AVAILABLE', () async {
+      final registry = RuntimeArtifactRegistryService();
+      final filesRoot = Directory(
+        RuntimeArtifactRegistryService.gitProjectFilesRoot('arm64-v8a'),
+      );
+      final gitFile = File('${filesRoot.path}/bin/git');
+      await gitFile.parent.create(recursive: true);
+      await gitFile.writeAsString(
+        'real git placeholder bytes for checksum only',
+      );
+      final sha = registry.calculateSha256(await gitFile.readAsBytes());
+      final manifest = {
+        'name': 'git',
+        'version': '2.44.0',
+        'kind': 'native-tool',
+        'abi': 'arm64-v8a',
+        'command': 'git',
+        'entrypoint': 'bin/git',
+        'source': 'termode-built',
+        'source_url': 'https://example.invalid/git-source',
+        'build_method': 'termode test fixture',
+        'license': 'GPL-2.0-only',
+        'trusted_by': 'Termode',
+        'verification_command': 'git --version',
+        'smoke_tests': ['git --version'],
+        'dependencies': <String>[],
+        'created_at': '2026-06-19T00:00:00Z',
+        'files': [
+          {'path': 'bin/git', 'sha256': sha, 'bytes': await gitFile.length()},
+        ],
+      };
+      final manifestFile = File(
+        RuntimeArtifactRegistryService.gitProjectManifestPath('arm64-v8a'),
+      );
+      await manifestFile.parent.create(recursive: true);
+      await manifestFile.writeAsString(jsonEncode(manifest));
+
+      final status = await registry.projectGitArtifactStatus();
+      final check = await commandService.execute('git-artifact bundle-check');
+
+      expect(status.status, 'AVAILABLE');
+      expect(status.installable, isTrue);
+      expect(check.output, contains('Overall: AVAILABLE'));
     });
 
     test('Git manifest validation rejects unsafe manifests', () {

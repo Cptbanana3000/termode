@@ -4,7 +4,7 @@ import 'runtime_capability_service.dart';
 
 class RuntimeFreezeService {
   static const nextMilestone =
-      'v0.48 Verified Git Artifact Bundle / Smoke Test';
+      'v0.49 Git Artifact Build / arm64-v8a Production';
 
   static const supportedRuntimeDirection = [
     'script packages through /system/bin/sh',
@@ -47,7 +47,7 @@ class RuntimeFreezeService {
         'Duktape: deferred\n'
         'Node.js: planned (not installed)\n'
         'npm: planned (not installed)\n'
-        'Next focus: verified Git artifact bundle and smoke test\n'
+        'Next focus: real arm64-v8a Git artifact build\n'
         'Overall: FROZEN';
   }
 

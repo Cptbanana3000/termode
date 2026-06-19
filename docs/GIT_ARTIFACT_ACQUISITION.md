@@ -1,7 +1,9 @@
-# Git Artifact Acquisition (v0.47)
+# Git Artifact Acquisition (v0.47, extended in v0.48)
 
 Termode can only ship real Git after a trusted artifact is acquired or built.
-v0.47 creates the acquisition path, but does not bundle Git.
+v0.47 creates the acquisition path, but does not bundle Git. v0.48 adds
+project-controlled bundle validation and a smoke-test path for a future
+artifact.
 
 Allowed sources:
 
@@ -28,13 +30,17 @@ Required artifact evidence:
 - `git --version` verification
 - smoke tests listed before release
 
-Current v0.47 state:
+Current v0.48 state:
 
 - acquisition documents: present
 - build/staging layout: present
 - manifest template: present
+- project artifact validation: present
+- install rollback path: present
+- `git --version` smoke gate: present
 - real Git artifact: not bundled
 - install state: blocked until verified artifact exists
 
-Use `git-artifact pipeline`, `git-artifact requirements`, and
-`git-artifact next` inside Termode for the device-facing summary.
+Use `git-artifact pipeline`, `git-artifact requirements`,
+`git-artifact bundle-status`, `git-artifact bundle-check`, and
+`git-artifact smoke-plan` inside Termode for the device-facing summary.

@@ -1,15 +1,16 @@
-# Git Artifact Contract (v0.47)
+# Git Artifact Contract (v0.48)
 
 This contract defines what a **real, installable Git package artifact** must
 look like for Termode to install, verify, expose, and run it. It is the trust
 boundary for real native tools. Termode only reports Git as installed/available
 when a verified artifact exists **and** `git --version` succeeds.
 
-**Status in this build:** no Git artifact is bundled, so Git is `TEMPLATE_ONLY`
-in a source checkout or `UNAVAILABLE` in an installed APK, and not installable.
-The pipeline (registry, manifest validation, install path, execution probe,
-acquisition/build docs, and manifest template) is implemented and honest; it
-simply has no verified payload to install.
+**Status in this build:** no real Git artifact is bundled, so Git is
+`TEMPLATE_ONLY` in a source checkout or `UNAVAILABLE` in an installed APK, and
+not installable. The pipeline (registry, manifest validation, project artifact
+checks, install path, rollback, execution probe, acquisition/build docs, and
+manifest template) is implemented and honest; it simply has no verified payload
+to install.
 
 ## Package Identity
 
@@ -95,12 +96,31 @@ Git is `AVAILABLE` only after:
 1. manifest validates
 2. ABI matches the device
 3. every checksum matches
-4. files install under the prefix
-5. the `git` shim registers
-6. `git --version` runs successfully (`git-exec-probe` HEALTHY)
+4. every manifest-listed artifact file exists under the trusted project or
+   bundled artifact root
+5. files install under the prefix
+6. copied files re-hash correctly
+7. the `git` shim registers
+8. `git --version` runs successfully (`git-exec-probe` HEALTHY)
 
 If verification fails after a partial install, the install is rolled back and
 Git is **not** marked installed.
+
+## v0.48 Bundle / Smoke Gate
+
+v0.48 distinguishes a project-side candidate artifact from a bundled release
+artifact. A source checkout can stage a candidate at:
+
+```text
+tools/runtime-artifacts/git/<abi>/manifest.json
+tools/runtime-artifacts/git/<abi>/files/<payload paths>
+```
+
+`git-artifact bundle-check` validates the manifest, ABI, file paths, file
+existence, byte counts, and SHA-256 hashes without installing. `runtime-pkg
+install git` revalidates, copies only manifest-owned files into
+`TERMODE_PREFIX`, runs `git --version`, and rolls back if any step fails.
+An APK with no bundled artifact remains honest: Git is unavailable, not fake.
 
 ## Removal Rules
 

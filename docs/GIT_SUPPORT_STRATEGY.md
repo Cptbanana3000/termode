@@ -127,7 +127,7 @@ execution probe (`git-exec-probe`), plus a trusted-artifact registry and Git
 manifest validation. No Git artifact is bundled, so Git remains `UNAVAILABLE`
 and the installer refuses safely. The exact artifact requirements are in
 [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md). Real artifact
-acquisition/build is v0.47.
+acquisition/build is v0.47, and verified bundle/smoke validation is v0.48.
 
 ## v0.47 Update: Acquisition / Build Pipeline
 
@@ -144,3 +144,17 @@ and `git-artifact next` explain the path from template to verified artifact.
 `TEMPLATE_ONLY` is not installable, and Termode still refuses `runtime-pkg
 install git` until a real trusted artifact is bundled and `git --version`
 passes on device.
+
+## v0.48 Update: Verified Bundle / Smoke Path
+
+v0.48 validates a project-controlled candidate artifact when present:
+
+- `git-artifact bundle-status`
+- `git-artifact bundle-plan`
+- `git-artifact bundle-check`
+- `git-artifact smoke-plan`
+
+The installer revalidates before copying, writes only manifest-owned files into
+`TERMODE_PREFIX`, rechecks copied SHA-256 values, runs `git --version`, and
+rolls back on any failure. This still does not bundle Git; missing Git remains
+planned/not installed, not unhealthy.

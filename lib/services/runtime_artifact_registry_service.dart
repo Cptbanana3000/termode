@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'native_command_service.dart';
 
-/// Safe registry for real runtime artifacts (v0.47), starting with Git.
+/// Safe registry for real runtime artifacts (v0.48), starting with Git.
 ///
-/// This is the trust boundary for installing real native tools. For v0.47 the
+/// This is the trust boundary for installing real native tools. For v0.48 the
 /// registry also knows about the build-side artifact template, but template-only
 /// is never installable. There is NO runtime internet download and NO arbitrary
 /// user-selected archive import.
@@ -34,11 +34,16 @@ class RuntimeArtifactRegistryService {
 
   static const String gitTemplatePath =
       'tools/runtime-artifacts/git/manifest.template.json';
-  static const String gitManifestPath =
-      'tools/runtime-artifacts/git/manifest.json';
+  static const String gitArtifactsRoot = 'tools/runtime-artifacts/git';
+
+  static String gitProjectManifestPath(String abi) =>
+      '$gitArtifactsRoot/$abi/manifest.json';
+
+  static String gitProjectFilesRoot(String abi) =>
+      '$gitArtifactsRoot/$abi/files';
 
   /// Whether a verified Git artifact is bundled in this build.
-  /// Always false for v0.47 (no bundled binary, no download). Honest.
+  /// Always false for v0.48 until a reviewed asset bundle is wired in.
   bool bundledGitArtifactExists() => false;
 
   /// The bundled Git manifest, if any. None in this build.
@@ -46,13 +51,20 @@ class RuntimeArtifactRegistryService {
 
   bool gitTemplateExists() => File(gitTemplatePath).existsSync();
 
-  bool gitProjectManifestExists() => File(gitManifestPath).existsSync();
+  bool gitProjectManifestExists([String? abi]) {
+    if (abi != null && abi.isNotEmpty) {
+      return File(gitProjectManifestPath(abi)).existsSync();
+    }
+    return supportedGitAbis.any(
+      (candidate) => File(gitProjectManifestPath(candidate)).existsSync(),
+    );
+  }
 
   Map<String, dynamic>? readGitTemplateManifest() =>
       _readJsonMap(gitTemplatePath);
 
-  Map<String, dynamic>? readProjectGitManifest() =>
-      _readJsonMap(gitManifestPath);
+  Map<String, dynamic>? readProjectGitManifest(String abi) =>
+      _readJsonMap(gitProjectManifestPath(abi));
 
   Map<String, dynamic>? _readJsonMap(String path) {
     final file = File(path);
@@ -73,30 +85,26 @@ class RuntimeArtifactRegistryService {
 
   /// Git artifact status for the current device ABI.
   Future<GitArtifactStatus> gitArtifactStatus() async {
+    final bundled = await bundledGitArtifactStatus();
+    if (bundled.installable || bundled.status == 'INVALID') {
+      return bundled;
+    }
+    return projectGitArtifactStatus();
+  }
+
+  Future<GitArtifactStatus> bundledGitArtifactStatus() async {
     final abi = await currentAbi();
     if (!bundledGitArtifactExists()) {
-      if (gitTemplateExists()) {
-        return GitArtifactStatus(
-          available: false,
-          installable: false,
-          abi: abi,
-          source: 'template',
-          reason:
-              'Git artifact template exists, but no verified Git payload is bundled.',
-          status: 'TEMPLATE_ONLY',
-          templatePresent: true,
-          manifestPresent: gitProjectManifestExists(),
-        );
-      }
       return GitArtifactStatus(
         available: false,
         installable: false,
         abi: abi,
-        source: 'unavailable',
+        source: 'bundled',
         reason: 'No verified Git artifact is bundled in this build.',
         status: 'UNAVAILABLE',
-        templatePresent: false,
+        templatePresent: gitTemplateExists(),
         manifestPresent: false,
+        location: 'bundled',
       );
     }
     final manifest = bundledGitManifest();
@@ -110,6 +118,7 @@ class RuntimeArtifactRegistryService {
         status: 'INVALID',
         templatePresent: gitTemplateExists(),
         manifestPresent: false,
+        location: 'bundled',
       );
     }
     final errors = validateGitManifest(manifest, abi);
@@ -123,6 +132,7 @@ class RuntimeArtifactRegistryService {
         status: 'INVALID',
         templatePresent: gitTemplateExists(),
         manifestPresent: true,
+        location: 'bundled',
       );
     }
     final manifestAbi = manifest['abi']?.toString() ?? '';
@@ -136,6 +146,7 @@ class RuntimeArtifactRegistryService {
         status: 'INCOMPATIBLE',
         templatePresent: gitTemplateExists(),
         manifestPresent: true,
+        location: 'bundled',
       );
     }
     return GitArtifactStatus(
@@ -147,7 +158,110 @@ class RuntimeArtifactRegistryService {
       status: 'AVAILABLE',
       templatePresent: gitTemplateExists(),
       manifestPresent: true,
+      location: 'bundled',
     );
+  }
+
+  Future<GitArtifactStatus> projectGitArtifactStatus() async {
+    final abi = await currentAbi();
+    final manifestPath = gitProjectManifestPath(abi);
+    final manifest = readProjectGitManifest(abi);
+    if (manifest == null) {
+      return GitArtifactStatus(
+        available: false,
+        installable: false,
+        abi: abi,
+        source: gitTemplateExists() ? 'template' : 'unavailable',
+        reason: gitTemplateExists()
+            ? 'Git artifact template exists, but no project Git payload is present.'
+            : 'No project Git artifact manifest exists at $manifestPath.',
+        status: gitTemplateExists() ? 'TEMPLATE_ONLY' : 'UNAVAILABLE',
+        templatePresent: gitTemplateExists(),
+        manifestPresent: false,
+        location: 'project',
+        manifestPath: manifestPath,
+      );
+    }
+    final manifestAbi = manifest['abi']?.toString() ?? '';
+    if (manifestAbi != 'all' && manifestAbi != abi) {
+      return GitArtifactStatus(
+        available: false,
+        installable: false,
+        abi: abi,
+        source: manifest['source']?.toString() ?? 'project',
+        reason:
+            'Project artifact ABI ($manifestAbi) does not match device ($abi).',
+        status: 'INCOMPATIBLE',
+        templatePresent: gitTemplateExists(),
+        manifestPresent: true,
+        location: 'project',
+        manifestPath: manifestPath,
+      );
+    }
+    final validation = validateProjectGitArtifact(manifest, abi);
+    if (validation.isNotEmpty) {
+      return GitArtifactStatus(
+        available: false,
+        installable: false,
+        abi: abi,
+        source: manifest['source']?.toString() ?? 'project',
+        reason: validation.first,
+        status: 'INVALID',
+        templatePresent: gitTemplateExists(),
+        manifestPresent: true,
+        location: 'project',
+        manifestPath: manifestPath,
+      );
+    }
+    return GitArtifactStatus(
+      available: true,
+      installable: true,
+      abi: abi,
+      source: manifest['source']?.toString() ?? 'project',
+      reason: 'Verified project Git artifact available.',
+      status: 'AVAILABLE',
+      templatePresent: gitTemplateExists(),
+      manifestPresent: true,
+      location: 'project',
+      manifestPath: manifestPath,
+    );
+  }
+
+  List<String> validateProjectGitArtifact(
+    Map<String, dynamic> manifest,
+    String currentAbi,
+  ) {
+    final errors = validateGitManifest(manifest, currentAbi);
+    if (errors.isNotEmpty) return errors;
+    final abi = manifest['abi']?.toString() ?? currentAbi;
+    final filesRoot = Directory(
+      gitProjectFilesRoot(abi == 'all' ? currentAbi : abi),
+    );
+    final files = manifest['files'];
+    if (files is! List) return const ['missing files'];
+    final root = filesRoot.absolute.path.replaceAll('\\', '/');
+    if (!filesRoot.existsSync()) {
+      return ['artifact files directory missing: ${filesRoot.path}'];
+    }
+    for (final item in files) {
+      if (item is! Map) return const ['invalid file entry'];
+      final relPath = item['path']?.toString() ?? '';
+      final expected = item['sha256']?.toString() ?? '';
+      if (!_isSafeRelativePath(relPath)) return ['unsafe file path: $relPath'];
+      final file = File('${filesRoot.path}/$relPath');
+      final normalized = file.absolute.path.replaceAll('\\', '/');
+      if (!normalized.startsWith('$root/')) {
+        return ['unsafe file path: $relPath'];
+      }
+      if (!file.existsSync()) {
+        return ['missing artifact file: $relPath'];
+      }
+      final actual = calculateSha256(file.readAsBytesSync());
+      if (actual.toLowerCase() != expected.toLowerCase()) {
+        return ['checksum mismatch: $relPath'];
+      }
+    }
+    return const [];
   }
 
   List<String> validateGitTemplateManifest() {
@@ -250,6 +364,156 @@ class RuntimeArtifactRegistryService {
     }
     return errors.toSet().toList()..sort();
   }
+
+  String calculateSha256(List<int> input) {
+    final bytes = List<int>.from(input);
+    final bitLength = bytes.length * 8;
+    bytes.add(0x80);
+    while ((bytes.length % 64) != 56) {
+      bytes.add(0);
+    }
+    for (var shift = 56; shift >= 0; shift -= 8) {
+      bytes.add((bitLength >> shift) & 0xff);
+    }
+
+    const k = <int>[
+      0x428a2f98,
+      0x71374491,
+      0xb5c0fbcf,
+      0xe9b5dba5,
+      0x3956c25b,
+      0x59f111f1,
+      0x923f82a4,
+      0xab1c5ed5,
+      0xd807aa98,
+      0x12835b01,
+      0x243185be,
+      0x550c7dc3,
+      0x72be5d74,
+      0x80deb1fe,
+      0x9bdc06a7,
+      0xc19bf174,
+      0xe49b69c1,
+      0xefbe4786,
+      0x0fc19dc6,
+      0x240ca1cc,
+      0x2de92c6f,
+      0x4a7484aa,
+      0x5cb0a9dc,
+      0x76f988da,
+      0x983e5152,
+      0xa831c66d,
+      0xb00327c8,
+      0xbf597fc7,
+      0xc6e00bf3,
+      0xd5a79147,
+      0x06ca6351,
+      0x14292967,
+      0x27b70a85,
+      0x2e1b2138,
+      0x4d2c6dfc,
+      0x53380d13,
+      0x650a7354,
+      0x766a0abb,
+      0x81c2c92e,
+      0x92722c85,
+      0xa2bfe8a1,
+      0xa81a664b,
+      0xc24b8b70,
+      0xc76c51a3,
+      0xd192e819,
+      0xd6990624,
+      0xf40e3585,
+      0x106aa070,
+      0x19a4c116,
+      0x1e376c08,
+      0x2748774c,
+      0x34b0bcb5,
+      0x391c0cb3,
+      0x4ed8aa4a,
+      0x5b9cca4f,
+      0x682e6ff3,
+      0x748f82ee,
+      0x78a5636f,
+      0x84c87814,
+      0x8cc70208,
+      0x90befffa,
+      0xa4506ceb,
+      0xbef9a3f7,
+      0xc67178f2,
+    ];
+
+    var h0 = 0x6a09e667;
+    var h1 = 0xbb67ae85;
+    var h2 = 0x3c6ef372;
+    var h3 = 0xa54ff53a;
+    var h4 = 0x510e527f;
+    var h5 = 0x9b05688c;
+    var h6 = 0x1f83d9ab;
+    var h7 = 0x5be0cd19;
+
+    int rotr(int x, int n) => ((x >>> n) | (x << (32 - n))) & 0xffffffff;
+
+    for (var offset = 0; offset < bytes.length; offset += 64) {
+      final w = List<int>.filled(64, 0);
+      for (var i = 0; i < 16; i++) {
+        final j = offset + i * 4;
+        w[i] =
+            ((bytes[j] << 24) |
+                (bytes[j + 1] << 16) |
+                (bytes[j + 2] << 8) |
+                bytes[j + 3]) &
+            0xffffffff;
+      }
+      for (var i = 16; i < 64; i++) {
+        final s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+        final s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+        w[i] = (w[i - 16] + s0 + w[i - 7] + s1) & 0xffffffff;
+      }
+      var a = h0;
+      var b = h1;
+      var c = h2;
+      var d = h3;
+      var e = h4;
+      var f = h5;
+      var g = h6;
+      var h = h7;
+      for (var i = 0; i < 64; i++) {
+        final s1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+        final ch = (e & f) ^ ((~e) & g);
+        final temp1 = (h + s1 + ch + k[i] + w[i]) & 0xffffffff;
+        final s0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+        final maj = (a & b) ^ (a & c) ^ (b & c);
+        final temp2 = (s0 + maj) & 0xffffffff;
+        h = g;
+        g = f;
+        f = e;
+        e = (d + temp1) & 0xffffffff;
+        d = c;
+        c = b;
+        b = a;
+        a = (temp1 + temp2) & 0xffffffff;
+      }
+      h0 = (h0 + a) & 0xffffffff;
+      h1 = (h1 + b) & 0xffffffff;
+      h2 = (h2 + c) & 0xffffffff;
+      h3 = (h3 + d) & 0xffffffff;
+      h4 = (h4 + e) & 0xffffffff;
+      h5 = (h5 + f) & 0xffffffff;
+      h6 = (h6 + g) & 0xffffffff;
+      h7 = (h7 + h) & 0xffffffff;
+    }
+    return [
+      h0,
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      h7,
+    ].map((v) => v.toRadixString(16).padLeft(8, '0')).join();
+  }
 }
 
 class GitArtifactStatus {
@@ -262,6 +526,8 @@ class GitArtifactStatus {
   // AVAILABLE / UNAVAILABLE / TEMPLATE_ONLY / INVALID / INCOMPATIBLE
   final bool templatePresent;
   final bool manifestPresent;
+  final String location;
+  final String manifestPath;
 
   const GitArtifactStatus({
     required this.available,
@@ -272,5 +538,7 @@ class GitArtifactStatus {
     required this.status,
     this.templatePresent = false,
     this.manifestPresent = false,
+    this.location = 'unknown',
+    this.manifestPath = '',
   });
 }
