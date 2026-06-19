@@ -21,6 +21,7 @@ class RuntimeBinaryPackageService {
 
   static const String metadataSchema = 'termode.runtime-packages.v1';
   static const String helloBinName = 'hello-bin';
+  static const String gitName = 'git';
   static const String helloBinOutput =
       'Hello from Termode binary package prototype.';
   static const String _helloBinContent =
@@ -193,11 +194,28 @@ class RuntimeBinaryPackageService {
         'Prototype package: hello-bin';
   }
 
+  /// Whether a verified, bundled Git package artifact exists in this build.
+  /// Honest detection: no Git artifact is bundled, so this is always false.
+  /// (No internet download, no arbitrary device paths, no unsigned archives.)
+  bool gitArtifactAvailable() => false;
+
+  /// Whether a Git runtime package is currently recorded as installed.
+  Future<bool> gitInstalled() async {
+    final metadata = await _readMetadata();
+    final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+    return packages.containsKey(gitName);
+  }
+
   Future<String> available() async {
     final manifest = helloBinManifest();
+    final gitState = gitArtifactAvailable()
+        ? 'installable if verified'
+        : 'artifact unavailable; install refuses safely';
     return '=== Available Runtime Packages ===\n'
         'Prototype available now:\n'
         '* hello-bin [${manifest['version']}] - ${manifest['description']}\n\n'
+        'Planned real tools:\n'
+        '* git - Distributed version control ($gitState)\n\n'
         'Real Git/Node/npm/Python packages are planned, not enabled yet.';
   }
 
@@ -217,6 +235,22 @@ class RuntimeBinaryPackageService {
   }
 
   Future<String> info(String name) async {
+    if (name == gitName) {
+      final installed = await gitInstalled();
+      final status = installed
+          ? 'installed'
+          : (gitArtifactAvailable()
+                ? 'installable if verified'
+                : 'planned (artifact unavailable)');
+      return '=== Runtime Package: git ===\n'
+          'Name: git\n'
+          'Kind: native-tool-planned\n'
+          'Status: $status\n'
+          'Command: git\n'
+          'Description: Distributed version control tool.\n'
+          'Install support: not enabled unless a verified package artifact exists.\n'
+          'Run: git-plan';
+    }
     if (name != helloBinName) {
       return 'Unknown runtime package: $name\n'
           'Run: runtime-pkg available';
@@ -237,6 +271,22 @@ class RuntimeBinaryPackageService {
   }
 
   Future<RuntimeBinaryPackageResult> install(String name) async {
+    if (name == gitName) {
+      if (!gitArtifactAvailable()) {
+        return const RuntimeBinaryPackageResult(
+          'Git package artifact is not available in this build.\n'
+          'Run: git-plan\n'
+          'Run: runtime-install plan git',
+        );
+      }
+      // A verified Git artifact would be validated (manifest, ABI, checksum),
+      // installed into TERMODE_PREFIX, registered as a shim, and confirmed with
+      // git --version before being marked installed. Not enabled in this build.
+      return const RuntimeBinaryPackageResult(
+        'Git install is not enabled yet in this build.\n'
+        'Run: git-plan',
+      );
+    }
     if (name != helloBinName) {
       return RuntimeBinaryPackageResult(
         'Unknown runtime package: $name\nRun: runtime-pkg available',

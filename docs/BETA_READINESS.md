@@ -187,3 +187,21 @@ v0.44 adds the binary package installer prototype:
 Beta readiness remains unaffected by planned-but-missing real runtimes.
 `PROTOTYPE READY` is acceptable for v0.44 when core packages, workspaces, and
 sessions are healthy.
+
+v0.45 proves the Git support feasibility / installer path:
+
+- version is `v0.45` (Android `versionName 0.45.0` / `versionCode 45`)
+- Git capability commands: `git-status`, `git-info`, `git-plan`,
+  `git-version`, `git-doctor`, `git-test-plan`, plus a safe `git` placeholder
+- `runtime-pkg` knows a planned `git` package: `runtime-pkg info git` reports it
+  as planned, and `runtime-pkg install git` refuses safely (no Git artifact)
+- `runtime-install`, `toolchain-*`, `dev-doctor`, `status`, and `build-info`
+  report Git as feasibility/planned, not installed
+- Termode never fakes Git; `git-version`, `bin-which git`, and `shim-list` all
+  report Git as absent. Missing Git is `PLANNED`, never `UNHEALTHY`
+- no Git binary, no download, no fake Git script — real Git execution requires a
+  future verified artifact (v0.46)
+
+Beta readiness is unaffected: `beta-candidate ready` still succeeds because Git
+is intentionally planned, not a broken installed tool. See
+[Git Support Strategy](GIT_SUPPORT_STRATEGY.md).

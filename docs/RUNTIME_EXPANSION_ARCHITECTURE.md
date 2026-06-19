@@ -135,3 +135,10 @@ installer model without adding real binary runtime support.
 
 CalypsoIDE integration stays out of scope until the standalone Termode beta is
 stable.
+
+## v0.45 Update: Git Feasibility
+
+The first real tool target is Git. v0.45 proves the install/verify/shim path and
+adds `git-*` capability commands, but ships no Git artifact (planned, not
+installed; the installer refuses safely). See
+[Git Support Strategy](GIT_SUPPORT_STRATEGY.md).

@@ -188,3 +188,11 @@ v0.45 Git Support
 
 Future milestones can reuse the same prefix, metadata, checksum, ABI, bin, and
 shim model for larger runtimes.
+
+## Next: Git (v0.45)
+
+v0.45 applies this installer pattern to Git as a feasibility / installer-path
+milestone. `runtime-pkg` now knows a planned `git` package, but ships no Git
+artifact, so `runtime-pkg install git` refuses safely and Git is reported as
+planned/not installed. Real, verified Git install/execution arrives in v0.46.
+See [Git Support Strategy](GIT_SUPPORT_STRATEGY.md).

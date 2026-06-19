@@ -310,7 +310,7 @@ void main() {
         contains('Real Git/Node/Python installs: not enabled yet'),
       );
       expect(status.output, contains('Prototype package: hello-bin'));
-      expect(status.output, contains('Next milestone: v0.45 Git Support'));
+      expect(status.output, contains('Next milestone: v0.46 Git Package Artifact / Real Git Execution'));
 
       final doctor = await commandService.execute('runtime-install doctor');
       expect(doctor.output, contains('=== Runtime Install Doctor ==='));

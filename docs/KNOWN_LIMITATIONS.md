@@ -1,8 +1,10 @@
 # Known Limitations
 
-Termode is beta software. v0.44 provides a safe runtime package installer
-prototype on top of the prefix/PATH/environment layer, but real toolchains are
-still **planned, not installed**.
+Termode is beta software. v0.45 proves the Git installer path on top of the
+v0.44 runtime package installer prototype, but ships no Git artifact, so Git —
+like Node/npm/Python — is still **planned, not installed**. Termode never fakes
+Git; `git`, `git-version`, and `bin-which git` all report it as not installed.
+See [Git Support Strategy](GIT_SUPPORT_STRATEGY.md).
 
 Termode does not run Node.js, npm, Git, or Python yet. A `LIMITED` or
 `PROTOTYPE READY`, `ARCHITECTURE PHASE`, or `LIMITED` status is often
@@ -52,6 +54,8 @@ runtime-install status
 runtime-pkg status
 runtime-pkg available
 runtime-abi
+git-status
+git-doctor
 dev-doctor
 ```
 

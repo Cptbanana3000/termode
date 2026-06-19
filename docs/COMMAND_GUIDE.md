@@ -63,6 +63,21 @@ Use `welcome`, `examples`, and `glossary` first if you are new.
 package. It does not install Git, Node.js, npm, Python, or real native binary
 packages.
 
+## Git (Feasibility)
+
+- `git-status`
+- `git-info`
+- `git-plan`
+- `git-version`
+- `git-doctor`
+- `git-test-plan`
+- `git` (placeholder; guides you when Git is not installed)
+
+Git is **planned, not installed** in this build. There is no Git artifact, so
+`runtime-pkg install git` refuses safely, `git-version` reports it is not
+installed, and `bin-which git` does not find it. Termode never fakes Git. See
+[Git Support Strategy](GIT_SUPPORT_STRATEGY.md).
+
 ## Workspace / Files
 
 - `workspace`

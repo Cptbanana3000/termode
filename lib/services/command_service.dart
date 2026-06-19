@@ -237,8 +237,8 @@ class CommandService {
   String _betaNextOutput() {
     return '=== Beta Next ===\n'
         'Recommended next milestone:\n'
-        'v0.45 Git Support\n\n'
-        'Reason: v0.44 adds the safe runtime package installer prototype; next can apply it to Git.';
+        'v0.46 Git Package Artifact / Real Git Execution\n\n'
+        'Reason: v0.45 proves the Git installer path but ships no Git artifact; next vendors/builds a verified Git package.';
   }
 
   /// Computes beta-candidate readiness. Intentional limitations (frozen
@@ -286,7 +286,7 @@ class CommandService {
     String label(String s) => s == 'UNHEALTHY' ? 'UNHEALTHY' : 'OK';
     final prefixReady = await RuntimePrefixService().isInitialized();
     return '=== Termode Beta Candidate ===\n'
-        'Version: v0.44\n'
+        'Version: v0.45\n'
         'Core shell: OK\n'
         'Packages: ${label(r.packages)}\n'
         'Workspaces: ${label(r.workspaces)}\n'
@@ -296,6 +296,7 @@ class CommandService {
         'Prefix: ${prefixReady ? 'initialized' : 'not initialized'}\n'
         'PATH overlay: ${prefixReady ? 'ready' : 'limited'}\n'
         'Runtime package installer: prototype ready\n'
+        'Git: feasibility (planned, not installed)\n'
         'Toolchains: planned (not installed)\n'
         'Known limitations: yes\n'
         'Overall: ${r.ready ? 'BETA CANDIDATE' : 'NEEDS FIXES'}';
@@ -325,7 +326,7 @@ class CommandService {
   }
 
   String _betaCandidateNotesOutput() {
-    return '=== Termode v0.44 Beta Candidate ===\n'
+    return '=== Termode v0.45 Beta Candidate ===\n'
         'Termode is a standalone Android terminal with a REAL PTY shell.\n\n'
         'Highlights:\n'
         '* REAL PTY shell with host command interception\n'
@@ -356,7 +357,7 @@ class CommandService {
 
   String _betaCandidateHelpOutput() {
     return '=== Termode Beta Candidate ===\n'
-        'Termode v0.44 is a terminal-foundation beta (binary package installer prototype).\n\n'
+        'Termode v0.45 is a terminal-foundation beta (Git support feasibility / installer path).\n\n'
         'Subcommands:\n'
         '  beta-candidate status     - Show beta candidate readiness summary\n'
         '  beta-candidate checklist  - Show the beta candidate checklist\n'
@@ -431,7 +432,7 @@ class CommandService {
     ]);
     final coreLabel = coreSystems == 'HEALTHY' ? 'OK' : coreSystems;
     return '=== Release Candidate Status ===\n'
-        'Version: v0.44\n'
+        'Version: v0.45\n'
         'Beta candidate: yes\n'
         'Core systems: $coreLabel\n'
         'Known limitations: intentional\n'
@@ -518,7 +519,7 @@ class CommandService {
   String _toolchainStatusOutput() {
     return '=== Toolchain Status ===\n'
         'Runtime package installer: prototype ready\n'
-        'Git: planned\n'
+        'Git: planned (feasibility active, not installed)\n'
         'Node.js: planned\n'
         'npm: planned\n'
         'Python: planned\n'
@@ -552,6 +553,10 @@ class CommandService {
       sb.writeln('Expected commands: node, npm later');
       sb.writeln('Order: Node comes before npm');
       sb.writeln('npm note: npm will need package/cache handling');
+    }
+    if (key == 'git') {
+      sb.writeln('Installed: no');
+      sb.writeln('Feasibility: active (v0.45) — see git-status / git-plan');
     }
     sb.writeln('Future install command: ${tc['install']}');
     sb.write('Notes: ${tc['notes']}');
@@ -602,11 +607,18 @@ class CommandService {
   }
 
   String _runtimeInstallListOutput() {
+    final gitState = RuntimeBinaryPackageService().gitArtifactAvailable()
+        ? 'installable if verified'
+        : 'planned (artifact unavailable)';
     final sb = StringBuffer('Prototype available now:\n');
     sb.writeln('* hello-bin');
     sb.writeln();
+    sb.writeln('Real tools:');
+    sb.writeln('* git: $gitState');
+    sb.writeln();
     sb.writeln('Planned future runtimes:');
     for (final key in _plannedToolchainOrder) {
+      if (key == 'git') continue;
       sb.writeln('* $key');
     }
     return sb.toString().trimRight();
@@ -618,6 +630,23 @@ class CommandService {
     if (tc == null) {
       return 'Unknown runtime: $tool\n'
           'Run: runtime-install list';
+    }
+    if (key == 'git') {
+      final state = RuntimeBinaryPackageService().gitArtifactAvailable()
+          ? 'installable'
+          : 'planned (artifact unavailable)';
+      return '=== Runtime Install Plan: Git ===\n'
+          'Status: $state\n'
+          'Future/supported steps:\n'
+          '1. Verify Android ABI.\n'
+          '2. Validate Git package manifest.\n'
+          '3. Verify checksum.\n'
+          '4. Install into TERMODE_PREFIX.\n'
+          '5. Register git shim.\n'
+          '6. Run git --version.\n'
+          '7. Run git-doctor.\n'
+          '8. Test Git inside a workspace.\n'
+          'Run: git-plan';
     }
     return '=== Runtime Install Plan: ${tc['display']} ===\n'
         'Status: planned\n'
@@ -634,15 +663,19 @@ class CommandService {
 
   Future<String> _runtimeInstallStatusOutput() async {
     final initialized = await RuntimePrefixService().isInitialized();
+    final gitInstalled = await RuntimeBinaryPackageService().gitInstalled();
     return '=== Runtime Install Status ===\n'
         'Mode: prototype installer available\n'
+        'Binary package installer prototype: ready\n'
+        'Git support feasibility: active\n'
+        'Real Git installed: ${gitInstalled ? 'yes' : 'no'}\n'
         'Real Git/Node/Python installs: not enabled yet\n'
         'Prototype package: hello-bin\n'
         'Prefix initialized: ${initialized ? 'yes' : 'no'}\n'
         'PATH overlay ready: ${initialized ? 'yes' : 'no'}\n'
         'Env ready: ${initialized ? 'yes' : 'no'}\n'
         'Bin dir ready: ${initialized ? 'yes' : 'no'}\n'
-        'Next milestone: v0.45 Git Support';
+        'Next milestone: v0.46 Git Package Artifact / Real Git Execution';
   }
 
   Future<String> _runtimeInstallDoctorOutput() async {
@@ -663,6 +696,8 @@ class CommandService {
         'Runtime package metadata: ${runtimePkgReady ? 'OK' : 'CHECK'}\n'
         'Prototype installer: enabled\n'
         'Android ABI: ${abi == null || abi.isEmpty ? 'unknown' : abi}\n'
+        'Git artifact: ${RuntimeBinaryPackageService().gitArtifactAvailable() ? 'available' : 'unavailable'}\n'
+        'Git: ${await RuntimeBinaryPackageService().gitInstalled() ? 'installed' : 'planned (not installed)'}\n'
         'Real Git/Node/npm/Python installs: not enabled yet\n'
         'Safety: no downloads, no native execution\n'
         'Overall: ${runtimePkgReady ? 'PROTOTYPE READY' : 'LIMITED'}';
@@ -735,11 +770,129 @@ class CommandService {
         'Prefix: ${initialized ? 'OK' : 'LIMITED'}\n'
         'PATH: ${initialized ? 'OK' : 'LIMITED'}\n'
         'Env: ${initialized ? 'OK' : 'LIMITED'}\n'
-        'Git: planned\n'
+        'Git: planned (not installed)\n'
         'Node.js: planned\n'
         'npm: planned\n'
         'Python: planned\n'
         'Overall: PROTOTYPE READY';
+  }
+
+  // --- v0.45 Git support feasibility (honest; no fake Git) -----------------
+
+  Future<String> _gitStatusOutput() async {
+    final pkg = RuntimeBinaryPackageService();
+    final prefix = RuntimePrefixService();
+    final installed = await pkg.gitInstalled();
+    final artifact = pkg.gitArtifactAvailable();
+    final prefixReady = await prefix.isInitialized();
+    final prefixHealth = prefixReady ? 'HEALTHY' : 'LIMITED';
+    final installMethod = installed
+        ? 'runtime package'
+        : (artifact ? 'runtime package (installable)' : 'planned (artifact unavailable)');
+    final overall = installed
+        ? 'AVAILABLE'
+        : (artifact ? 'NOT INSTALLED' : 'PLANNED');
+    return '=== Git Status ===\n'
+        'Installed: ${installed ? 'yes' : 'no'}\n'
+        'Command: git\n'
+        'Version: ${installed ? 'see git-version' : 'not available'}\n'
+        'Install method: $installMethod\n'
+        'Prefix: $prefixHealth\n'
+        'PATH: $prefixHealth\n'
+        'Overall: $overall';
+  }
+
+  Future<String> _gitInfoOutput() async {
+    final installed = await RuntimeBinaryPackageService().gitInstalled();
+    return '=== Git Info ===\n'
+        'Git is a distributed version control tool: clone, commit, branch, and\n'
+        'track history of your project files.\n'
+        'Installed: ${installed ? 'yes' : 'no'}\n'
+        'Future install command: runtime-install plan git\n'
+        '  (or: runtime-pkg install git once a verified artifact exists)\n'
+        'Run: git-plan';
+  }
+
+  String _gitPlanOutput(bool artifactAvailable) {
+    return '=== Git Support Plan ===\n'
+        '1. Verify ABI.\n'
+        '2. Validate Git package manifest.\n'
+        '3. Install files into TERMODE_PREFIX.\n'
+        '4. Register git shim.\n'
+        '5. Run git --version.\n'
+        '6. Run git-doctor.\n'
+        '7. Test git init/status in workspace.\n'
+        'Status: ${artifactAvailable ? 'installable (verified artifact present)' : 'planned (no safe Git artifact in this build)'}';
+  }
+
+  Future<String> _gitVersionOutput() async {
+    final installed = await RuntimeBinaryPackageService().gitInstalled();
+    if (!installed) {
+      return 'Git is not installed yet.\n'
+          'Run: git-plan\n'
+          'Run: runtime-install plan git';
+    }
+    // A real verified Git package would run `git --version` here. No artifact
+    // is bundled in this build, so this branch is never reached. We never print
+    // a fake version.
+    return 'Git is installed. Run: git-version inside default-shell.';
+  }
+
+  Future<String> _gitDoctorOutput() async {
+    final pkg = RuntimeBinaryPackageService();
+    final prefix = RuntimePrefixService();
+    final installed = await pkg.gitInstalled();
+    final prefixReady = await prefix.isInitialized();
+    final binWhich = await prefix.binWhich('git');
+    final found = !binWhich.startsWith('Not found');
+    String overall;
+    if (installed && !found) {
+      overall = 'UNHEALTHY';
+    } else if (installed) {
+      overall = 'AVAILABLE';
+    } else {
+      overall = 'PLANNED';
+    }
+    return '=== Git Doctor ===\n'
+        'Prefix: ${prefixReady ? 'OK' : 'LIMITED'}\n'
+        'PATH: ${prefixReady ? 'OK' : 'LIMITED'}\n'
+        'Env: ${prefixReady ? 'OK' : 'LIMITED'}\n'
+        'Runtime package metadata: OK\n'
+        'Git package: ${installed ? 'installed' : 'not installed'}\n'
+        'bin-which git: ${found ? 'found' : 'not found'}\n'
+        'git --version: ${installed ? 'see git-version' : 'not available'}\n'
+        'Note: missing Git is expected in this build (planned, not installed).\n'
+        'Overall: $overall';
+  }
+
+  Future<String> _gitTestPlanOutput() async {
+    final installed = await RuntimeBinaryPackageService().gitInstalled();
+    final header = installed
+        ? 'Git is installed. You can run these tests:'
+        : 'These tests run once Git is installed (blocked until a Git artifact exists):';
+    return '=== Git Test Plan ===\n'
+        '$header\n'
+        'workspace-init gittests\n'
+        'workspace-cd gittests\n'
+        'git --version\n'
+        'git init\n'
+        'git status\n'
+        'host-write README.md "hello git"\n'
+        'git add README.md\n'
+        'git commit -m "Initial commit"\n'
+        'git log --oneline';
+  }
+
+  Future<String> _gitBareOutput() async {
+    final installed = await RuntimeBinaryPackageService().gitInstalled();
+    if (!installed) {
+      return 'Git is not installed yet.\n'
+          'Run: git-plan\n'
+          'Run: runtime-install plan git';
+    }
+    // Real Git execution arrives with the verified Git package milestone.
+    return 'Git is installed. Direct execution arrives with the Git package '
+        'milestone; for now use git-status and runtime-pkg verify git.';
   }
 
   Future<String> _termodeDoctor({bool verbose = false}) async {
@@ -874,6 +1027,8 @@ class CommandService {
         'Runtime package prototype:\n'
         '  runtime-pkg, runtime-pkg available, runtime-pkg install hello-bin\n'
         '  runtime-pkg doctor, runtime-pkg verify hello-bin, hello-bin\n'
+        'Git (feasibility):\n'
+        '  git-status, git-info, git-plan, git-version, git-doctor, git-test-plan\n'
         'Runtime install planning:\n'
         '  toolchain-status, toolchain-list, toolchain-info, toolchain-doctor\n'
         '  runtime-install list, dev-setup list, dev-doctor\n'
@@ -979,7 +1134,7 @@ class CommandService {
     final docsOk = repoDocsOk || embeddedDocsOk;
     final readmeOk =
         !File('README.md').existsSync() ||
-        File('README.md').readAsStringSync().contains('v0.44');
+        File('README.md').readAsStringSync().contains('v0.45');
     final healthy = docsOk && readmeOk;
     return '=== Onboarding Doctor ===\n'
         'Welcome: OK\n'
@@ -1091,12 +1246,13 @@ class CommandService {
         'Prefix: ${prefixReady ? 'initialized' : 'not initialized'}\n'
         'PATH overlay: ${prefixReady ? 'ready' : 'limited'}\n'
         'Runtime package installer: prototype ready\n'
+        'Git: planned (not installed)\n'
         'Toolchains: planned (not installed)\n'
         'Beta: $beta';
   }
 
   String _versionOutput() {
-    return 'Termode v0.44\n'
+    return 'Termode v0.45\n'
         'Runtime: frozen\n'
         'Shell: REAL PTY\n'
         'Packages: script + runtime prototype';
@@ -1112,19 +1268,21 @@ class CommandService {
   String _buildInfoOutput() {
     return '=== Build Info ===\n'
         'App: Termode\n'
-        'Version: v0.44\n'
+        'Version: v0.45\n'
         'Build type: ${_buildTypeName()}\n'
         'Runtime: prototype installer active\n'
         'Runtime package installer: prototype ready\n'
+        'Git: feasibility (planned, not installed)\n'
         'Toolchains: planned (not installed)\n'
         'Shell: REAL PTY\n'
         'Packages: script + runtime prototype\n'
         'Beta candidate: terminal foundation beta\n'
-        'Artifact: Termode-v0.44-binpkg-debug.apk';
+        'Artifact: Termode-v0.45-git-path-debug.apk';
   }
 
   String _releaseNotesOutput() {
     return '=== Termode Release Notes ===\n'
+        'v0.45 Git Support Feasibility / Installer Path\n'
         'v0.44 Binary Package Installer Prototype\n'
         'v0.43 Prefix / PATH / Environment System\n'
         'v0.42 Runtime Expansion Architecture\n'
@@ -1162,7 +1320,7 @@ class CommandService {
         ? 'REAL PTY'
         : 'NORMAL';
     return '=== Termode Bug Report ===\n'
-        'Termode version: v0.44\n'
+        'Termode version: v0.45\n'
         'Android ABI: $abi\n'
         'Runtime status: $runtimeStatus\n'
         'Package doctor: $packageStatus\n'
@@ -1369,6 +1527,7 @@ class CommandService {
               '  runtime-pkg status\n'
               '  runtime-abi\n'
               '  toolchain-status\n'
+              '  git-status\n'
               '  dev-doctor\n\n'
               'Sub-help:\n'
               '  pkg help\n'
@@ -2399,6 +2558,35 @@ class CommandService {
       case 'hello-bin':
         final result = await RuntimeBinaryPackageService().runHelloBin();
         return CommandResult(output: result.output, isError: result.isError);
+
+      case 'git-status':
+        return CommandResult(output: await _gitStatusOutput());
+
+      case 'git-info':
+        return CommandResult(output: await _gitInfoOutput());
+
+      case 'git-plan':
+        return CommandResult(
+          output: _gitPlanOutput(
+            RuntimeBinaryPackageService().gitArtifactAvailable(),
+          ),
+        );
+
+      case 'git-version':
+        return CommandResult(output: await _gitVersionOutput());
+
+      case 'git-doctor':
+        final output = await _gitDoctorOutput();
+        return CommandResult(
+          output: output,
+          isError: output.contains('Overall: UNHEALTHY'),
+        );
+
+      case 'git-test-plan':
+        return CommandResult(output: await _gitTestPlanOutput());
+
+      case 'git':
+        return CommandResult(output: await _gitBareOutput());
 
       case 'toolchain-status':
         return CommandResult(output: _toolchainStatusOutput());

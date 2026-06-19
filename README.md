@@ -3,7 +3,7 @@
 Termode is a standalone Android terminal project with a REAL PTY shell,
 script packages, workspace folders, and beta QA tooling.
 
-Current status: **v0.44 Binary Package Installer Prototype** (terminal foundation beta).
+Current status: **v0.45 Git Support Feasibility / Installer Path** (terminal foundation beta).
 
 Termode is not a full Linux distribution and is not a Termux replacement yet,
 and it is not a stable v1.0. It is building a complete standalone Android
@@ -13,9 +13,11 @@ integrating into CalypsoIDE.
 Termode has a strong terminal foundation today (REAL PTY, packages, workspaces,
 sessions, QA/beta tooling). It does **not** yet include Node.js, npm, Git,
 Python, compilers, or a full Linux package ecosystem — those are **planned, not
-installed**. v0.44 adds the first safe runtime package installer prototype on
-top of the prefix, PATH overlay, environment variables, and REAL PTY environment
-injection from v0.43. See
+installed**. v0.45 proves the Git installer path on top of the v0.44 runtime
+package installer prototype: it can describe, plan, and verify Git support, but
+ships **no Git artifact**, so Git is reported as planned/not installed and the
+installer refuses safely. Termode never fakes Git. See
+[Git Support Strategy](docs/GIT_SUPPORT_STRATEGY.md),
 [Binary Package Installer Prototype](docs/BINARY_PACKAGE_INSTALLER_PROTOTYPE.md),
 [Prefix / PATH / Environment](docs/PREFIX_PATH_ENVIRONMENT.md),
 [Runtime Expansion Architecture](docs/RUNTIME_EXPANSION_ARCHITECTURE.md),
@@ -87,7 +89,7 @@ hello
 Termode ships as a debug APK for beta testing:
 
 1. Enable "Install unknown apps" for your file manager or browser.
-2. Copy `Termode-v0.44-binpkg-debug.apk` to the device and tap to install.
+2. Copy `Termode-v0.45-git-path-debug.apk` to the device and tap to install.
 3. Launch Termode and run `welcome`, then `doctor` and `dev-doctor`.
 
 Full steps and how to clear app data are in
@@ -197,12 +199,13 @@ after the UI polish pass.
 
 ## Roadmap
 
-- v0.41 Beta Feedback Fixes / RC Cleanup
 - v0.42 Runtime Expansion Architecture
 - v0.43 Prefix / PATH / Environment System
-- v0.44 Binary Package Installer Prototype (current)
-- v0.45 Git · v0.46 Node.js · v0.47 npm · v0.48 Python
-- v0.49 Dev Stack Presets · v0.50 Full Terminal QA · v0.51 Complete Termode Beta
+- v0.44 Binary Package Installer Prototype
+- v0.45 Git Support Feasibility / Installer Path (current)
+- v0.46 Git Package Artifact / Real Git Execution
+- v0.47 Node.js · v0.48 npm · v0.49 Python · v0.50 Dev Stack Presets
+- v0.51 Full Terminal QA · v0.52 Complete Termode Beta
 - CalypsoIDE integration later
 
 Node/npm/Python/Git research stays deferred until after the standalone beta
@@ -210,6 +213,7 @@ stabilizes.
 
 ## Docs
 
+- [Git Support Strategy](docs/GIT_SUPPORT_STRATEGY.md)
 - [Runtime Expansion Architecture](docs/RUNTIME_EXPANSION_ARCHITECTURE.md)
 - [Binary Package Installer Prototype](docs/BINARY_PACKAGE_INSTALLER_PROTOTYPE.md)
 - [Prefix / PATH / Environment](docs/PREFIX_PATH_ENVIRONMENT.md)

@@ -148,3 +148,10 @@ shim-doctor
 - Full Linux distribution compatibility
 
 Next milestone: v0.45 Git Support.
+
+## v0.45 Update
+
+Future Git (and other runtime) tools install into `TERMODE_PREFIX/bin`, which is
+already first on the PATH overlay and exposed to REAL PTY. v0.45 wires the Git
+installer path on top of this prefix/PATH/env layer; see
+[Git Support Strategy](GIT_SUPPORT_STRATEGY.md).
