@@ -19,8 +19,9 @@ tools/runtime-artifacts/git/
     files/
 ```
 
-v0.49 ships only the template and placeholders. There is no executable Git
-payload here, and the template is not installable. A project-side candidate
+v0.50 ships only the template, placeholders, and trusted production pipeline
+docs. There is no executable Git payload here, and the template is not
+installable. A project-side candidate
 uses the per-ABI `manifest.json` plus `files/` directory shown above.
 
 A real artifact must include:
@@ -36,4 +37,5 @@ Validate a candidate with:
 
 ```sh
 git-artifact bundle-check
+git-artifact production-status
 ```

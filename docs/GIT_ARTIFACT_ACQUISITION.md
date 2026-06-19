@@ -1,10 +1,14 @@
-# Git Artifact Acquisition (v0.47, extended in v0.48-v0.49)
+# Git Artifact Acquisition (v0.47, extended in v0.48-v0.50)
 
 Termode can only ship real Git after a trusted artifact is acquired or built.
 v0.47 creates the acquisition path, but does not bundle Git. v0.48 adds
 project-controlled bundle validation and a smoke-test path for a future
 artifact. v0.49 prepares the arm64-v8a production artifact layout and helper
-pipeline.
+pipeline. v0.50 completes the trusted production pipeline while still keeping
+Git unavailable until a real payload exists.
+
+See [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md) and
+[Git Trusted Build](GIT_TRUSTED_BUILD.md).
 
 Allowed sources:
 

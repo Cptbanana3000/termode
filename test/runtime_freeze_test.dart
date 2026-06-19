@@ -118,9 +118,12 @@ void main() {
 
       expect(
         result.output,
-        contains('v0.50 Git Artifact Production / Trusted Build'),
+        contains('v0.51 Git Artifact Payload Build / Device Verification'),
       );
-      expect(result.output, contains('bundle only a trusted Git artifact'));
+      expect(
+        result.output,
+        contains('produce or vendor a trusted Git artifact'),
+      );
       expect(result.output, contains('prove git --version on device'));
       expect(result.output, contains('checksum and ABI validation on device'));
       expect(result.output, contains('keep Node/npm/Python planned'));

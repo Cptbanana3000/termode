@@ -1,4 +1,4 @@
-# Git Artifact Contract (v0.49)
+# Git Artifact Contract (v0.49, productionized in v0.50)
 
 This contract defines what a **real, installable Git package artifact** must
 look like for Termode to install, verify, expose, and run it. It is the trust
@@ -127,6 +127,16 @@ An APK with no bundled artifact remains honest: Git is unavailable, not fake.
 v0.49 adds the project-side `arm64-v8a` production layout, example manifest,
 files placeholder, and optional helper scripts. It does not add a real payload.
 See [Git arm64-v8a Artifact Pipeline](GIT_ARM64_ARTIFACT_PIPELINE.md).
+
+## v0.50 Trusted Production Gate
+
+v0.50 adds the production status and trusted build rules. A future artifact
+must pass the production docs, manifest schema, SHA-256 validation, byte-count
+validation, `runtime-pkg install git`, and real Android `git --version` before
+Termode may report Git as available.
+
+See [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md) and
+[Git Trusted Build](GIT_TRUSTED_BUILD.md).
 
 ## Removal Rules
 

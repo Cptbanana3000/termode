@@ -318,7 +318,7 @@ class RuntimeBinaryPackageService {
           'Reason: ${artifact.reason}\n'
           'Run: git-artifact bundle-check\n'
           'Run: git-artifact doctor\n'
-          'Docs: docs/GIT_ARM64_ARTIFACT_PIPELINE.md',
+          'Docs: docs/GIT_TRUSTED_BUILD.md',
           isError: true,
         );
       }
@@ -329,7 +329,7 @@ class RuntimeBinaryPackageService {
           'Run: git-artifact bundle-status\n'
           'Run: git-artifact bundle-plan\n'
           'Run: git-artifact next\n'
-          'Docs: docs/GIT_ARM64_ARTIFACT_PIPELINE.md',
+          'Docs: docs/GIT_TRUSTED_BUILD.md',
         );
       }
       if (!artifact.installable) {
@@ -338,7 +338,7 @@ class RuntimeBinaryPackageService {
           'Reason: ${artifact.reason}\n'
           'Run: git-artifact bundle-check\n'
           'Run: git-artifact doctor\n'
-          'Docs: docs/GIT_ARM64_ARTIFACT_PIPELINE.md',
+          'Docs: docs/GIT_TRUSTED_BUILD.md',
           isError: true,
         );
       }

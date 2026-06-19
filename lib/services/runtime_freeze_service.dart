@@ -3,7 +3,8 @@ import 'dart:io';
 import 'runtime_capability_service.dart';
 
 class RuntimeFreezeService {
-  static const nextMilestone = 'v0.50 Git Artifact Production / Trusted Build';
+  static const nextMilestone =
+      'v0.51 Git Artifact Payload Build / Device Verification';
 
   static const supportedRuntimeDirection = [
     'script packages through /system/bin/sh',
@@ -46,7 +47,7 @@ class RuntimeFreezeService {
         'Duktape: deferred\n'
         'Node.js: planned (not installed)\n'
         'npm: planned (not installed)\n'
-        'Next focus: trusted Git artifact production build\n'
+        'Next focus: real Git artifact payload and device verification\n'
         'Overall: FROZEN';
   }
 
@@ -92,7 +93,7 @@ class RuntimeFreezeService {
         'Recommended next milestone:\n'
         '$nextMilestone\n\n'
         'Focus:\n'
-        '  - bundle only a trusted Git artifact\n'
+        '  - produce or vendor a trusted Git artifact\n'
         '  - checksum and ABI validation on device\n'
         '  - prove git --version on device\n'
         '  - keep Node/npm/Python planned but not installed\n'

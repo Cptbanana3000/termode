@@ -73,18 +73,20 @@ packages.
 - `git-test-plan`
 - `git` (placeholder; guides you when Git is not installed)
 - `git-artifact` (`status`, `info`, `manifest`, `verify`, `doctor`,
-  `pipeline`, `requirements`, `sources`, `next`, `bundle-status`,
-  `bundle-plan`, `bundle-check`, `smoke-plan`)
+  `pipeline`, `requirements`, `sources`, `production-status`, `next`,
+  `bundle-status`, `bundle-plan`, `bundle-check`, `smoke-plan`)
 - `git-exec-probe`
 - `git-smoke-test`
 - `git-workspace-smoke-plan`
 
-Git is **planned, not installed** in this build. v0.49 includes the arm64-v8a
-production artifact pipeline, but there is no real Git payload bundled.
+Git is **planned, not installed** in this build. v0.50 includes the arm64-v8a
+trusted production pipeline, but there is no real Git payload bundled.
 `runtime-pkg install git` refuses safely,
 `git-version`/`git-exec-probe` report it is not installed, and `bin-which git`
 does not find it. Termode never fakes Git. See
 [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md),
+[Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md),
+[Git Trusted Build](GIT_TRUSTED_BUILD.md),
 [Git Artifact Build Status](GIT_ARTIFACT_BUILD_STATUS.md),
 [Git arm64-v8a Artifact Pipeline](GIT_ARM64_ARTIFACT_PIPELINE.md),
 [Git Artifact Acquisition](GIT_ARTIFACT_ACQUISITION.md),

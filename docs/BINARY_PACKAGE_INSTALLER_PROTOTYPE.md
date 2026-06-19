@@ -243,3 +243,14 @@ v0.49 prepares the production artifact path without adding a payload:
 `runtime-pkg install git` still refuses safely while no trusted artifact exists.
 See [Git Artifact Build Status](GIT_ARTIFACT_BUILD_STATUS.md) and
 [Git arm64-v8a Artifact Pipeline](GIT_ARM64_ARTIFACT_PIPELINE.md).
+
+## v0.50 Update: Trusted Git Production Pipeline
+
+v0.50 completes the host-side production pipeline for a future trusted Git
+payload. It adds production status docs, trusted-build requirements, a manifest
+schema example, and production-named helper scripts. The installer still keeps
+Git unavailable until a real artifact exists and passes `git --version` on
+Android.
+
+See [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md) and
+[Git Trusted Build](GIT_TRUSTED_BUILD.md).

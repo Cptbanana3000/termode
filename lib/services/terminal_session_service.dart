@@ -135,7 +135,7 @@ class TerminalSessionService extends ChangeNotifier {
         ]);
       }
       lines.addAll([
-        TerminalLine(text: 'Termode v0.49', type: LineType.output),
+        TerminalLine(text: 'Termode v0.50', type: LineType.output),
         TerminalLine(
           text: 'Type "welcome" to get started.',
           type: LineType.output,

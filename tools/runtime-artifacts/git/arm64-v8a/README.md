@@ -2,7 +2,7 @@
 
 This directory is reserved for a future trusted `arm64-v8a` Git artifact.
 
-Expected v0.49 candidate layout:
+Expected v0.50 candidate layout:
 
 ```text
 arm64-v8a/

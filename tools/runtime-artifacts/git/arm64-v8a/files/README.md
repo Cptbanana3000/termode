@@ -7,6 +7,6 @@ Expected installable layout:
 - libexec/... if Git needs helper executables
 - share/... for required runtime data
 
-This directory intentionally contains no Git binary in v0.49. Do not replace it
+This directory intentionally contains no Git binary in v0.50. Do not replace it
 with random binaries. Add files only after provenance, license, ABI, SHA-256,
 and `git --version` verification are recorded.

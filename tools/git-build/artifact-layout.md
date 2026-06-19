@@ -1,6 +1,6 @@
 # Git Artifact Layout
 
-The v0.49 project-side candidate layout is:
+The v0.50 project-side candidate layout is:
 
 ```text
 tools/runtime-artifacts/git/

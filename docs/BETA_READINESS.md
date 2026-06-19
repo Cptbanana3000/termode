@@ -271,3 +271,20 @@ v0.49 prepares the Git arm64-v8a artifact production pipeline:
 Beta readiness remains unaffected: the missing Git artifact is intentional, not
 a broken installed tool. See [Git Artifact Build Status](GIT_ARTIFACT_BUILD_STATUS.md)
 and [Git arm64-v8a Artifact Pipeline](GIT_ARM64_ARTIFACT_PIPELINE.md).
+
+v0.50 completes the trusted Git artifact production pipeline:
+
+- version is `v0.50` (Android `versionName 0.50.0` / `versionCode 50`)
+- selected strategy is Path B: reproducible production pipeline completed, no
+  real trusted payload yet
+- `git-artifact production-status` reports artifact exists/installable/executable
+  as `no` until a real payload passes validation
+- `tools/git-build/prepare_git_artifact.dart`,
+  `tools/git-build/hash_git_artifact.dart`, and
+  `tools/git-build/manifest.schema.example.json` document the production gate
+- Git remains unavailable/not installed until `git-artifact bundle-check`,
+  `runtime-pkg install git`, and real Android `git --version` succeed
+
+Beta readiness remains unaffected: missing Git is intentional, not a broken
+installed tool. See [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md)
+and [Git Trusted Build](GIT_TRUSTED_BUILD.md).

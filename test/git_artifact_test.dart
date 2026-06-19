@@ -65,8 +65,9 @@ void main() {
       final filesDir = Directory(
         RuntimeArtifactRegistryService.gitProjectFilesRoot('arm64-v8a'),
       );
-      if (await filesDir.exists()) {
-        await filesDir.delete(recursive: true);
+      final generatedBinDir = Directory('${filesDir.path}/bin');
+      if (await generatedBinDir.exists()) {
+        await generatedBinDir.delete(recursive: true);
       }
       if (await tempDir.exists()) {
         await tempDir.delete(recursive: true);
@@ -81,6 +82,7 @@ void main() {
         expect(out, contains('git-artifact status'));
         expect(out, contains('git-artifact doctor'));
         expect(out, contains('git-artifact pipeline'));
+        expect(out, contains('git-artifact production-status'));
         expect(out, contains('git-artifact bundle-status'));
         expect(out, contains('git-artifact smoke-plan'));
         expect(out, contains('git-workspace-smoke-plan'));
@@ -109,8 +111,29 @@ void main() {
       expect(result.output, contains('verified, ABI-matched Git package'));
       expect(result.output, contains('git --version'));
       expect(result.output, contains('This build has it: no'));
+      expect(result.output, contains('git-artifact production-status'));
       expect(result.output, contains('git-artifact bundle-status'));
     });
+
+    test(
+      'git-artifact production-status reports Path B without artifact',
+      () async {
+        final result = await commandService.execute(
+          'git-artifact production-status',
+        );
+        expect(
+          result.output,
+          contains('=== Git Artifact Production Status ==='),
+        );
+        expect(result.output, contains('Path: B'));
+        expect(result.output, contains('Artifact exists: no'));
+        expect(result.output, contains('Git installable: no'));
+        expect(result.output, contains('Git executable: no'));
+        expect(result.output, contains('Production pipeline: ready'));
+        expect(result.output, contains('docs/GIT_TRUSTED_BUILD.md'));
+        expect(result.isError, isFalse);
+      },
+    );
 
     test('git-artifact manifest reports template state', () async {
       final result = await commandService.execute('git-artifact manifest');
@@ -146,7 +169,7 @@ void main() {
     });
 
     test(
-      'git-artifact pipeline/requirements/sources/next explain v0.47 path',
+      'git-artifact pipeline/requirements/sources/next explain production path',
       () async {
         final pipeline = await commandService.execute('git-artifact pipeline');
         final requirements = await commandService.execute(
@@ -167,9 +190,9 @@ void main() {
         expect(next.output, contains('Current state:'));
         expect(
           next.output,
-          contains('v0.50 Git Artifact Production / Trusted Build'),
+          contains('v0.51 Git Artifact Payload Build / Device Verification'),
         );
-        expect(next.output, contains('docs/GIT_ARM64_ARTIFACT_PIPELINE.md'));
+        expect(next.output, contains('docs/GIT_TRUSTED_BUILD.md'));
         expect(
           next.output,
           contains('Do not download or execute unknown Git binaries.'),
@@ -244,7 +267,7 @@ void main() {
           contains('Place files under tools/runtime-artifacts/git/<abi>/files'),
         );
         expect(plan.output, contains('Run git --version'));
-        expect(plan.output, contains('docs/GIT_ARM64_ARTIFACT_PIPELINE.md'));
+        expect(plan.output, contains('docs/GIT_TRUSTED_BUILD.md'));
         expect(check.output, contains('=== Git Bundle Check ==='));
         expect(
           check.output,
@@ -296,14 +319,14 @@ void main() {
 
       expect(status.status, 'INVALID');
       expect(status.installable, isFalse);
-      expect(status.reason, contains('artifact files directory missing'));
+      expect(status.reason, contains('missing artifact file: bin/git'));
       expect(check.output, contains('Overall: INVALID'));
 
       final install = await commandService.execute('runtime-pkg install git');
       expect(install.isError, isTrue);
       expect(install.output, contains('Git artifact failed verification.'));
       expect(install.output, contains('git-artifact bundle-check'));
-      expect(install.output, contains('docs/GIT_ARM64_ARTIFACT_PIPELINE.md'));
+      expect(install.output, contains('docs/GIT_TRUSTED_BUILD.md'));
     });
 
     test('project artifact with matching checksum can be AVAILABLE', () async {
@@ -445,6 +468,26 @@ void main() {
       );
     });
 
+    test('v0.50 production docs and helper scripts are present', () {
+      expect(
+        File('docs/GIT_ARTIFACT_PRODUCTION_STATUS.md').existsSync(),
+        isTrue,
+      );
+      expect(File('docs/GIT_TRUSTED_BUILD.md').existsSync(), isTrue);
+      expect(
+        File('tools/git-build/prepare_git_artifact.dart').existsSync(),
+        isTrue,
+      );
+      expect(
+        File('tools/git-build/hash_git_artifact.dart').existsSync(),
+        isTrue,
+      );
+      expect(
+        File('tools/git-build/manifest.schema.example.json').existsSync(),
+        isTrue,
+      );
+    });
+
     test(
       'catalog and host interception include git-artifact commands',
       () async {
@@ -464,10 +507,12 @@ void main() {
         session.isPtyInteractionActive = true;
 
         await sessionService.executeCommand('git-artifact status');
+        await sessionService.executeCommand('git-artifact production-status');
         await sessionService.executeCommand('git-exec-probe');
 
         final output = session.lines.map((line) => line.text).join('\n');
         expect(output, contains('=== Git Artifact Status ==='));
+        expect(output, contains('=== Git Artifact Production Status ==='));
         expect(output, contains('Git is not installed yet.'));
 
         session.isPtyInteractionActive = false;

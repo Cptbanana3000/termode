@@ -1,8 +1,9 @@
-# Git Bundle Smoke Test (v0.48, extended in v0.49)
+# Git Bundle Smoke Test (v0.48, extended in v0.49-v0.50)
 
 v0.48 adds the verified Git bundle and smoke-test path. It does not bundle a
 real Git artifact yet. v0.49 adds the arm64-v8a production artifact layout and
-build pipeline docs, but still ships no trusted payload.
+build pipeline docs. v0.50 adds the trusted production gate, but still ships no
+trusted payload.
 
 ## Current Result
 
@@ -79,5 +80,5 @@ runtime-pkg verify git
 git-doctor
 ```
 
-In v0.49, the next milestone becomes v0.50 Git Artifact Production / Trusted
-Build unless a real trusted artifact is added.
+In v0.50, the next milestone becomes v0.51 Git Artifact Payload Build / Device
+Verification unless a real trusted artifact is added.

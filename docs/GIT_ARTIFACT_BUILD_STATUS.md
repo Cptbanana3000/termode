@@ -1,4 +1,4 @@
-# Git Artifact Build Status (v0.49)
+# Git Artifact Build Status (v0.49, extended by v0.50)
 
 ## Current State
 
@@ -65,5 +65,9 @@ git-exec-probe
 These commands report the missing artifact and point to the production build
 pipeline.
 
-Next milestone if no trusted artifact exists: v0.50 Git Artifact Production /
-Trusted Build.
+v0.50 extends this with the trusted production pipeline and selects Path B:
+pipeline ready, no real payload yet. See [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md)
+and [Git Trusted Build](GIT_TRUSTED_BUILD.md).
+
+Next milestone if no trusted artifact exists: v0.51 Git Artifact Payload Build /
+Device Verification.

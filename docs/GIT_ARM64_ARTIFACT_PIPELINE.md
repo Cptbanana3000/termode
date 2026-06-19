@@ -1,12 +1,12 @@
-# Git arm64-v8a Artifact Pipeline (v0.49)
+# Git arm64-v8a Artifact Pipeline (v0.49, productionized in v0.50)
 
 This document defines the project-side pipeline for producing a trusted Git
 artifact for Android `arm64-v8a`.
 
 ## Artifact State
 
-No real Git artifact exists in v0.49. The repository contains templates,
-examples, helper docs, and validation scripts only.
+No real Git artifact exists in v0.50. The repository contains templates,
+examples, helper docs, trusted-build docs, and validation scripts only.
 
 ## Layout
 
@@ -60,10 +60,14 @@ Optional project-side helpers live under `tools/git-build/`:
 dart tools/git-build/hash_artifact.dart <file>
 dart tools/git-build/prepare_manifest.dart arm64-v8a
 dart tools/git-build/validate_git_artifact.dart arm64-v8a
+dart tools/git-build/hash_git_artifact.dart <file>
+dart tools/git-build/prepare_git_artifact.dart arm64-v8a
 ```
 
 The helpers do not download, install, or trust Git. They only hash or validate
 files already staged by the project.
+
+See [Git Trusted Build](GIT_TRUSTED_BUILD.md) for the v0.50 production gate.
 
 ## Bundle Check
 

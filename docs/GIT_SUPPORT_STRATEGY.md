@@ -128,7 +128,8 @@ manifest validation. No Git artifact is bundled, so Git remains `UNAVAILABLE`
 and the installer refuses safely. The exact artifact requirements are in
 [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md). Real artifact
 acquisition/build is v0.47, verified bundle/smoke validation is v0.48, and
-arm64-v8a production pipeline preparation is v0.49.
+arm64-v8a production pipeline preparation is v0.49, and trusted production
+pipeline completion is v0.50.
 
 ## v0.47 Update: Acquisition / Build Pipeline
 
@@ -173,3 +174,12 @@ or project-controlled payload exists in the checkout. It adds:
 
 Git remains unavailable until a trusted payload passes `git-artifact
 bundle-check`, `runtime-pkg install git`, and real `git --version`.
+
+## v0.50 Update: Trusted Production Pipeline
+
+v0.50 selects Path B: reproducible production pipeline completed, no real Git
+payload yet. Git remains unavailable and not installed. The next step is a real
+trusted payload plus Android `git --version` verification.
+
+See [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md) and
+[Git Trusted Build](GIT_TRUSTED_BUILD.md).

@@ -194,10 +194,10 @@ void main() {
       expect(info.output, contains('Feasibility: active'));
 
       final status = await commandService.execute('toolchain-status');
-      expect(status.output, contains('Git build pipeline: ready'));
+      expect(status.output, contains('Git production pipeline: ready'));
 
       final dev = await commandService.execute('dev-doctor');
-      expect(dev.output, contains('Git build pipeline: ready'));
+      expect(dev.output, contains('Git production pipeline: ready'));
     });
 
     test('shim-list does not show active git when absent', () async {
@@ -211,33 +211,33 @@ void main() {
       expect(result.isError, isFalse);
     });
 
-    test('version surfaces mention v0.49', () async {
+    test('version surfaces mention v0.50', () async {
       final version = await commandService.execute('version');
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
       final bug = await commandService.execute('bug-report');
       final qa = await commandService.execute('qa-report');
 
-      expect(version.output, contains('Termode v0.49'));
+      expect(version.output, contains('Termode v0.50'));
       expect(
         notes.output,
-        contains('v0.49 Git Artifact Build / arm64-v8a Production'),
+        contains('v0.50 Git Artifact Production / Trusted Build'),
       );
       expect(
         changelog.output,
-        contains('v0.49 Git Artifact Build / arm64-v8a Production'),
+        contains('v0.50 Git Artifact Production / Trusted Build'),
       );
-      expect(bug.output, contains('Termode version: v0.49'));
-      expect(qa.output, contains('Termode v0.49'));
+      expect(bug.output, contains('Termode version: v0.50'));
+      expect(qa.output, contains('Termode v0.50'));
     });
 
-    test('build-info reports Git build path and v0.49', () async {
+    test('build-info reports Git production path and v0.50', () async {
       final result = await commandService.execute('build-info');
-      expect(result.output, contains('Version: v0.49'));
-      expect(result.output, contains('Git build pipeline: ready'));
+      expect(result.output, contains('Version: v0.50'));
+      expect(result.output, contains('Git production pipeline: ready'));
       expect(
         result.output,
-        contains('Artifact: Termode-v0.49-git-artifact-build-debug.apk'),
+        contains('Artifact: Termode-v0.50-git-production-debug.apk'),
       );
     });
 
