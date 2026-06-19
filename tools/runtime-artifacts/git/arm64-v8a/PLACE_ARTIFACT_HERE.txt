@@ -1,0 +1,3 @@
+Placeholder only.
+
+No Git binary is bundled in v0.47.

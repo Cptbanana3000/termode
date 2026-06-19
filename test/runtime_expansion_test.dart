@@ -233,7 +233,7 @@ void main() {
     test('toolchain-status and toolchain-list', () async {
       final status = await commandService.execute('toolchain-status');
       expect(status.output, contains('=== Toolchain Status ==='));
-      expect(status.output, contains('Git: planned'));
+      expect(status.output, contains('Git: artifact pipeline ready'));
       expect(status.output, contains('Node.js: planned'));
       expect(status.output, contains('Overall: ARCHITECTURE PHASE'));
 
@@ -310,7 +310,12 @@ void main() {
         contains('Real Git/Node/Python installs: not enabled yet'),
       );
       expect(status.output, contains('Prototype package: hello-bin'));
-      expect(status.output, contains('Next milestone: v0.47 Git Artifact Acquisition / Build Pipeline'));
+      expect(
+        status.output,
+        contains(
+          'Next milestone: verified Git artifact bundle and on-device smoke test',
+        ),
+      );
 
       final doctor = await commandService.execute('runtime-install doctor');
       expect(doctor.output, contains('=== Runtime Install Doctor ==='));
@@ -380,7 +385,7 @@ void main() {
       expect(result.output, contains('Prefix: LIMITED'));
       expect(result.output, contains('PATH: LIMITED'));
       expect(result.output, contains('Env: LIMITED'));
-      expect(result.output, contains('Git: planned'));
+      expect(result.output, contains('Git: artifact pipeline ready'));
       expect(result.output, contains('Node.js: planned'));
       expect(
         result.output,

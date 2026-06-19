@@ -76,7 +76,7 @@ void main() {
       expect(result.output, contains('=== Git Info ==='));
       expect(result.output, contains('Installed: no'));
       expect(result.output, contains('runtime-install plan git'));
-      expect(result.output, contains('Run: git-plan'));
+      expect(result.output, contains('git-artifact pipeline'));
     });
 
     test('git-plan shows the staged Git support plan', () async {
@@ -86,12 +86,13 @@ void main() {
       expect(result.output, contains('Register git shim'));
       expect(result.output, contains('Run git --version'));
       expect(result.output, contains('no safe Git artifact'));
+      expect(result.output, contains('git-artifact next'));
     });
 
     test('git-version does not print a fake version', () async {
       final result = await commandService.execute('git-version');
       expect(result.output, contains('Git is not installed yet.'));
-      expect(result.output, contains('Run: git-plan'));
+      expect(result.output, contains('git-artifact pipeline'));
       expect(result.output, contains('runtime-install plan git'));
       expect(result.output, isNot(contains('git version')));
     });
@@ -116,7 +117,7 @@ void main() {
     test('bare git gives a friendly message when not installed', () async {
       final result = await commandService.execute('git');
       expect(result.output, contains('Git is not installed yet.'));
-      expect(result.output, contains('Run: git-plan'));
+      expect(result.output, contains('git-artifact pipeline'));
       expect(result.output, contains('runtime-install plan git'));
     });
 
@@ -124,26 +125,30 @@ void main() {
       final result = await commandService.execute('runtime-pkg info git');
       expect(result.output, contains('=== Runtime Package: git ==='));
       expect(result.output, contains('Kind: native-tool'));
-      expect(result.output, contains('Status: planned (artifact unavailable)'));
+      expect(result.output, contains('Status: planned (artifact'));
       expect(result.output, contains('Command: git'));
       expect(result.output, contains('Artifact available: no'));
       expect(result.isError, isFalse);
     });
 
-    test('runtime-pkg install git refuses safely without an artifact', () async {
-      final result = await commandService.execute('runtime-pkg install git');
-      expect(
-        result.output,
-        contains('Git artifact is not available in this build.'),
-      );
-      expect(result.output, contains('git-artifact status'));
+    test(
+      'runtime-pkg install git refuses safely without an artifact',
+      () async {
+        final result = await commandService.execute('runtime-pkg install git');
+        expect(
+          result.output,
+          contains('Git artifact is not available in this build.'),
+        );
+        expect(result.output, contains('Current state:'));
+        expect(result.output, contains('git-artifact pipeline'));
 
-      // Nothing was installed.
-      final list = await commandService.execute('runtime-pkg list');
-      expect(list.output, isNot(contains('git [')));
-      final which = await commandService.execute('bin-which git');
-      expect(which.output, contains('Not found in Termode PATH'));
-    });
+        // Nothing was installed.
+        final list = await commandService.execute('runtime-pkg list');
+        expect(list.output, isNot(contains('git [')));
+        final which = await commandService.execute('bin-which git');
+        expect(which.output, contains('Not found in Termode PATH'));
+      },
+    );
 
     test('runtime-pkg verify/remove git report not installed', () async {
       final verify = await commandService.execute('runtime-pkg verify git');
@@ -177,7 +182,7 @@ void main() {
 
     test('runtime-install doctor handles Git planned state', () async {
       final result = await commandService.execute('runtime-install doctor');
-      expect(result.output, contains('Git artifact: unavailable'));
+      expect(result.output, contains('Git artifact:'));
       expect(result.output, contains('Git: planned (not installed)'));
       expect(result.output, contains('Overall: PROTOTYPE READY'));
     });
@@ -189,10 +194,10 @@ void main() {
       expect(info.output, contains('Feasibility: active'));
 
       final status = await commandService.execute('toolchain-status');
-      expect(status.output, contains('Git: planned'));
+      expect(status.output, contains('Git: artifact pipeline ready'));
 
       final dev = await commandService.execute('dev-doctor');
-      expect(dev.output, contains('Git: planned'));
+      expect(dev.output, contains('Git: artifact pipeline ready'));
     });
 
     test('shim-list does not show active git when absent', () async {
@@ -206,36 +211,36 @@ void main() {
       expect(result.isError, isFalse);
     });
 
-    test('version surfaces mention v0.46', () async {
+    test('version surfaces mention v0.47', () async {
       final version = await commandService.execute('version');
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
       final bug = await commandService.execute('bug-report');
       final qa = await commandService.execute('qa-report');
 
-      expect(version.output, contains('Termode v0.46'));
+      expect(version.output, contains('Termode v0.47'));
       expect(
         notes.output,
-        contains('v0.46 Real Git Package Artifact / Execution Probe'),
+        contains('v0.47 Git Artifact Acquisition / Build Pipeline'),
       );
       expect(
         changelog.output,
-        contains('v0.46 Real Git Package Artifact / Execution Probe'),
+        contains('v0.47 Git Artifact Acquisition / Build Pipeline'),
       );
-      expect(bug.output, contains('Termode version: v0.46'));
-      expect(qa.output, contains('Termode v0.46'));
+      expect(bug.output, contains('Termode version: v0.47'));
+      expect(qa.output, contains('Termode v0.47'));
     });
 
-    test('build-info reports Git artifact and v0.46', () async {
+    test('build-info reports Git artifact pipeline and v0.47', () async {
       final result = await commandService.execute('build-info');
-      expect(result.output, contains('Version: v0.46'));
+      expect(result.output, contains('Version: v0.47'));
       expect(
         result.output,
-        contains('Git: artifact unavailable (planned, not installed)'),
+        contains('Git: artifact pipeline ready (not installed)'),
       );
       expect(
         result.output,
-        contains('Artifact: Termode-v0.46-git-artifact-debug.apk'),
+        contains('Artifact: Termode-v0.47-git-pipeline-debug.apk'),
       );
     });
 

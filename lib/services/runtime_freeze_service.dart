@@ -3,7 +3,8 @@ import 'dart:io';
 import 'runtime_capability_service.dart';
 
 class RuntimeFreezeService {
-  static const nextMilestone = 'v0.47 Git Artifact Acquisition / Build Pipeline';
+  static const nextMilestone =
+      'v0.48 Verified Git Artifact Bundle / Smoke Test';
 
   static const supportedRuntimeDirection = [
     'script packages through /system/bin/sh',
@@ -46,7 +47,7 @@ class RuntimeFreezeService {
         'Duktape: deferred\n'
         'Node.js: planned (not installed)\n'
         'npm: planned (not installed)\n'
-        'Next focus: Git support using the prototype installer path\n'
+        'Next focus: verified Git artifact bundle and smoke test\n'
         'Overall: FROZEN';
   }
 
@@ -67,7 +68,8 @@ class RuntimeFreezeService {
   String deferred() {
     return '=== Runtime Freeze Deferred ===\n'
         '* Node.js/npm are not included yet.\n'
-        '* Python/Git are not included yet.\n'
+        '* Python is not included yet.\n'
+        '* Git has a pipeline, but no bundled artifact yet.\n'
         '* Runtime package installer is prototype-only.\n'
         '* Native binary packages are planned, not enabled.\n'
         '* QuickJS/Duktape are probe surfaces only.\n'
@@ -91,8 +93,9 @@ class RuntimeFreezeService {
         'Recommended next milestone:\n'
         '$nextMilestone\n\n'
         'Focus:\n'
-        '  - Git support using controlled runtime package metadata\n'
+        '  - bundle only a trusted Git artifact\n'
         '  - checksum and ABI validation on device\n'
+        '  - prove git --version on device\n'
         '  - keep Node/npm/Python planned but not installed\n'
         '  - package/workspace/terminal QA\n'
         'Runtime implementation stays frozen for now; runtime expansion is planned.';

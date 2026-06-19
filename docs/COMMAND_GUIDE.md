@@ -72,15 +72,19 @@ packages.
 - `git-doctor`
 - `git-test-plan`
 - `git` (placeholder; guides you when Git is not installed)
-- `git-artifact` (`status`, `info`, `manifest`, `verify`, `doctor`)
+- `git-artifact` (`status`, `info`, `manifest`, `verify`, `doctor`,
+  `pipeline`, `requirements`, `sources`, `next`)
 - `git-exec-probe`
 - `git-smoke-test`
 
-Git is **planned, not installed** in this build. There is no verified Git
-artifact (`git-artifact status` reports `UNAVAILABLE`), so `runtime-pkg install
-git` refuses safely, `git-version`/`git-exec-probe` report it is not installed,
-and `bin-which git` does not find it. Termode never fakes Git. See
-[Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md) and
+Git is **planned, not installed** in this build. v0.47 includes the artifact
+acquisition/build pipeline and manifest template, but there is no verified Git
+payload bundled. `runtime-pkg install git` refuses safely,
+`git-version`/`git-exec-probe` report it is not installed, and `bin-which git`
+does not find it. Termode never fakes Git. See
+[Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md),
+[Git Artifact Acquisition](GIT_ARTIFACT_ACQUISITION.md),
+[Git Build Pipeline](GIT_BUILD_PIPELINE.md), and
 [Git Support Strategy](GIT_SUPPORT_STRATEGY.md).
 
 ## Workspace / Files

@@ -13,7 +13,7 @@ import 'package:termode/services/virtual_filesystem.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('v0.46 Real Git Package Artifact / Execution Probe', () {
+  group('v0.47 Git Artifact Acquisition / Build Pipeline', () {
     late Directory tempDir;
     late CommandService commandService;
 
@@ -70,17 +70,24 @@ void main() {
         expect(out, contains('=== Git Artifact ==='));
         expect(out, contains('git-artifact status'));
         expect(out, contains('git-artifact doctor'));
+        expect(out, contains('git-artifact pipeline'));
       }
     });
 
-    test('git-artifact status reports UNAVAILABLE', () async {
+    test('git-artifact status reports template-only or unavailable', () async {
       final result = await commandService.execute('git-artifact status');
       expect(result.output, contains('=== Git Artifact Status ==='));
       expect(result.output, contains('Current ABI: arm64-v8a'));
       expect(result.output, contains('Artifact available: no'));
       expect(result.output, contains('Installable: no'));
-      expect(result.output, contains('Source: unavailable'));
-      expect(result.output, contains('Overall: UNAVAILABLE'));
+      expect(result.output, contains('Template present:'));
+      expect(
+        result.output,
+        anyOf(
+          contains('Overall: TEMPLATE_ONLY'),
+          contains('Overall: UNAVAILABLE'),
+        ),
+      );
     });
 
     test('git-artifact info explains requirement', () async {
@@ -89,38 +96,73 @@ void main() {
       expect(result.output, contains('verified, ABI-matched Git package'));
       expect(result.output, contains('git --version'));
       expect(result.output, contains('This build has it: no'));
+      expect(result.output, contains('git-artifact pipeline'));
     });
 
-    test('git-artifact manifest missing', () async {
+    test('git-artifact manifest reports template state', () async {
       final result = await commandService.execute('git-artifact manifest');
       expect(
         result.output,
         contains('Git artifact manifest is not available in this build.'),
       );
+      expect(result.output, contains('Template path:'));
+      expect(result.output, contains('Installable: no'));
     });
 
     test('git-artifact verify when missing', () async {
       final result = await commandService.execute('git-artifact verify');
       expect(result.output, contains('=== Git Artifact Verify ==='));
-      expect(result.output, contains('Artifact: unavailable'));
-      expect(result.output, contains('Overall: UNAVAILABLE'));
+      expect(result.output, contains('Nothing installable to verify'));
+      expect(result.output, contains('git-artifact pipeline'));
     });
 
-    test('git-artifact doctor reports UNAVAILABLE, not app failure', () async {
+    test('git-artifact doctor reports missing artifact as non-fatal', () async {
       final result = await commandService.execute('git-artifact doctor');
       expect(result.output, contains('=== Git Artifact Doctor ==='));
       expect(result.output, contains('Current ABI: arm64-v8a'));
-      expect(result.output, contains('Artifact: UNAVAILABLE'));
+      expect(
+        result.output,
+        anyOf(
+          contains('Artifact: TEMPLATE_ONLY'),
+          contains('Artifact: UNAVAILABLE'),
+        ),
+      );
       expect(result.output, contains('Manifest: missing'));
       expect(result.output, contains('not an app failure'));
-      expect(result.output, contains('Overall: UNAVAILABLE'));
       expect(result.isError, isFalse);
     });
+
+    test(
+      'git-artifact pipeline/requirements/sources/next explain v0.47 path',
+      () async {
+        final pipeline = await commandService.execute('git-artifact pipeline');
+        final requirements = await commandService.execute(
+          'git-artifact requirements',
+        );
+        final sources = await commandService.execute('git-artifact sources');
+        final next = await commandService.execute('git-artifact next');
+
+        expect(pipeline.output, contains('=== Git Artifact Pipeline ==='));
+        expect(pipeline.output, contains('manifest.template.json'));
+        expect(requirements.output, contains('Required manifest fields'));
+        expect(
+          requirements.output,
+          contains('TEMPLATE_ONLY is not installable'),
+        );
+        expect(sources.output, contains('termode-built'));
+        expect(sources.output, contains('copied Termux binaries'));
+        expect(next.output, contains('Current state:'));
+        expect(
+          next.output,
+          contains('Do not download or execute unknown Git binaries.'),
+        );
+      },
+    );
 
     test('git-exec-probe when Git not installed', () async {
       final result = await commandService.execute('git-exec-probe');
       expect(result.output, contains('Git is not installed yet.'));
-      expect(result.output, contains('git-artifact status'));
+      expect(result.output, contains('git-artifact pipeline'));
       expect(result.output, contains('runtime-pkg install git'));
       expect(result.output, isNot(contains('git version')));
     });
@@ -133,11 +175,11 @@ void main() {
 
     test('git-status and git-doctor include artifact unavailable', () async {
       final status = await commandService.execute('git-status');
-      expect(status.output, contains('Artifact: unavailable'));
+      expect(status.output, contains('Artifact state:'));
       expect(status.output, contains('Overall: PLANNED'));
 
       final doctor = await commandService.execute('git-doctor');
-      expect(doctor.output, contains('Git artifact: unavailable'));
+      expect(doctor.output, contains('Git artifact:'));
       expect(doctor.output, contains('Overall: PLANNED'));
       expect(doctor.isError, isFalse);
     });
@@ -148,9 +190,9 @@ void main() {
       expect(result.output, isNot(contains('git version')));
     });
 
-    test('runtime-install status mentions Git artifact unavailable', () async {
+    test('runtime-install status mentions Git artifact state', () async {
       final result = await commandService.execute('runtime-install status');
-      expect(result.output, contains('Git artifact: unavailable'));
+      expect(result.output, contains('Git artifact state:'));
       expect(result.output, contains('Real Git installed: no'));
     });
 
@@ -164,8 +206,20 @@ void main() {
         'command': 'git',
         'entrypoint': 'bin/git',
         'source': 'termode-vendored',
+        'source_url': 'https://example.invalid/git-source',
+        'build_method': 'termode test fixture',
+        'license': 'GPL-2.0-only',
+        'trusted_by': 'Termode',
+        'verification_command': 'git --version',
+        'smoke_tests': ['git --version'],
+        'dependencies': <String>[],
+        'created_at': '2026-06-19T00:00:00Z',
         'files': [
-          {'path': 'bin/git', 'sha256': List.filled(64, 'a').join(), 'bytes': 10},
+          {
+            'path': 'bin/git',
+            'sha256': List.filled(64, 'a').join(),
+            'bytes': 10,
+          },
         ],
       };
       expect(registry.validateGitManifest(valid, 'arm64-v8a'), isEmpty);
@@ -208,36 +262,53 @@ void main() {
       );
     });
 
-    test('catalog and host interception include git-artifact commands', () async {
-      for (final command in [
-        'git-artifact',
-        'git-exec-probe',
-        'git-smoke-test',
-      ]) {
-        expect(kTermodeCommands, contains(command));
-      }
-
-      final sessionService = TerminalSessionService();
-      final session = sessionService.activeSession;
-      session.lines.clear();
-      session.isRealPtyActive = true;
-      session.isPtyInteractionActive = true;
-
-      await sessionService.executeCommand('git-artifact status');
-      await sessionService.executeCommand('git-exec-probe');
-
-      final output = session.lines.map((line) => line.text).join('\n');
-      expect(output, contains('=== Git Artifact Status ==='));
-      expect(output, contains('Git is not installed yet.'));
-
-      session.isPtyInteractionActive = false;
-      session.isRealPtyActive = false;
+    test('registry template state is not installable', () async {
+      final status = await RuntimeArtifactRegistryService().gitArtifactStatus();
+      expect(status.available, isFalse);
+      expect(status.installable, isFalse);
+      expect(['TEMPLATE_ONLY', 'UNAVAILABLE'], contains(status.status));
+      expect(
+        RuntimeArtifactRegistryService().validateGitTemplateManifest(),
+        isEmpty,
+      );
     });
 
-    test('beta-candidate ready still succeeds when Git artifact missing', () async {
-      final result = await commandService.execute('beta-candidate ready');
-      expect(result.output, contains('Ready for beta testing.'));
-      expect(result.isError, isFalse);
-    });
+    test(
+      'catalog and host interception include git-artifact commands',
+      () async {
+        for (final command in [
+          'git-artifact',
+          'git-exec-probe',
+          'git-smoke-test',
+        ]) {
+          expect(kTermodeCommands, contains(command));
+        }
+
+        final sessionService = TerminalSessionService();
+        final session = sessionService.activeSession;
+        session.lines.clear();
+        session.isRealPtyActive = true;
+        session.isPtyInteractionActive = true;
+
+        await sessionService.executeCommand('git-artifact status');
+        await sessionService.executeCommand('git-exec-probe');
+
+        final output = session.lines.map((line) => line.text).join('\n');
+        expect(output, contains('=== Git Artifact Status ==='));
+        expect(output, contains('Git is not installed yet.'));
+
+        session.isPtyInteractionActive = false;
+        session.isRealPtyActive = false;
+      },
+    );
+
+    test(
+      'beta-candidate ready still succeeds when Git artifact missing',
+      () async {
+        final result = await commandService.execute('beta-candidate ready');
+        expect(result.output, contains('Ready for beta testing.'));
+        expect(result.isError, isFalse);
+      },
+    );
   });
 }

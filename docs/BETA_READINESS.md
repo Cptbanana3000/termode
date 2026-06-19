@@ -222,3 +222,18 @@ v0.46 builds the real Git artifact pipeline and execution probe:
 Beta readiness is unaffected: `beta-candidate ready` still succeeds because the
 missing Git artifact is intentional, not a broken installed tool. See
 [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md).
+
+v0.47 adds the Git artifact acquisition/build pipeline:
+
+- version is `v0.47` (Android `versionName 0.47.0` / `versionCode 47`)
+- artifact staging layout exists under `tools/runtime-artifacts/git/`
+- `manifest.template.json` documents the required manifest fields
+- `git-artifact` adds `pipeline`, `requirements`, `sources`, and `next`
+- registry status can distinguish `TEMPLATE_ONLY` from `UNAVAILABLE`
+- `runtime-pkg install git` still refuses safely until a verified artifact is
+  bundled and `git --version` passes on device
+
+Beta readiness remains unaffected: a missing Git artifact is an intentional
+limitation, not a broken installed tool. See
+[Git Artifact Acquisition](GIT_ARTIFACT_ACQUISITION.md) and
+[Git Build Pipeline](GIT_BUILD_PIPELINE.md).

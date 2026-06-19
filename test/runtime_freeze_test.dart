@@ -91,7 +91,8 @@ void main() {
       final result = await commandService.execute('runtime-freeze deferred');
 
       expect(result.output, contains('Node.js/npm are not included yet'));
-      expect(result.output, contains('Python/Git are not included yet'));
+      expect(result.output, contains('Python is not included yet'));
+      expect(result.output, contains('Git has a pipeline'));
       expect(
         result.output,
         contains('Runtime package installer is prototype-only'),
@@ -115,8 +116,12 @@ void main() {
     test('runtime-freeze next output', () async {
       final result = await commandService.execute('runtime-freeze next');
 
-      expect(result.output, contains('v0.47 Git Artifact Acquisition / Build Pipeline'));
-      expect(result.output, contains('Git support using controlled runtime'));
+      expect(
+        result.output,
+        contains('v0.48 Verified Git Artifact Bundle / Smoke Test'),
+      );
+      expect(result.output, contains('bundle only a trusted Git artifact'));
+      expect(result.output, contains('prove git --version on device'));
       expect(result.output, contains('checksum and ABI validation on device'));
       expect(result.output, contains('keep Node/npm/Python planned'));
       expect(result.output, contains('runtime expansion is planned'));

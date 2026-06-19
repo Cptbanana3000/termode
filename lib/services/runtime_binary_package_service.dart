@@ -210,9 +210,10 @@ class RuntimeBinaryPackageService {
 
   Future<String> available() async {
     final manifest = helloBinManifest();
-    final gitState = gitArtifactAvailable()
+    final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
+    final gitState = artifact.installable
         ? 'installable if verified'
-        : 'artifact unavailable; install refuses safely';
+        : 'artifact ${artifact.status.toLowerCase()}; install refuses safely';
     return '=== Available Runtime Packages ===\n'
         'Prototype available now:\n'
         '* hello-bin [${manifest['version']}] - ${manifest['description']}\n\n'
@@ -239,7 +240,8 @@ class RuntimeBinaryPackageService {
   Future<String> info(String name) async {
     if (name == gitName) {
       final installed = await gitInstalled();
-      final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
+      final artifact = await RuntimeArtifactRegistryService()
+          .gitArtifactStatus();
       final status = installed
           ? 'installed'
           : (artifact.installable
@@ -255,7 +257,9 @@ class RuntimeBinaryPackageService {
           'Installable: ${artifact.installable ? 'yes' : 'no'}\n'
           'Description: Distributed version control tool.\n'
           'Install support: enabled only with a verified package artifact.\n'
-          'Run: git-artifact status';
+          'Current artifact state: ${artifact.status}\n'
+          'Next step: git-artifact pipeline\n'
+          'Run: git-artifact next';
     }
     if (name != helloBinName) {
       return 'Unknown runtime package: $name\n'
@@ -278,12 +282,14 @@ class RuntimeBinaryPackageService {
 
   Future<RuntimeBinaryPackageResult> install(String name) async {
     if (name == gitName) {
-      final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
+      final artifact = await RuntimeArtifactRegistryService()
+          .gitArtifactStatus();
       if (!artifact.available) {
-        return const RuntimeBinaryPackageResult(
+        return RuntimeBinaryPackageResult(
           'Git artifact is not available in this build.\n'
-          'Run: git-artifact status\n'
-          'Run: git-plan',
+          'Current state: ${artifact.status}\n'
+          'Run: git-artifact pipeline\n'
+          'Run: git-artifact next',
         );
       }
       if (!artifact.installable) {

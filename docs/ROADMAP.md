@@ -25,10 +25,12 @@ CalypsoIDE as a plug-and-play terminal/runtime engine.
 - compilers
 - full Termux-replacement status
 
-These are **planned, not installed**. v0.45 proves the Git installer path on top
-of the v0.44 runtime package installer prototype but ships no Git artifact, so
-Git is reported planned/not installed and the installer refuses safely. See
-[Git Support Strategy](GIT_SUPPORT_STRATEGY.md),
+These are **planned, not installed**. v0.47 adds the Git artifact
+acquisition/build pipeline and manifest template, but still ships no verified
+Git artifact, so Git is reported planned/not installed and the installer
+refuses safely. See [Git Support Strategy](GIT_SUPPORT_STRATEGY.md),
+[Git Artifact Acquisition](GIT_ARTIFACT_ACQUISITION.md),
+[Git Build Pipeline](GIT_BUILD_PIPELINE.md),
 [Binary Package Installer Prototype](BINARY_PACKAGE_INSTALLER_PROTOTYPE.md),
 [Prefix / PATH / Environment](PREFIX_PATH_ENVIRONMENT.md) and
 [Runtime Expansion Architecture](RUNTIME_EXPANSION_ARCHITECTURE.md).
@@ -40,19 +42,17 @@ Git is reported planned/not installed and the installer refuses safely. See
 - v0.43 Prefix / PATH / Environment System
 - v0.44 Binary Package Installer Prototype
 - v0.45 Git Support Feasibility / Installer Path
-- v0.46 Real Git Package Artifact / Execution Probe (current)
-- v0.47 Git Artifact Acquisition / Build Pipeline
-- v0.48 Node.js Support
-- v0.49 npm Support
-- v0.50 Python Support
-- v0.51 Dev Stack Presets
+- v0.46 Real Git Package Artifact / Execution Probe
+- v0.47 Git Artifact Acquisition / Build Pipeline (current)
+- v0.48 Verified Git Artifact Bundle / Smoke Test
+- v0.49+ Node.js / npm / Python / Dev Stack Presets
 - v0.52 Full Terminal QA
 - v0.53 Complete Termode Beta
 - CalypsoIDE integration later
 
-v0.46 builds the Git artifact pipeline and execution probe; no verified Git
-artifact is bundled yet, so v0.47 acquires/builds one before real Git workspace
-QA. See [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md).
+v0.47 defines the acquisition/build pipeline; no verified Git artifact is
+bundled yet, so the next Git milestone bundles and validates one before real
+Git workspace QA. See [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md).
 
 ## Product First
 

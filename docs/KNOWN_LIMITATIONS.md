@@ -1,15 +1,16 @@
 # Known Limitations
 
-Termode is beta software. v0.46 builds the real Git artifact pipeline and
-execution probe (registry, manifest validation, install/verify/shim path,
-`git --version` probe), but ships **no Git artifact**, so Git — like
-Node/npm/Python — is still **planned, not installed** (`git-artifact status`
-reports `UNAVAILABLE`). Termode never fakes Git; `git`, `git-version`,
-`git-exec-probe`, and `bin-which git` all report it as not installed. A missing
-Git artifact is expected and does not make the app unhealthy. See
-[Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md) and
+Termode is beta software. v0.47 adds the Git artifact acquisition/build
+pipeline, manifest template, and staging layout, but ships **no Git artifact**,
+so Git - like Node/npm/Python - is still **planned, not installed**.
+`git-artifact status` may report `TEMPLATE_ONLY` in a source checkout or
+`UNAVAILABLE` in an installed APK. Termode never fakes Git; `git`,
+`git-version`, `git-exec-probe`, and `bin-which git` all report it as not
+installed. A missing Git artifact is expected and does not make the app
+unhealthy. See [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md),
+[Git Artifact Acquisition](GIT_ARTIFACT_ACQUISITION.md),
+[Git Build Pipeline](GIT_BUILD_PIPELINE.md), and
 [Git Support Strategy](GIT_SUPPORT_STRATEGY.md).
-
 Termode does not run Node.js, npm, Git, or Python yet. A `LIMITED` or
 `PROTOTYPE READY`, `ARCHITECTURE PHASE`, or `LIMITED` status is often
 intentional when it refers to frozen runtime work, unlinked Android storage,

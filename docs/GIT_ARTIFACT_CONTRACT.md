@@ -1,13 +1,15 @@
-# Git Artifact Contract (v0.46)
+# Git Artifact Contract (v0.47)
 
 This contract defines what a **real, installable Git package artifact** must
 look like for Termode to install, verify, expose, and run it. It is the trust
 boundary for real native tools. Termode only reports Git as installed/available
 when a verified artifact exists **and** `git --version` succeeds.
 
-**Status in this build:** no Git artifact is bundled, so Git is `UNAVAILABLE`
-and not installable. The pipeline (registry, manifest validation, install path,
-execution probe) is implemented and honest; it simply has nothing to install.
+**Status in this build:** no Git artifact is bundled, so Git is `TEMPLATE_ONLY`
+in a source checkout or `UNAVAILABLE` in an installed APK, and not installable.
+The pipeline (registry, manifest validation, install path, execution probe,
+acquisition/build docs, and manifest template) is implemented and honest; it
+simply has no verified payload to install.
 
 ## Package Identity
 

@@ -1,0 +1,38 @@
+# Git Build Pipeline (v0.47)
+
+v0.47 defines the build-side pipeline for a future Git artifact. It does not
+build, download, or install Git.
+
+Pipeline stages:
+
+1. Select source
+   - Use `termode-built` or `termode-vendored`.
+   - Record source URL, version, license, and build method.
+
+2. Build or acquire per ABI
+   - Start with `arm64-v8a`.
+   - Keep payload files under the runtime prefix layout (`bin/`, `lib/`,
+     `libexec/`, `share/`).
+
+3. Generate manifest
+   - Use `tools/runtime-artifacts/git/manifest.template.json` as the shape.
+   - Write a real `manifest.json` only when payload files exist.
+
+4. Verify checksums
+   - SHA-256 is required for every file.
+   - The registry rejects missing, malformed, absolute, or traversal paths.
+
+5. Bundle only after validation
+   - `RuntimeArtifactRegistryService` remains the trust boundary.
+   - `TEMPLATE_ONLY` and `UNAVAILABLE` are not installable.
+
+6. Install and smoke test
+   - Install into `TERMODE_PREFIX`.
+   - Register the `git` shim.
+   - Run `git --version`.
+   - Run workspace smoke tests (`git init`, `git status`).
+
+Release gate:
+
+- Do not announce Git support until `git --version` succeeds on device.
+- Missing Git remains an intentional limitation, not an unhealthy app state.

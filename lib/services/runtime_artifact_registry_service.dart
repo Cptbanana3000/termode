@@ -1,14 +1,18 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'native_command_service.dart';
 
-/// Safe registry for real runtime artifacts (v0.46), starting with Git.
+/// Safe registry for real runtime artifacts (v0.47), starting with Git.
 ///
-/// This is the trust boundary for installing real native tools. For v0.46 the
-/// registry is a **local/bundled contract only**: it answers whether a
-/// verified, ABI-matched artifact is present in this build. There is NO runtime
-/// internet download and NO arbitrary user-selected archive import.
+/// This is the trust boundary for installing real native tools. For v0.47 the
+/// registry also knows about the build-side artifact template, but template-only
+/// is never installable. There is NO runtime internet download and NO arbitrary
+/// user-selected archive import.
 ///
-/// Honest result for this build: no Git artifact is bundled, so Git is reported
-/// UNAVAILABLE everywhere. Termode never fakes Git.
+/// Honest result for this build: no Git artifact is bundled. A source checkout
+/// may contain the manifest template, so Git can be reported TEMPLATE_ONLY, but
+/// it remains not installable. Termode never fakes Git.
 class RuntimeArtifactRegistryService {
   static final RuntimeArtifactRegistryService _instance =
       RuntimeArtifactRegistryService._internal();
@@ -28,12 +32,38 @@ class RuntimeArtifactRegistryService {
     'termode-built',
   };
 
+  static const String gitTemplatePath =
+      'tools/runtime-artifacts/git/manifest.template.json';
+  static const String gitManifestPath =
+      'tools/runtime-artifacts/git/manifest.json';
+
   /// Whether a verified Git artifact is bundled in this build.
-  /// Always false for v0.46 (no bundled binary, no download). Honest.
+  /// Always false for v0.47 (no bundled binary, no download). Honest.
   bool bundledGitArtifactExists() => false;
 
   /// The bundled Git manifest, if any. None in this build.
   Map<String, dynamic>? bundledGitManifest() => null;
+
+  bool gitTemplateExists() => File(gitTemplatePath).existsSync();
+
+  bool gitProjectManifestExists() => File(gitManifestPath).existsSync();
+
+  Map<String, dynamic>? readGitTemplateManifest() =>
+      _readJsonMap(gitTemplatePath);
+
+  Map<String, dynamic>? readProjectGitManifest() =>
+      _readJsonMap(gitManifestPath);
+
+  Map<String, dynamic>? _readJsonMap(String path) {
+    final file = File(path);
+    if (!file.existsSync()) return null;
+    try {
+      final decoded = jsonDecode(file.readAsStringSync());
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<String> currentAbi() async {
     final diagnostics = await NativeCommandService().getDiagnostics();
@@ -45,6 +75,19 @@ class RuntimeArtifactRegistryService {
   Future<GitArtifactStatus> gitArtifactStatus() async {
     final abi = await currentAbi();
     if (!bundledGitArtifactExists()) {
+      if (gitTemplateExists()) {
+        return GitArtifactStatus(
+          available: false,
+          installable: false,
+          abi: abi,
+          source: 'template',
+          reason:
+              'Git artifact template exists, but no verified Git payload is bundled.',
+          status: 'TEMPLATE_ONLY',
+          templatePresent: true,
+          manifestPresent: gitProjectManifestExists(),
+        );
+      }
       return GitArtifactStatus(
         available: false,
         installable: false,
@@ -52,6 +95,8 @@ class RuntimeArtifactRegistryService {
         source: 'unavailable',
         reason: 'No verified Git artifact is bundled in this build.',
         status: 'UNAVAILABLE',
+        templatePresent: false,
+        manifestPresent: false,
       );
     }
     final manifest = bundledGitManifest();
@@ -63,6 +108,8 @@ class RuntimeArtifactRegistryService {
         source: 'bundled',
         reason: 'Git artifact manifest is missing.',
         status: 'INVALID',
+        templatePresent: gitTemplateExists(),
+        manifestPresent: false,
       );
     }
     final errors = validateGitManifest(manifest, abi);
@@ -74,6 +121,8 @@ class RuntimeArtifactRegistryService {
         source: manifest['source']?.toString() ?? 'bundled',
         reason: 'Manifest invalid: ${errors.first}',
         status: 'INVALID',
+        templatePresent: gitTemplateExists(),
+        manifestPresent: true,
       );
     }
     final manifestAbi = manifest['abi']?.toString() ?? '';
@@ -85,6 +134,8 @@ class RuntimeArtifactRegistryService {
         source: manifest['source']?.toString() ?? 'bundled',
         reason: 'Artifact ABI ($manifestAbi) does not match device ($abi).',
         status: 'INCOMPATIBLE',
+        templatePresent: gitTemplateExists(),
+        manifestPresent: true,
       );
     }
     return GitArtifactStatus(
@@ -94,7 +145,24 @@ class RuntimeArtifactRegistryService {
       source: manifest['source']?.toString() ?? 'bundled',
       reason: 'Verified Git artifact available.',
       status: 'AVAILABLE',
+      templatePresent: gitTemplateExists(),
+      manifestPresent: true,
     );
+  }
+
+  List<String> validateGitTemplateManifest() {
+    final manifest = readGitTemplateManifest();
+    if (manifest == null) {
+      return const ['template missing or invalid JSON'];
+    }
+    final abi = manifest['abi']?.toString() ?? 'arm64-v8a';
+    final errors = validateGitManifest(manifest, abi);
+    final version = manifest['version']?.toString() ?? '';
+    final createdAt = manifest['created_at']?.toString() ?? '';
+    if (!version.contains('template') && createdAt != 'TEMPLATE_ONLY') {
+      errors.add('template is not marked template-only');
+    }
+    return errors.toSet().toList()..sort();
   }
 
   bool _isSafeRelativePath(String path) {
@@ -124,6 +192,15 @@ class RuntimeArtifactRegistryService {
     final abi = manifest['abi']?.toString() ?? '';
     final entrypoint = manifest['entrypoint']?.toString() ?? '';
     final source = manifest['source']?.toString() ?? '';
+    final sourceUrl = manifest['source_url']?.toString() ?? '';
+    final buildMethod = manifest['build_method']?.toString() ?? '';
+    final license = manifest['license']?.toString() ?? '';
+    final trustedBy = manifest['trusted_by']?.toString() ?? '';
+    final verificationCommand =
+        manifest['verification_command']?.toString() ?? '';
+    final smokeTests = manifest['smoke_tests'];
+    final dependencies = manifest['dependencies'];
+    final createdAt = manifest['created_at']?.toString() ?? '';
     final files = manifest['files'];
 
     if (name != 'git') errors.add('package name must be git');
@@ -140,7 +217,21 @@ class RuntimeArtifactRegistryService {
       errors.add('unsupported abi');
     }
     if (!_isSafeRelativePath(entrypoint)) errors.add('invalid entrypoint');
-    if (!trustedSources.contains(source)) errors.add('unknown/untrusted source');
+    if (!trustedSources.contains(source)) {
+      errors.add('unknown/untrusted source');
+    }
+    if (sourceUrl.trim().isEmpty) errors.add('missing source_url');
+    if (buildMethod.trim().isEmpty) errors.add('missing build_method');
+    if (license.trim().isEmpty) errors.add('missing license');
+    if (trustedBy.trim().isEmpty) errors.add('missing trusted_by');
+    if (verificationCommand.trim().isEmpty) {
+      errors.add('missing verification_command');
+    }
+    if (smokeTests is! List || smokeTests.isEmpty) {
+      errors.add('missing smoke_tests');
+    }
+    if (dependencies is! List) errors.add('missing dependencies');
+    if (createdAt.trim().isEmpty) errors.add('missing created_at');
     if (files is! List || files.isEmpty) {
       errors.add('missing files');
     } else {
@@ -167,7 +258,10 @@ class GitArtifactStatus {
   final String abi;
   final String source;
   final String reason;
-  final String status; // AVAILABLE / UNAVAILABLE / INVALID / INCOMPATIBLE
+  final String status;
+  // AVAILABLE / UNAVAILABLE / TEMPLATE_ONLY / INVALID / INCOMPATIBLE
+  final bool templatePresent;
+  final bool manifestPresent;
 
   const GitArtifactStatus({
     required this.available,
@@ -176,5 +270,7 @@ class GitArtifactStatus {
     required this.source,
     required this.reason,
     required this.status,
+    this.templatePresent = false,
+    this.manifestPresent = false,
   });
 }

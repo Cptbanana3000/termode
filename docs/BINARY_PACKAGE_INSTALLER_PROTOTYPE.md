@@ -203,3 +203,16 @@ v0.46 extends this installer toward real tools with a trusted-artifact registry
 (`RuntimeArtifactRegistryService`), Git manifest validation, and a
 `git --version` execution probe. No Git artifact is bundled yet, so installs
 still refuse safely. See [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md).
+
+## v0.47 Update: Git Artifact Acquisition / Build Pipeline
+
+v0.47 adds the project-side artifact staging layout under
+`tools/runtime-artifacts/git/`, the Git manifest template, and the
+`git-artifact pipeline`, `requirements`, `sources`, and `next` commands.
+
+This is still not a real Git install. `TEMPLATE_ONLY` and `UNAVAILABLE` are
+non-installable states; `runtime-pkg install git` continues to refuse until a
+trusted Git artifact is bundled, checksum-verified, ABI-compatible, and proven
+with `git --version` on device. See
+[Git Artifact Acquisition](GIT_ARTIFACT_ACQUISITION.md) and
+[Git Build Pipeline](GIT_BUILD_PIPELINE.md).
