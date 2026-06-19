@@ -1,10 +1,14 @@
 # Known Limitations
 
-Termode is beta software. v0.45 proves the Git installer path on top of the
-v0.44 runtime package installer prototype, but ships no Git artifact, so Git —
-like Node/npm/Python — is still **planned, not installed**. Termode never fakes
-Git; `git`, `git-version`, and `bin-which git` all report it as not installed.
-See [Git Support Strategy](GIT_SUPPORT_STRATEGY.md).
+Termode is beta software. v0.46 builds the real Git artifact pipeline and
+execution probe (registry, manifest validation, install/verify/shim path,
+`git --version` probe), but ships **no Git artifact**, so Git — like
+Node/npm/Python — is still **planned, not installed** (`git-artifact status`
+reports `UNAVAILABLE`). Termode never fakes Git; `git`, `git-version`,
+`git-exec-probe`, and `bin-which git` all report it as not installed. A missing
+Git artifact is expected and does not make the app unhealthy. See
+[Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md) and
+[Git Support Strategy](GIT_SUPPORT_STRATEGY.md).
 
 Termode does not run Node.js, npm, Git, or Python yet. A `LIMITED` or
 `PROTOTYPE READY`, `ARCHITECTURE PHASE`, or `LIMITED` status is often

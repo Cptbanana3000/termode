@@ -205,3 +205,20 @@ v0.45 proves the Git support feasibility / installer path:
 Beta readiness is unaffected: `beta-candidate ready` still succeeds because Git
 is intentionally planned, not a broken installed tool. See
 [Git Support Strategy](GIT_SUPPORT_STRATEGY.md).
+
+v0.46 builds the real Git artifact pipeline and execution probe:
+
+- version is `v0.46` (Android `versionName 0.46.0` / `versionCode 46`)
+- a `RuntimeArtifactRegistryService` trust boundary + Git manifest validation
+- `git-artifact` (`status`, `info`, `manifest`, `verify`, `doctor`),
+  `git-exec-probe`, and `git-smoke-test`
+- `runtime-pkg install git` consults the registry: refuses safely when the
+  artifact is unavailable, would validate/checksum/install/probe a verified one
+- no Git artifact is bundled, so `git-artifact status` is `UNAVAILABLE` and Git
+  stays not installed; `git-exec-probe`/`git-version` never fake output
+- Git is reported `UNAVAILABLE`/planned across status/build-info/beta-candidate/
+  runtime-install/toolchain/dev-doctor; missing Git is never `UNHEALTHY`
+
+Beta readiness is unaffected: `beta-candidate ready` still succeeds because the
+missing Git artifact is intentional, not a broken installed tool. See
+[Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md).

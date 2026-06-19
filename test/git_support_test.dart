@@ -123,9 +123,10 @@ void main() {
     test('runtime-pkg info git shows planned package', () async {
       final result = await commandService.execute('runtime-pkg info git');
       expect(result.output, contains('=== Runtime Package: git ==='));
-      expect(result.output, contains('Kind: native-tool-planned'));
+      expect(result.output, contains('Kind: native-tool'));
       expect(result.output, contains('Status: planned (artifact unavailable)'));
       expect(result.output, contains('Command: git'));
+      expect(result.output, contains('Artifact available: no'));
       expect(result.isError, isFalse);
     });
 
@@ -133,9 +134,9 @@ void main() {
       final result = await commandService.execute('runtime-pkg install git');
       expect(
         result.output,
-        contains('Git package artifact is not available in this build.'),
+        contains('Git artifact is not available in this build.'),
       );
-      expect(result.output, contains('runtime-install plan git'));
+      expect(result.output, contains('git-artifact status'));
 
       // Nothing was installed.
       final list = await commandService.execute('runtime-pkg list');
@@ -205,31 +206,37 @@ void main() {
       expect(result.isError, isFalse);
     });
 
-    test('version surfaces mention v0.45', () async {
+    test('version surfaces mention v0.46', () async {
       final version = await commandService.execute('version');
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
       final bug = await commandService.execute('bug-report');
       final qa = await commandService.execute('qa-report');
 
-      expect(version.output, contains('Termode v0.45'));
+      expect(version.output, contains('Termode v0.46'));
       expect(
         notes.output,
-        contains('v0.45 Git Support Feasibility / Installer Path'),
+        contains('v0.46 Real Git Package Artifact / Execution Probe'),
       );
       expect(
         changelog.output,
-        contains('v0.45 Git Support Feasibility / Installer Path'),
+        contains('v0.46 Real Git Package Artifact / Execution Probe'),
       );
-      expect(bug.output, contains('Termode version: v0.45'));
-      expect(qa.output, contains('Termode v0.45'));
+      expect(bug.output, contains('Termode version: v0.46'));
+      expect(qa.output, contains('Termode v0.46'));
     });
 
-    test('build-info reports Git feasibility and v0.45', () async {
+    test('build-info reports Git artifact and v0.46', () async {
       final result = await commandService.execute('build-info');
-      expect(result.output, contains('Version: v0.45'));
-      expect(result.output, contains('Git: feasibility (planned, not installed)'));
-      expect(result.output, contains('Artifact: Termode-v0.45-git-path-debug.apk'));
+      expect(result.output, contains('Version: v0.46'));
+      expect(
+        result.output,
+        contains('Git: artifact unavailable (planned, not installed)'),
+      );
+      expect(
+        result.output,
+        contains('Artifact: Termode-v0.46-git-artifact-debug.apk'),
+      );
     });
 
     test('catalog, help, commands include git commands', () async {
@@ -269,7 +276,7 @@ void main() {
       final output = session.lines.map((line) => line.text).join('\n');
       expect(output, contains('=== Git Status ==='));
       expect(output, contains('Git is not installed yet.'));
-      expect(output, contains('Git package artifact is not available'));
+      expect(output, contains('Git artifact is not available'));
 
       session.isPtyInteractionActive = false;
       session.isRealPtyActive = false;

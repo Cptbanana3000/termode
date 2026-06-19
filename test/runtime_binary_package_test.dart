@@ -226,7 +226,7 @@ void main() {
       final status = await commandService.execute('runtime-install status');
       expect(status.output, contains('Mode: prototype installer available'));
       expect(status.output, contains('Prototype package: hello-bin'));
-      expect(status.output, contains('Next milestone: v0.46 Git Package Artifact / Real Git Execution'));
+      expect(status.output, contains('Next milestone: v0.47 Git Artifact Acquisition / Build Pipeline'));
 
       final list = await commandService.execute('runtime-install list');
       expect(list.output, contains('Prototype available now:'));
@@ -303,7 +303,7 @@ void main() {
       expect(ready.output, contains('Ready for beta testing.'));
 
       final version = await commandService.execute('version');
-      expect(version.output, contains('Termode v0.45'));
+      expect(version.output, contains('Termode v0.46'));
 
       final notes = await commandService.execute('release-notes');
       expect(
@@ -312,10 +312,10 @@ void main() {
       );
 
       final bug = await commandService.execute('bug-report');
-      expect(bug.output, contains('Termode version: v0.45'));
+      expect(bug.output, contains('Termode version: v0.46'));
 
       final qa = await commandService.execute('qa-report');
-      expect(qa.output, contains('Termode v0.45'));
+      expect(qa.output, contains('Termode v0.46'));
     });
   });
 }

@@ -196,3 +196,10 @@ milestone. `runtime-pkg` now knows a planned `git` package, but ships no Git
 artifact, so `runtime-pkg install git` refuses safely and Git is reported as
 planned/not installed. Real, verified Git install/execution arrives in v0.46.
 See [Git Support Strategy](GIT_SUPPORT_STRATEGY.md).
+
+## v0.46 Update: Git Artifact Pipeline
+
+v0.46 extends this installer toward real tools with a trusted-artifact registry
+(`RuntimeArtifactRegistryService`), Git manifest validation, and a
+`git --version` execution probe. No Git artifact is bundled yet, so installs
+still refuse safely. See [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md).

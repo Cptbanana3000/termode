@@ -115,7 +115,7 @@ void main() {
     test('runtime-freeze next output', () async {
       final result = await commandService.execute('runtime-freeze next');
 
-      expect(result.output, contains('v0.45 Git Support'));
+      expect(result.output, contains('v0.47 Git Artifact Acquisition / Build Pipeline'));
       expect(result.output, contains('Git support using controlled runtime'));
       expect(result.output, contains('checksum and ABI validation on device'));
       expect(result.output, contains('keep Node/npm/Python planned'));

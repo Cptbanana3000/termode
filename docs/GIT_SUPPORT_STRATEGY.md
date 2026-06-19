@@ -119,3 +119,12 @@ Not supported yet:
 - a real `git` binary or `git --version`
 - `git init` / `status` / `add` / `commit` / `log`
 - any Git download, fake Git script, or unverified install
+
+## v0.46 Update: Artifact Pipeline + Execution Probe
+
+v0.46 implements the install/verify/shim/run pipeline and a `git --version`
+execution probe (`git-exec-probe`), plus a trusted-artifact registry and Git
+manifest validation. No Git artifact is bundled, so Git remains `UNAVAILABLE`
+and the installer refuses safely. The exact artifact requirements are in
+[Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md). Real artifact
+acquisition/build is v0.47.

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import 'native_command_service.dart';
+import 'runtime_artifact_registry_service.dart';
 import 'runtime_prefix_service.dart';
 
 class RuntimeBinaryPackageResult {
@@ -195,9 +196,10 @@ class RuntimeBinaryPackageService {
   }
 
   /// Whether a verified, bundled Git package artifact exists in this build.
-  /// Honest detection: no Git artifact is bundled, so this is always false.
-  /// (No internet download, no arbitrary device paths, no unsigned archives.)
-  bool gitArtifactAvailable() => false;
+  /// Delegates to the artifact registry; false in this build (no bundled
+  /// binary, no download, no unsigned archives).
+  bool gitArtifactAvailable() =>
+      RuntimeArtifactRegistryService().bundledGitArtifactExists();
 
   /// Whether a Git runtime package is currently recorded as installed.
   Future<bool> gitInstalled() async {
@@ -237,19 +239,23 @@ class RuntimeBinaryPackageService {
   Future<String> info(String name) async {
     if (name == gitName) {
       final installed = await gitInstalled();
+      final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
       final status = installed
           ? 'installed'
-          : (gitArtifactAvailable()
-                ? 'installable if verified'
-                : 'planned (artifact unavailable)');
+          : (artifact.installable
+                ? 'installable (verified artifact)'
+                : 'planned (artifact ${artifact.status.toLowerCase()})');
       return '=== Runtime Package: git ===\n'
           'Name: git\n'
-          'Kind: native-tool-planned\n'
+          'Kind: native-tool\n'
           'Status: $status\n'
           'Command: git\n'
+          'Current ABI: ${artifact.abi}\n'
+          'Artifact available: ${artifact.available ? 'yes' : 'no'}\n'
+          'Installable: ${artifact.installable ? 'yes' : 'no'}\n'
           'Description: Distributed version control tool.\n'
-          'Install support: not enabled unless a verified package artifact exists.\n'
-          'Run: git-plan';
+          'Install support: enabled only with a verified package artifact.\n'
+          'Run: git-artifact status';
     }
     if (name != helloBinName) {
       return 'Unknown runtime package: $name\n'
@@ -272,19 +278,30 @@ class RuntimeBinaryPackageService {
 
   Future<RuntimeBinaryPackageResult> install(String name) async {
     if (name == gitName) {
-      if (!gitArtifactAvailable()) {
+      final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
+      if (!artifact.available) {
         return const RuntimeBinaryPackageResult(
-          'Git package artifact is not available in this build.\n'
-          'Run: git-plan\n'
-          'Run: runtime-install plan git',
+          'Git artifact is not available in this build.\n'
+          'Run: git-artifact status\n'
+          'Run: git-plan',
         );
       }
-      // A verified Git artifact would be validated (manifest, ABI, checksum),
-      // installed into TERMODE_PREFIX, registered as a shim, and confirmed with
-      // git --version before being marked installed. Not enabled in this build.
+      if (!artifact.installable) {
+        return RuntimeBinaryPackageResult(
+          'Git artifact failed verification.\n'
+          'Reason: ${artifact.reason}\n'
+          'Run: git-artifact doctor',
+          isError: true,
+        );
+      }
+      // A verified, installable Git artifact would be installed here: validate
+      // manifest, verify checksums, copy files under TERMODE_PREFIX, register the
+      // git shim, run `git --version`, and mark installed only on success
+      // (rolling back a partial install on failure). No such artifact is bundled
+      // in this build, so this branch is unreachable today.
       return const RuntimeBinaryPackageResult(
         'Git install is not enabled yet in this build.\n'
-        'Run: git-plan',
+        'Run: git-artifact doctor',
       );
     }
     if (name != helloBinName) {

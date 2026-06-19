@@ -63,7 +63,7 @@ Use `welcome`, `examples`, and `glossary` first if you are new.
 package. It does not install Git, Node.js, npm, Python, or real native binary
 packages.
 
-## Git (Feasibility)
+## Git (Feasibility + Artifact)
 
 - `git-status`
 - `git-info`
@@ -72,10 +72,15 @@ packages.
 - `git-doctor`
 - `git-test-plan`
 - `git` (placeholder; guides you when Git is not installed)
+- `git-artifact` (`status`, `info`, `manifest`, `verify`, `doctor`)
+- `git-exec-probe`
+- `git-smoke-test`
 
-Git is **planned, not installed** in this build. There is no Git artifact, so
-`runtime-pkg install git` refuses safely, `git-version` reports it is not
-installed, and `bin-which git` does not find it. Termode never fakes Git. See
+Git is **planned, not installed** in this build. There is no verified Git
+artifact (`git-artifact status` reports `UNAVAILABLE`), so `runtime-pkg install
+git` refuses safely, `git-version`/`git-exec-probe` report it is not installed,
+and `bin-which git` does not find it. Termode never fakes Git. See
+[Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md) and
 [Git Support Strategy](GIT_SUPPORT_STRATEGY.md).
 
 ## Workspace / Files

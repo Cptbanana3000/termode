@@ -3,7 +3,7 @@ import 'dart:io';
 import 'runtime_capability_service.dart';
 
 class RuntimeFreezeService {
-  static const nextMilestone = 'v0.45 Git Support';
+  static const nextMilestone = 'v0.47 Git Artifact Acquisition / Build Pipeline';
 
   static const supportedRuntimeDirection = [
     'script packages through /system/bin/sh',

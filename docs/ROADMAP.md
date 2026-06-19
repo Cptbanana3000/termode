@@ -39,15 +39,20 @@ Git is reported planned/not installed and the installer refuses safely. See
 - v0.42 Runtime Expansion Architecture
 - v0.43 Prefix / PATH / Environment System
 - v0.44 Binary Package Installer Prototype
-- v0.45 Git Support Feasibility / Installer Path (current)
-- v0.46 Git Package Artifact / Real Git Execution
-- v0.47 Node.js Support
-- v0.48 npm Support
-- v0.49 Python Support
-- v0.50 Dev Stack Presets
-- v0.51 Full Terminal QA
-- v0.52 Complete Termode Beta
+- v0.45 Git Support Feasibility / Installer Path
+- v0.46 Real Git Package Artifact / Execution Probe (current)
+- v0.47 Git Artifact Acquisition / Build Pipeline
+- v0.48 Node.js Support
+- v0.49 npm Support
+- v0.50 Python Support
+- v0.51 Dev Stack Presets
+- v0.52 Full Terminal QA
+- v0.53 Complete Termode Beta
 - CalypsoIDE integration later
+
+v0.46 builds the Git artifact pipeline and execution probe; no verified Git
+artifact is bundled yet, so v0.47 acquires/builds one before real Git workspace
+QA. See [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md).
 
 ## Product First
 

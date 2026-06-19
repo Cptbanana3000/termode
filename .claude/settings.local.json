@@ -15,7 +15,17 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "Bash(git tag *)"
+      "Bash(git tag *)",
+      "Bash(sed -i 's/Termode v0\\\\.44/Termode v0.45/g' test/widget_test.dart)",
+      "Bash(sed -i 's/Version: v0\\\\.44/Version: v0.45/g; s/Termode v0\\\\.44/Termode v0.45/g; s/Termode-v0\\\\.44-binpkg-debug\\\\.apk/Termode-v0.45-git-path-debug.apk/g' test/feedback_rc_test.dart)",
+      "Bash(sed -i 's|Next milestone: v0\\\\.45 Git Support|Next milestone: v0.46 Git Package Artifact / Real Git Execution|' test/runtime_expansion_test.dart)",
+      "Bash(sed -i \"s/Termode v0\\\\.44/Termode v0.45/g; s/Termode version: v0\\\\.44/Termode version: v0.45/g; s/contains\\('v0\\\\.44'\\)/contains\\('v0.45'\\)/g; s/\\(v0\\\\.36-v0\\\\.44\\)/\\(v0.36-v0.45\\)/g\" test/beta_readiness_test.dart)",
+      "Bash(sed -i \"s|Next milestone: v0\\\\.45 Git Support|Next milestone: v0.46 Git Package Artifact / Real Git Execution|; s/Termode v0\\\\.44/Termode v0.45/g; s/Termode version: v0\\\\.44/Termode version: v0.45/g\" test/runtime_binary_package_test.dart)",
+      "Bash(sed -i 's/Termode v0\\\\.45/Termode v0.46/g' test/widget_test.dart)",
+      "Bash(sed -i \"s/Termode v0\\\\.45/Termode v0.46/g; s/Termode version: v0\\\\.45/Termode version: v0.46/g; s/contains\\('v0\\\\.45'\\)/contains\\('v0.46'\\)/g; s/\\(v0\\\\.36-v0\\\\.45\\)/\\(v0.36-v0.46\\)/g\" test/beta_readiness_test.dart)",
+      "Bash(sed -i 's/Version: v0\\\\.45/Version: v0.46/g; s/Termode v0\\\\.45/Termode v0.46/g; s/Termode version: v0\\\\.45/Termode version: v0.46/g' test/beta_candidate_test.dart)",
+      "Bash(sed -i 's/Version: v0\\\\.45/Version: v0.46/g; s/Termode v0\\\\.45/Termode v0.46/g; s/Termode-v0\\\\.45-git-path-debug\\\\.apk/Termode-v0.46-git-artifact-debug.apk/g' test/feedback_rc_test.dart)",
+      "Bash(sed -i \"s/Termode v0\\\\.45/Termode v0.46/g; s/Termode version: v0\\\\.45/Termode version: v0.46/g; s|Next milestone: v0.46 Git Package Artifact / Real Git Execution|Next milestone: v0.47 Git Artifact Acquisition / Build Pipeline|\" test/runtime_binary_package_test.dart)"
     ]
   }
 }

@@ -618,7 +618,7 @@ class SettingsScreen extends StatelessWidget {
                   style: TextStyle(color: Colors.white),
                 ),
                 trailing: Text(
-                  'v0.45 (Git Support Feasibility / Installer Path)',
+                  'v0.46 (Real Git Package Artifact / Execution Probe)',
                   style: TextStyle(color: Colors.white60),
                 ),
               ),
