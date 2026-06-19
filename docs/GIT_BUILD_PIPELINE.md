@@ -1,8 +1,9 @@
-# Git Build Pipeline (v0.47, verified in v0.48)
+# Git Build Pipeline (v0.47, verified in v0.48, prepared in v0.49)
 
 v0.47 defines the build-side pipeline for a future Git artifact. It does not
 build, download, or install Git. v0.48 adds the validation and smoke-test gate
-that a future artifact must pass before Termode reports Git as installed.
+that a future artifact must pass before Termode reports Git as installed. v0.49
+adds the arm64-v8a production layout and project-side helper docs/scripts.
 
 Pipeline stages:
 
@@ -46,3 +47,5 @@ Release gate:
 
 - Do not announce Git support until `git --version` succeeds on device.
 - Missing Git remains an intentional limitation, not an unhealthy app state.
+
+See also [Git arm64-v8a Artifact Pipeline](GIT_ARM64_ARTIFACT_PIPELINE.md).

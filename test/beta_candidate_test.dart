@@ -91,7 +91,7 @@ void main() {
       expect(result.isError, isFalse);
       expect(result.output, contains('=== Build Info ==='));
       expect(result.output, contains('App: Termode'));
-      expect(result.output, contains('Version: v0.48'));
+      expect(result.output, contains('Version: v0.49'));
       expect(result.output, contains('Build type:'));
       expect(result.output, contains('Runtime: prototype installer active'));
       expect(
@@ -123,7 +123,7 @@ void main() {
       final result = await commandService.execute('beta-candidate status');
 
       expect(result.output, contains('=== Termode Beta Candidate ==='));
-      expect(result.output, contains('Version: v0.48'));
+      expect(result.output, contains('Version: v0.49'));
       expect(
         result.output,
         contains('Runtime package installer: prototype ready'),
@@ -159,7 +159,7 @@ void main() {
     test('beta-candidate notes output', () async {
       final result = await commandService.execute('beta-candidate notes');
 
-      expect(result.output, contains('=== Termode v0.48 Beta Candidate ==='));
+      expect(result.output, contains('=== Termode v0.49 Beta Candidate ==='));
       expect(result.output, contains('prototype runtime package installer'));
       expect(result.output, contains('REAL PTY shell'));
       expect(result.output, contains('script packages'));
@@ -201,7 +201,7 @@ void main() {
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
 
-      expect(version.output, contains('Termode v0.48'));
+      expect(version.output, contains('Termode v0.49'));
       expect(
         notes.output,
         contains('v0.44 Binary Package Installer Prototype'),
@@ -221,8 +221,8 @@ void main() {
       final bug = await commandService.execute('bug-report');
       final qa = await commandService.execute('qa-report');
 
-      expect(bug.output, contains('Termode version: v0.48'));
-      expect(qa.output, contains('Termode v0.48'));
+      expect(bug.output, contains('Termode version: v0.49'));
+      expect(qa.output, contains('Termode v0.49'));
     });
 
     test('command catalog includes new v0.40 commands', () {

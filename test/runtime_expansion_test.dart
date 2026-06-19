@@ -233,7 +233,7 @@ void main() {
     test('toolchain-status and toolchain-list', () async {
       final status = await commandService.execute('toolchain-status');
       expect(status.output, contains('=== Toolchain Status ==='));
-      expect(status.output, contains('Git bundle pipeline: ready'));
+      expect(status.output, contains('Git build pipeline: ready'));
       expect(status.output, contains('Node.js: planned'));
       expect(status.output, contains('Overall: ARCHITECTURE PHASE'));
 
@@ -312,7 +312,7 @@ void main() {
       expect(status.output, contains('Prototype package: hello-bin'));
       expect(
         status.output,
-        contains('Next milestone: real arm64-v8a Git artifact build'),
+        contains('Next milestone: trusted Git artifact production build'),
       );
 
       final doctor = await commandService.execute('runtime-install doctor');
@@ -383,7 +383,7 @@ void main() {
       expect(result.output, contains('Prefix: LIMITED'));
       expect(result.output, contains('PATH: LIMITED'));
       expect(result.output, contains('Env: LIMITED'));
-      expect(result.output, contains('Git bundle pipeline: ready'));
+      expect(result.output, contains('Git build pipeline: ready'));
       expect(result.output, contains('Node.js: planned'));
       expect(
         result.output,

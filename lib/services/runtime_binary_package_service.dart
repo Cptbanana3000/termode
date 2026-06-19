@@ -317,7 +317,8 @@ class RuntimeBinaryPackageService {
           'Current state: ${artifact.status}\n'
           'Reason: ${artifact.reason}\n'
           'Run: git-artifact bundle-check\n'
-          'Run: git-artifact doctor',
+          'Run: git-artifact doctor\n'
+          'Docs: docs/GIT_ARM64_ARTIFACT_PIPELINE.md',
           isError: true,
         );
       }
@@ -327,7 +328,8 @@ class RuntimeBinaryPackageService {
           'Current state: ${artifact.status}\n'
           'Run: git-artifact bundle-status\n'
           'Run: git-artifact bundle-plan\n'
-          'Run: git-artifact next',
+          'Run: git-artifact next\n'
+          'Docs: docs/GIT_ARM64_ARTIFACT_PIPELINE.md',
         );
       }
       if (!artifact.installable) {
@@ -335,7 +337,8 @@ class RuntimeBinaryPackageService {
           'Git artifact failed verification.\n'
           'Reason: ${artifact.reason}\n'
           'Run: git-artifact bundle-check\n'
-          'Run: git-artifact doctor',
+          'Run: git-artifact doctor\n'
+          'Docs: docs/GIT_ARM64_ARTIFACT_PIPELINE.md',
           isError: true,
         );
       }

@@ -127,7 +127,8 @@ execution probe (`git-exec-probe`), plus a trusted-artifact registry and Git
 manifest validation. No Git artifact is bundled, so Git remains `UNAVAILABLE`
 and the installer refuses safely. The exact artifact requirements are in
 [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md). Real artifact
-acquisition/build is v0.47, and verified bundle/smoke validation is v0.48.
+acquisition/build is v0.47, verified bundle/smoke validation is v0.48, and
+arm64-v8a production pipeline preparation is v0.49.
 
 ## v0.47 Update: Acquisition / Build Pipeline
 
@@ -158,3 +159,17 @@ The installer revalidates before copying, writes only manifest-owned files into
 `TERMODE_PREFIX`, rechecks copied SHA-256 values, runs `git --version`, and
 rolls back on any failure. This still does not bundle Git; missing Git remains
 planned/not installed, not unhealthy.
+
+## v0.49 Update: arm64-v8a Production Pipeline
+
+v0.49 chooses the honest no-artifact path because no trusted Git source bundle
+or project-controlled payload exists in the checkout. It adds:
+
+- `docs/GIT_ARTIFACT_BUILD_STATUS.md`
+- `docs/GIT_ARM64_ARTIFACT_PIPELINE.md`
+- `tools/git-build/`
+- `tools/runtime-artifacts/git/arm64-v8a/manifest.json.example`
+- `tools/runtime-artifacts/git/arm64-v8a/files/README.md`
+
+Git remains unavailable until a trusted payload passes `git-artifact
+bundle-check`, `runtime-pkg install git`, and real `git --version`.

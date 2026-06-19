@@ -230,3 +230,16 @@ v0.48 hardens the Git path without adding a real Git payload:
 
 No runtime download, fake Git script, or arbitrary archive install is enabled.
 See [Git Bundle Smoke Test](GIT_BUNDLE_SMOKE_TEST.md).
+
+## v0.49 Update: Git arm64-v8a Build Pipeline
+
+v0.49 prepares the production artifact path without adding a payload:
+
+- `tools/runtime-artifacts/git/arm64-v8a/manifest.json.example`
+- `tools/runtime-artifacts/git/arm64-v8a/files/README.md`
+- `tools/git-build/` build/layout/verification docs and optional helpers
+- `git-workspace-smoke-plan`
+
+`runtime-pkg install git` still refuses safely while no trusted artifact exists.
+See [Git Artifact Build Status](GIT_ARTIFACT_BUILD_STATUS.md) and
+[Git arm64-v8a Artifact Pipeline](GIT_ARM64_ARTIFACT_PIPELINE.md).

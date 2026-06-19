@@ -1,4 +1,4 @@
-# Git Artifact Contract (v0.48)
+# Git Artifact Contract (v0.49)
 
 This contract defines what a **real, installable Git package artifact** must
 look like for Termode to install, verify, expose, and run it. It is the trust
@@ -8,9 +8,9 @@ when a verified artifact exists **and** `git --version` succeeds.
 **Status in this build:** no real Git artifact is bundled, so Git is
 `TEMPLATE_ONLY` in a source checkout or `UNAVAILABLE` in an installed APK, and
 not installable. The pipeline (registry, manifest validation, project artifact
-checks, install path, rollback, execution probe, acquisition/build docs, and
-manifest template) is implemented and honest; it simply has no verified payload
-to install.
+checks, install path, rollback, execution probe, arm64-v8a build docs/helpers,
+and manifest templates/examples) is implemented and honest; it simply has no
+verified payload to install.
 
 ## Package Identity
 
@@ -121,6 +121,12 @@ existence, byte counts, and SHA-256 hashes without installing. `runtime-pkg
 install git` revalidates, copies only manifest-owned files into
 `TERMODE_PREFIX`, runs `git --version`, and rolls back if any step fails.
 An APK with no bundled artifact remains honest: Git is unavailable, not fake.
+
+## v0.49 arm64-v8a Production Preparation
+
+v0.49 adds the project-side `arm64-v8a` production layout, example manifest,
+files placeholder, and optional helper scripts. It does not add a real payload.
+See [Git arm64-v8a Artifact Pipeline](GIT_ARM64_ARTIFACT_PIPELINE.md).
 
 ## Removal Rules
 

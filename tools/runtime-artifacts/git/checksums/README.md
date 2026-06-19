@@ -9,4 +9,4 @@ Required:
 - no absolute paths
 - no parent-directory traversal
 
-v0.48 includes no real checksum file because no Git artifact is bundled.
+v0.49 includes no real checksum file because no Git artifact is bundled.

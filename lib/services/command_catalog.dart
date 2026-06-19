@@ -54,6 +54,7 @@ const List<String> kTermodeCommands = [
   'git-version',
   'git-doctor',
   'git-test-plan',
+  'git-workspace-smoke-plan',
   'git-artifact',
   'git-exec-probe',
   'git-smoke-test',

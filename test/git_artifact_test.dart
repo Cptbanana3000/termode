@@ -83,6 +83,7 @@ void main() {
         expect(out, contains('git-artifact pipeline'));
         expect(out, contains('git-artifact bundle-status'));
         expect(out, contains('git-artifact smoke-plan'));
+        expect(out, contains('git-workspace-smoke-plan'));
       }
     });
 
@@ -166,6 +167,11 @@ void main() {
         expect(next.output, contains('Current state:'));
         expect(
           next.output,
+          contains('v0.50 Git Artifact Production / Trusted Build'),
+        );
+        expect(next.output, contains('docs/GIT_ARM64_ARTIFACT_PIPELINE.md'));
+        expect(
+          next.output,
           contains('Do not download or execute unknown Git binaries.'),
         );
       },
@@ -183,6 +189,15 @@ void main() {
       final result = await commandService.execute('git-smoke-test');
       expect(result.output, contains('Git is not installed'));
       expect(result.output, contains('runtime-pkg install git'));
+    });
+
+    test('git-workspace-smoke-plan is blocked until Git exists', () async {
+      final result = await commandService.execute('git-workspace-smoke-plan');
+      expect(result.output, contains('=== Git Workspace Smoke Plan ==='));
+      expect(result.output, contains('Blocked: missing trusted Git artifact.'));
+      expect(result.output, contains('workspace-init gittests'));
+      expect(result.output, contains('git commit -m "Initial commit"'));
+      expect(result.isError, isFalse);
     });
 
     test('git-status and git-doctor include artifact unavailable', () async {
@@ -229,6 +244,7 @@ void main() {
           contains('Place files under tools/runtime-artifacts/git/<abi>/files'),
         );
         expect(plan.output, contains('Run git --version'));
+        expect(plan.output, contains('docs/GIT_ARM64_ARTIFACT_PIPELINE.md'));
         expect(check.output, contains('=== Git Bundle Check ==='));
         expect(
           check.output,
@@ -287,6 +303,7 @@ void main() {
       expect(install.isError, isTrue);
       expect(install.output, contains('Git artifact failed verification.'));
       expect(install.output, contains('git-artifact bundle-check'));
+      expect(install.output, contains('docs/GIT_ARM64_ARTIFACT_PIPELINE.md'));
     });
 
     test('project artifact with matching checksum can be AVAILABLE', () async {
@@ -398,6 +415,23 @@ void main() {
         registry.validateGitManifest(badAbi, 'arm64-v8a'),
         contains('unsupported abi'),
       );
+
+      final placeholder = Map<String, dynamic>.from(valid);
+      placeholder['version'] = '0.0.0-template';
+      placeholder['created_at'] = 'TEMPLATE_ONLY';
+      placeholder['files'] = [
+        {'path': 'bin/git', 'sha256': List.filled(64, '0').join(), 'bytes': 0},
+      ];
+      final placeholderErrors = registry.validateGitManifest(
+        placeholder,
+        'arm64-v8a',
+      );
+      expect(
+        placeholderErrors,
+        contains('placeholder manifest is not installable'),
+      );
+      expect(placeholderErrors, contains('placeholder checksum'));
+      expect(placeholderErrors, contains('invalid file byte count'));
     });
 
     test('registry template state is not installable', () async {
@@ -418,6 +452,7 @@ void main() {
           'git-artifact',
           'git-exec-probe',
           'git-smoke-test',
+          'git-workspace-smoke-plan',
         ]) {
           expect(kTermodeCommands, contains(command));
         }

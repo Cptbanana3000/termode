@@ -1,0 +1,28 @@
+{
+  "name": "git",
+  "version": "2.x.y",
+  "kind": "native-tool",
+  "abi": "arm64-v8a",
+  "command": "git",
+  "entrypoint": "bin/git",
+  "files": [
+    {
+      "path": "bin/git",
+      "sha256": "<64 hex sha256>",
+      "bytes": 123456
+    }
+  ],
+  "source": "termode-built",
+  "source_url": "https://example.invalid/replace-with-auditable-source",
+  "build_method": "replace with reproducible Termode build notes",
+  "license": "GPL-2.0-only",
+  "trusted_by": "Termode",
+  "verification_command": "git --version",
+  "smoke_tests": [
+    "git --version",
+    "git init",
+    "git status"
+  ],
+  "dependencies": [],
+  "created_at": "replace-with-build-timestamp"
+}

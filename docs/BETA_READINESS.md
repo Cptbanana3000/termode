@@ -253,3 +253,21 @@ v0.48 adds verified Git artifact bundle checks and a smoke-test path:
 Beta readiness remains unaffected: the v0.48 Git path is ready for a trusted
 artifact, while missing Git remains an intentional limitation. See
 [Git Bundle Smoke Test](GIT_BUNDLE_SMOKE_TEST.md).
+
+v0.49 prepares the Git arm64-v8a artifact production pipeline:
+
+- version is `v0.49` (Android `versionName 0.49.0` / `versionCode 49`)
+- selected strategy is Path C: no real trusted artifact exists in this checkout
+- `tools/runtime-artifacts/git/arm64-v8a/` now has the production layout,
+  manifest example, and files placeholder
+- `tools/git-build/` documents build/layout/verification and provides optional
+  project-side helper scripts
+- `git-workspace-smoke-plan` prints the manual workspace QA sequence but does
+  not run it automatically
+- Git remains unavailable/not installed until a trusted payload passes
+  `git-artifact bundle-check`, `runtime-pkg install git`, and real
+  `git --version`
+
+Beta readiness remains unaffected: the missing Git artifact is intentional, not
+a broken installed tool. See [Git Artifact Build Status](GIT_ARTIFACT_BUILD_STATUS.md)
+and [Git arm64-v8a Artifact Pipeline](GIT_ARM64_ARTIFACT_PIPELINE.md).

@@ -3,7 +3,7 @@
 Termode is a standalone Android terminal project with a REAL PTY shell,
 script packages, workspace folders, and beta QA tooling.
 
-Current status: **v0.48 Verified Git Artifact Bundle / Smoke Test** (terminal foundation beta).
+Current status: **v0.49 Git Artifact Build / arm64-v8a Production** (terminal foundation beta).
 
 Termode is not a full Linux distribution and is not a Termux replacement yet,
 and it is not a stable v1.0. It is building a complete standalone Android
@@ -13,12 +13,14 @@ integrating into CalypsoIDE.
 Termode has a strong terminal foundation today (REAL PTY, packages, workspaces,
 sessions, QA/beta tooling). It does **not** yet include Node.js, npm, Git,
 Python, compilers, or a full Linux package ecosystem — those are **planned, not
-installed**. v0.48 adds project-controlled Git bundle validation,
-checksum/file checks, install rollback, and a smoke-test path for `git
---version`. It still ships **no Git artifact**, so Git is reported
-`TEMPLATE_ONLY` or `UNAVAILABLE`/not installed and the installer refuses
-safely. Termode never fakes Git. See
+installed**. v0.49 prepares the project-controlled arm64-v8a Git artifact
+production path, including layout docs, manifest examples, and helper scripts.
+It still ships **no Git artifact**, so Git is reported `TEMPLATE_ONLY` or
+`UNAVAILABLE`/not installed and the installer refuses safely. Termode never
+fakes Git. See
 [Git Artifact Contract](docs/GIT_ARTIFACT_CONTRACT.md),
+[Git Artifact Build Status](docs/GIT_ARTIFACT_BUILD_STATUS.md),
+[Git arm64-v8a Artifact Pipeline](docs/GIT_ARM64_ARTIFACT_PIPELINE.md),
 [Git Artifact Acquisition](docs/GIT_ARTIFACT_ACQUISITION.md),
 [Git Build Pipeline](docs/GIT_BUILD_PIPELINE.md),
 [Git Bundle Smoke Test](docs/GIT_BUNDLE_SMOKE_TEST.md),
@@ -94,7 +96,7 @@ hello
 Termode ships as a debug APK for beta testing:
 
 1. Enable "Install unknown apps" for your file manager or browser.
-2. Copy `Termode-v0.48-git-bundle-debug.apk` to the device and tap to install.
+2. Copy `Termode-v0.49-git-artifact-build-debug.apk` to the device and tap to install.
 3. Launch Termode and run `welcome`, then `doctor` and `dev-doctor`.
 
 Full steps and how to clear app data are in
@@ -210,9 +212,10 @@ after the UI polish pass.
 - v0.45 Git Support Feasibility / Installer Path
 - v0.46 Real Git Package Artifact / Execution Probe
 - v0.47 Git Artifact Acquisition / Build Pipeline
-- v0.48 Verified Git Artifact Bundle / Smoke Test (current)
-- v0.49 Git Artifact Build / arm64-v8a Production
-- v0.50+ Node.js / npm / Python / Dev Stack Presets
+- v0.48 Verified Git Artifact Bundle / Smoke Test
+- v0.49 Git Artifact Build / arm64-v8a Production (current)
+- v0.50 Git Artifact Production / Trusted Build
+- v0.51+ Node.js / npm / Python / Dev Stack Presets
 - v0.52 Full Terminal QA · v0.53 Complete Termode Beta
 - CalypsoIDE integration later
 
@@ -222,6 +225,8 @@ stabilizes.
 ## Docs
 
 - [Git Artifact Contract](docs/GIT_ARTIFACT_CONTRACT.md)
+- [Git Artifact Build Status](docs/GIT_ARTIFACT_BUILD_STATUS.md)
+- [Git arm64-v8a Artifact Pipeline](docs/GIT_ARM64_ARTIFACT_PIPELINE.md)
 - [Git Artifact Acquisition](docs/GIT_ARTIFACT_ACQUISITION.md)
 - [Git Build Pipeline](docs/GIT_BUILD_PIPELINE.md)
 - [Git Bundle Smoke Test](docs/GIT_BUNDLE_SMOKE_TEST.md)

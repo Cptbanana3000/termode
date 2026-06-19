@@ -3,12 +3,12 @@ import 'dart:io';
 
 import 'native_command_service.dart';
 
-/// Safe registry for real runtime artifacts (v0.48), starting with Git.
+/// Safe registry for real runtime artifacts (v0.49), starting with Git.
 ///
-/// This is the trust boundary for installing real native tools. For v0.48 the
-/// registry also knows about the build-side artifact template, but template-only
-/// is never installable. There is NO runtime internet download and NO arbitrary
-/// user-selected archive import.
+/// This is the trust boundary for installing real native tools. For v0.49 the
+/// registry knows about the arm64-v8a production artifact layout, but
+/// template-only and placeholder manifests are never installable. There is NO
+/// runtime internet download and NO arbitrary user-selected archive import.
 ///
 /// Honest result for this build: no Git artifact is bundled. A source checkout
 /// may contain the manifest template, so Git can be reported TEMPLATE_ONLY, but
@@ -43,7 +43,7 @@ class RuntimeArtifactRegistryService {
       '$gitArtifactsRoot/$abi/files';
 
   /// Whether a verified Git artifact is bundled in this build.
-  /// Always false for v0.48 until a reviewed asset bundle is wired in.
+  /// Always false for v0.49 until a reviewed asset bundle is wired in.
   bool bundledGitArtifactExists() => false;
 
   /// The bundled Git manifest, if any. None in this build.
@@ -256,6 +256,10 @@ class RuntimeArtifactRegistryService {
       if (!file.existsSync()) {
         return ['missing artifact file: $relPath'];
       }
+      final expectedBytes = item['bytes'];
+      if (expectedBytes is int && file.lengthSync() != expectedBytes) {
+        return ['byte count mismatch: $relPath'];
+      }
       final actual = calculateSha256(file.readAsBytesSync());
       if (actual.toLowerCase() != expected.toLowerCase()) {
         return ['checksum mismatch: $relPath'];
@@ -270,7 +274,14 @@ class RuntimeArtifactRegistryService {
       return const ['template missing or invalid JSON'];
     }
     final abi = manifest['abi']?.toString() ?? 'arm64-v8a';
-    final errors = validateGitManifest(manifest, abi);
+    final errors = validateGitManifest(manifest, abi)
+        .where(
+          (error) =>
+              error != 'placeholder manifest is not installable' &&
+              error != 'placeholder checksum' &&
+              error != 'invalid file byte count',
+        )
+        .toList();
     final version = manifest['version']?.toString() ?? '';
     final createdAt = manifest['created_at']?.toString() ?? '';
     if (!version.contains('template') && createdAt != 'TEMPLATE_ONLY') {
@@ -307,6 +318,7 @@ class RuntimeArtifactRegistryService {
     final entrypoint = manifest['entrypoint']?.toString() ?? '';
     final source = manifest['source']?.toString() ?? '';
     final sourceUrl = manifest['source_url']?.toString() ?? '';
+    final sourceNote = manifest['source_note']?.toString() ?? '';
     final buildMethod = manifest['build_method']?.toString() ?? '';
     final license = manifest['license']?.toString() ?? '';
     final trustedBy = manifest['trusted_by']?.toString() ?? '';
@@ -334,7 +346,9 @@ class RuntimeArtifactRegistryService {
     if (!trustedSources.contains(source)) {
       errors.add('unknown/untrusted source');
     }
-    if (sourceUrl.trim().isEmpty) errors.add('missing source_url');
+    if (sourceUrl.trim().isEmpty && sourceNote.trim().isEmpty) {
+      errors.add('missing source_url or source_note');
+    }
     if (buildMethod.trim().isEmpty) errors.add('missing build_method');
     if (license.trim().isEmpty) errors.add('missing license');
     if (trustedBy.trim().isEmpty) errors.add('missing trusted_by');
@@ -356,11 +370,20 @@ class RuntimeArtifactRegistryService {
         }
         final path = item['path']?.toString() ?? '';
         final sha = item['sha256']?.toString() ?? '';
+        final bytes = item['bytes'];
         if (!_isSafeRelativePath(path)) errors.add('unsafe file path');
         if (!RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(sha)) {
           errors.add('invalid checksum');
         }
+        if (bytes is! int || bytes <= 0) errors.add('invalid file byte count');
+        if (RegExp(r'^0{64}$').hasMatch(sha)) {
+          errors.add('placeholder checksum');
+        }
       }
+    }
+    if (version.toLowerCase().contains('template') ||
+        createdAt == 'TEMPLATE_ONLY') {
+      errors.add('placeholder manifest is not installable');
     }
     return errors.toSet().toList()..sort();
   }

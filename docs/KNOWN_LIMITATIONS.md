@@ -1,14 +1,15 @@
 # Known Limitations
 
-Termode is beta software. v0.48 adds verified Git bundle checks, project
-artifact validation, install rollback, and a smoke-test path, but ships **no
-real Git artifact**, so Git - like Node/npm/Python - is still **planned, not
-installed**.
+Termode is beta software. v0.49 prepares the arm64-v8a Git artifact production
+pipeline, but ships **no real Git artifact**, so Git - like Node/npm/Python -
+is still **planned, not installed**.
 `git-artifact status` may report `TEMPLATE_ONLY` in a source checkout or
 `UNAVAILABLE` in an installed APK. Termode never fakes Git; `git`,
 `git-version`, `git-exec-probe`, and `bin-which git` all report it as not
 installed. A missing Git artifact is expected and does not make the app
 unhealthy. See [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md),
+[Git Artifact Build Status](GIT_ARTIFACT_BUILD_STATUS.md),
+[Git arm64-v8a Artifact Pipeline](GIT_ARM64_ARTIFACT_PIPELINE.md),
 [Git Artifact Acquisition](GIT_ARTIFACT_ACQUISITION.md),
 [Git Build Pipeline](GIT_BUILD_PIPELINE.md),
 [Git Bundle Smoke Test](GIT_BUNDLE_SMOKE_TEST.md), and
