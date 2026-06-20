@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Termode Git build inputs",
+  "type": "object",
+  "required": [
+    "git",
+    "dependencies",
+    "host_requirements",
+    "target",
+    "build_mode",
+    "build_method",
+    "acquired_at"
+  ],
+  "properties": {
+    "template_only": { "const": false },
+    "git": { "$ref": "#/$defs/source" },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          { "$ref": "#/$defs/source" },
+          {
+            "type": "object",
+            "required": ["name", "required_for"]
+          }
+        ]
+      }
+    },
+    "host_requirements": {
+      "type": "object",
+      "required": ["perl", "android_ndk", "cmake", "make", "archive_tool"]
+    },
+    "target": {
+      "type": "object",
+      "required": ["abi", "min_android_api"],
+      "properties": {
+        "abi": { "const": "arm64-v8a" },
+        "min_android_api": { "type": "integer", "minimum": 21 }
+      }
+    },
+    "build_mode": {
+      "enum": ["minimal-local-git", "git-with-https-later"]
+    },
+    "build_method": { "type": "string", "minLength": 1 },
+    "acquired_at": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "required": [
+        "version",
+        "source_type",
+        "source_path",
+        "source_url",
+        "sha256",
+        "license",
+        "trusted_by"
+      ],
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "source_type": { "enum": ["archive", "tree"] },
+        "source_path": { "type": "string", "minLength": 1 },
+        "source_url": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
+        "license": { "type": "string", "minLength": 1 },
+        "trusted_by": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

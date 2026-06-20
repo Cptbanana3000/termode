@@ -25,8 +25,8 @@ CalypsoIDE as a plug-and-play terminal/runtime engine.
 - compilers
 - full Termux-replacement status
 
-These are **planned, not installed**. v0.50 completes the arm64-v8a Git artifact
-production pipeline, but still ships no real Git artifact, so Git is reported
+These are **planned, not installed**. v0.52 defines audited Git source and
+dependency acquisition, but still ships no real Git artifact, so Git is reported
 planned/not installed and the installer refuses safely. See
 [Git Support Strategy](GIT_SUPPORT_STRATEGY.md),
 [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md),
@@ -51,16 +51,18 @@ planned/not installed and the installer refuses safely. See
 - v0.47 Git Artifact Acquisition / Build Pipeline
 - v0.48 Verified Git Artifact Bundle / Smoke Test
 - v0.49 Git Artifact Build / arm64-v8a Production
-- v0.50 Git Artifact Production / Trusted Build (current)
-- v0.51 Git Artifact Payload Build / Device Verification
-- v0.52+ Node.js / npm / Python / Dev Stack Presets
+- v0.50 Git Artifact Production / Trusted Build
+- v0.51 Git Artifact Build Environment / NDK Source Build
+- v0.52 Git Source Acquisition / Dependency Build Plan (current)
+- v0.53 Git Source + Dependency Preparation
+- v0.54+ Node.js / npm / Python / Dev Stack Presets
 - v0.52 Full Terminal QA
 - v0.53 Complete Termode Beta
 - CalypsoIDE integration later
 
-v0.50 completes the project-side arm64-v8a production pipeline. No real Git
-artifact is bundled yet, so v0.51 produces a trusted payload before real Git
-workspace QA. See [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md).
+v0.52 adds project-side build-input templates and verification scripts. No real
+source or artifact is bundled yet, so v0.53 prepares reviewed source and
+dependencies before a build attempt. See [Git Source Acquisition](GIT_SOURCE_ACQUISITION.md).
 
 ## Product First
 

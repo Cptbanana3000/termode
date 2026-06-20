@@ -1,4 +1,4 @@
-# Git Trusted Build (v0.50)
+# Git Trusted Build (v0.50, extended through v0.52)
 
 This document defines the trusted production build requirements for a future
 Termode Git artifact.
@@ -60,19 +60,37 @@ Before bundling, record:
 
 ## Manifest Generation
 
-Use the host-side helper from the project root:
+First run the v0.51 host preflight:
 
 ```sh
-dart tools/git-build/prepare_git_artifact.dart arm64-v8a
+dart tools/git-build/check_build_env.dart
+dart tools/git-build/build_git_arm64.dart
 ```
 
-Write the output to:
+Then create a real `build-inputs.json` from the template and pass:
+
+```sh
+dart tools/git-build/check_build_inputs.dart
+dart tools/git-build/verify_git_source.dart
+dart tools/git-build/check_dependencies.dart
+```
+
+The example file is intentionally template-only and non-build-ready.
+
+Use the host-side artifact helper only after real staged output exists:
+
+```sh
+dart tools/git-build/prepare_git_artifact.dart arm64-v8a tools/git-build/output/arm64-v8a/stage
+```
+
+The staging form writes a review-only candidate to:
 
 ```text
-tools/runtime-artifacts/git/arm64-v8a/manifest.json
+tools/runtime-artifacts/git/arm64-v8a/manifest.candidate.json
 ```
 
-Then validate:
+Review and promote it to `manifest.json` only after replacing incomplete
+metadata. Then validate:
 
 ```sh
 dart tools/git-build/validate_git_artifact.dart arm64-v8a
@@ -93,4 +111,3 @@ git-doctor
 ```
 
 Git support is not available until `git --version` succeeds on device.
-

@@ -118,11 +118,11 @@ void main() {
 
       expect(
         result.output,
-        contains('v0.51 Git Artifact Payload Build / Device Verification'),
+        contains('v0.53 Git Source + Dependency Preparation'),
       );
       expect(
         result.output,
-        contains('produce or vendor a trusted Git artifact'),
+        contains('acquire reviewed Git and dependency sources'),
       );
       expect(result.output, contains('prove git --version on device'));
       expect(result.output, contains('checksum and ABI validation on device'));

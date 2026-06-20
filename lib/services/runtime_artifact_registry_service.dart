@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'native_command_service.dart';
 
-/// Safe registry for real runtime artifacts (v0.50), starting with Git.
+/// Safe registry for real runtime artifacts (v0.52), starting with Git.
 ///
-/// This is the trust boundary for installing real native tools. For v0.50 the
+/// This is the trust boundary for installing real native tools. For v0.52 the
 /// registry knows about the arm64-v8a production artifact layout and host-side
 /// production pipeline, but template-only and placeholder manifests are never
 /// installable. There is NO runtime internet download and NO arbitrary
@@ -44,7 +44,7 @@ class RuntimeArtifactRegistryService {
       '$gitArtifactsRoot/$abi/files';
 
   /// Whether a verified Git artifact is bundled in this build.
-  /// Always false for v0.50 until a reviewed asset bundle is wired in.
+  /// Always false for v0.52 until a reviewed asset bundle is wired in.
   bool bundledGitArtifactExists() => false;
 
   /// The bundled Git manifest, if any. None in this build.

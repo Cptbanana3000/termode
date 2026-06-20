@@ -126,7 +126,7 @@ void main() {
       final result = await commandService.execute('rc-status');
 
       expect(result.output, contains('=== Release Candidate Status ==='));
-      expect(result.output, contains('Version: v0.50'));
+      expect(result.output, contains('Version: v0.52'));
       expect(result.output, contains('Beta candidate: yes'));
       expect(result.output, contains('Core systems: OK'));
       expect(result.output, contains('Known limitations: intentional'));
@@ -144,11 +144,11 @@ void main() {
       final version = await commandService.execute('version');
       final build = await commandService.execute('build-info');
 
-      expect(version.output, contains('Termode v0.50'));
-      expect(build.output, contains('Version: v0.50'));
+      expect(version.output, contains('Termode v0.52'));
+      expect(build.output, contains('Version: v0.52'));
       expect(
         build.output,
-        contains('Artifact: Termode-v0.50-git-production-debug.apk'),
+        contains('Artifact: Termode-v0.52-git-source-deps-debug.apk'),
       );
     });
 

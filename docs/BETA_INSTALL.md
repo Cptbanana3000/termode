@@ -7,7 +7,7 @@ How to install the Termode beta candidate debug APK on a real Android device.
 The beta build is distributed as a renamed debug APK:
 
 ```text
-Termode-v0.50-git-production-debug.apk
+Termode-v0.52-git-source-deps-debug.apk
 ```
 
 The raw Flutter output is `build/app/outputs/flutter-apk/app-debug.apk`. See
@@ -16,7 +16,7 @@ renamed file.
 
 ## Install The Debug APK Manually
 
-1. Copy `Termode-v0.50-git-production-debug.apk` to the device.
+1. Copy `Termode-v0.52-git-source-deps-debug.apk` to the device.
 2. On the device, open the file with a file manager or browser.
 3. When prompted, allow installation.
 
@@ -32,7 +32,7 @@ Android blocks installs from outside the Play Store by default:
 ## Install With adb
 
 ```sh
-adb install -r Termode-v0.50-git-production-debug.apk
+adb install -r Termode-v0.52-git-source-deps-debug.apk
 ```
 
 ## Clear App Data
@@ -64,8 +64,8 @@ qa-status
 ```
 
 A healthy build reports `BETA CANDIDATE` / `RC CLEANUP READY` and intentional
-limited states for known limits such as unlinked storage. Git has a v0.50
-trusted production pipeline but no real bundled artifact; Node.js, npm, and
+limited states for known limits such as unlinked storage. Git has v0.52 audited
+acquisition checks but no trusted source or bundled artifact; Node.js, npm, and
 Python remain planned, not installed.
 
 ## Release Artifact Naming
@@ -73,19 +73,19 @@ Python remain planned, not installed.
 Beta artifacts use:
 
 ```text
-Termode-v0.50-git-production-debug.apk
+Termode-v0.52-git-source-deps-debug.apk
 ```
 
 After `flutter build apk --debug`, copy the output to the named file:
 
 ```sh
-cp build/app/outputs/flutter-apk/app-debug.apk Termode-v0.50-git-production-debug.apk
+cp build/app/outputs/flutter-apk/app-debug.apk Termode-v0.52-git-source-deps-debug.apk
 ```
 
 On Windows PowerShell:
 
 ```powershell
-Copy-Item build\app\outputs\flutter-apk\app-debug.apk Termode-v0.50-git-production-debug.apk
+Copy-Item build\app\outputs\flutter-apk\app-debug.apk Termode-v0.52-git-source-deps-debug.apk
 ```
 
 This is a manual copy step on purpose. `build-info` prints the expected artifact

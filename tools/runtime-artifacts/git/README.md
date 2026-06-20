@@ -19,7 +19,8 @@ tools/runtime-artifacts/git/
     files/
 ```
 
-v0.50 ships only the template, placeholders, and trusted production pipeline
+v0.52 ships only templates, trusted production/acquisition checks, and the
+host-side NDK build preflight
 docs. There is no executable Git payload here, and the template is not
 installable. A project-side candidate
 uses the per-ABI `manifest.json` plus `files/` directory shown above.

@@ -3,9 +3,19 @@
 Preferred long-term strategy: build Git from auditable source for Android
 `arm64-v8a` using a reproducible project-controlled process.
 
-v0.50 does not build Git because the repository does not contain Git source,
-dependency source archives, Android build scripts, or recorded checksums for a
-trusted source bundle. The app must not download source or binaries at runtime.
+v0.51 detects Android SDK/NDK `28.2.13676358`, the NDK arm64 compiler and make,
+and SDK CMake. It does not build Git because the repository contains no trusted
+Git source or dependency sources, Perl is missing from host `PATH`, and the
+cross-build recipe has not completed review. The app must not download source
+or binaries at runtime.
+
+Run `dart tools/git-build/check_build_env.dart` for the current host report and
+`dart tools/git-build/build_git_arm64.dart` for the non-destructive preflight.
+
+v0.52 adds `build-inputs.example.json` plus source/dependency host checkers.
+These define the acquisition gate but do not provide real inputs or enable a
+compile. `build-inputs.json` must not exist until every placeholder is replaced
+with reviewed metadata and source files.
 
 Before a production artifact can be added, record:
 

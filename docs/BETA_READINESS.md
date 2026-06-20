@@ -288,3 +288,28 @@ v0.50 completes the trusted Git artifact production pipeline:
 Beta readiness remains unaffected: missing Git is intentional, not a broken
 installed tool. See [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md)
 and [Git Trusted Build](GIT_TRUSTED_BUILD.md).
+
+## v0.51 Git NDK Build Environment
+
+- version is `v0.51` (Android `versionName 0.51.0` / `versionCode 51`)
+- Path B selected: SDK/NDK/compiler/build helpers present, trusted Git and
+  dependency sources missing
+- `git-build-status`, `git-build-plan`, `git-build-requirements`, and
+  `git-build-next` expose the honest build state
+- host detector and preflight never download, compile, or create fake output
+  while prerequisites are missing
+- Git remains unavailable/not installed and does not block beta readiness
+
+See [Git NDK Build Status](GIT_NDK_BUILD_STATUS.md) and
+[Git NDK Source Build](GIT_NDK_SOURCE_BUILD.md).
+
+## v0.52 Git Source And Dependency Acquisition
+
+- version is `v0.52` (Android `versionName 0.52.0` / `versionCode 52`)
+- Path B remains selected: toolchain found, Perl/source/dependencies missing
+- build-input example and schema are explicitly non-build-ready
+- host checkers validate safe paths, metadata, licenses, and archive SHA-256
+- source/dependency blockers remain non-fatal to beta readiness
+- Git remains unavailable and cannot be installed without a real artifact
+
+See [Git Source Acquisition Status](GIT_SOURCE_ACQUISITION_STATUS.md).

@@ -172,8 +172,12 @@ void main() {
       final plan = await commandService.execute('runtime-install plan git');
       expect(plan.output, contains('=== Runtime Install Plan: Git ==='));
       expect(plan.output, contains('Validate Git package manifest'));
-      expect(plan.output, contains('Register git shim'));
-      expect(plan.output, contains('Test Git inside a workspace'));
+      expect(plan.output, contains('register git shim'));
+      expect(
+        plan.output,
+        contains('Acquire trusted Git and dependency sources'),
+      );
+      expect(plan.output, contains('HTTPS remotes and credentials are later'));
 
       final list = await commandService.execute('runtime-install list');
       expect(list.output, contains('Real tools:'));
@@ -191,13 +195,14 @@ void main() {
       final info = await commandService.execute('toolchain-info git');
       expect(info.output, contains('=== Toolchain: Git ==='));
       expect(info.output, contains('Installed: no'));
-      expect(info.output, contains('Feasibility: active'));
+      expect(info.output, contains('Phase: source/dependency acquisition'));
+      expect(info.output, contains('Trusted source/dependencies: missing'));
 
       final status = await commandService.execute('toolchain-status');
-      expect(status.output, contains('Git production pipeline: ready'));
+      expect(status.output, contains('Git source acquisition: partial'));
 
       final dev = await commandService.execute('dev-doctor');
-      expect(dev.output, contains('Git production pipeline: ready'));
+      expect(dev.output, contains('Git source acquisition: partial'));
     });
 
     test('shim-list does not show active git when absent', () async {
@@ -211,33 +216,33 @@ void main() {
       expect(result.isError, isFalse);
     });
 
-    test('version surfaces mention v0.50', () async {
+    test('version surfaces mention v0.52', () async {
       final version = await commandService.execute('version');
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
       final bug = await commandService.execute('bug-report');
       final qa = await commandService.execute('qa-report');
 
-      expect(version.output, contains('Termode v0.50'));
+      expect(version.output, contains('Termode v0.52'));
       expect(
         notes.output,
-        contains('v0.50 Git Artifact Production / Trusted Build'),
+        contains('v0.52 Git Source Acquisition / Dependency Build Plan'),
       );
       expect(
         changelog.output,
-        contains('v0.50 Git Artifact Production / Trusted Build'),
+        contains('v0.52 Git Source Acquisition / Dependency Build Plan'),
       );
-      expect(bug.output, contains('Termode version: v0.50'));
-      expect(qa.output, contains('Termode v0.50'));
+      expect(bug.output, contains('Termode version: v0.52'));
+      expect(qa.output, contains('Termode v0.52'));
     });
 
-    test('build-info reports Git production path and v0.50', () async {
+    test('build-info reports Git acquisition path and v0.52', () async {
       final result = await commandService.execute('build-info');
-      expect(result.output, contains('Version: v0.50'));
-      expect(result.output, contains('Git production pipeline: ready'));
+      expect(result.output, contains('Version: v0.52'));
+      expect(result.output, contains('Git source acquisition: partial'));
       expect(
         result.output,
-        contains('Artifact: Termode-v0.50-git-production-debug.apk'),
+        contains('Artifact: Termode-v0.52-git-source-deps-debug.apk'),
       );
     });
 

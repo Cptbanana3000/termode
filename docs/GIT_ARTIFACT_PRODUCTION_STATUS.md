@@ -1,4 +1,4 @@
-# Git Artifact Production Status (v0.50)
+# Git Artifact Production Status (v0.50, extended through v0.52)
 
 ## Selected Path
 
@@ -49,7 +49,13 @@ Git can be marked available only after all of these pass:
 
 ## Next Milestone
 
-If no trusted artifact exists after v0.50, the next milestone is:
+v0.51 adds the NDK/source-build environment detector and preflight. The local
+NDK is present, but source/dependency inputs are missing, so the production
+artifact remains unavailable. See [Git NDK Build Status](GIT_NDK_BUILD_STATUS.md).
 
-**v0.51 Git Artifact Payload Build / Device Verification**
+v0.52 adds source/dependency input manifests and host verification. Real
+inputs remain missing, so the artifact remains unavailable.
 
+If no trusted artifact exists after v0.52, the next milestone is:
+
+**v0.53 Git Source + Dependency Preparation**

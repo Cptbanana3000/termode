@@ -1,7 +1,8 @@
 # Known Limitations
 
-Termode is beta software. v0.50 completes the arm64-v8a Git artifact production
-pipeline, but ships **no real Git artifact**, so Git - like Node/npm/Python -
+Termode is beta software. v0.52 prepares audited source/dependency acquisition
+inputs, but Perl and trusted Git/dependency sources are missing and it ships
+**no real Git artifact**, so Git - like Node/npm/Python -
 is still **planned, not installed**.
 `git-artifact status` may report `TEMPLATE_ONLY` in a source checkout or
 `UNAVAILABLE` in an installed APK. Termode never fakes Git; `git`,
@@ -9,6 +10,11 @@ is still **planned, not installed**.
 installed. A missing Git artifact is expected and does not make the app
 unhealthy. See [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md),
 [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md),
+[Git NDK Build Status](GIT_NDK_BUILD_STATUS.md),
+[Git NDK Source Build](GIT_NDK_SOURCE_BUILD.md),
+[Git Source Acquisition Status](GIT_SOURCE_ACQUISITION_STATUS.md),
+[Git Source Acquisition](GIT_SOURCE_ACQUISITION.md),
+[Git Dependency Plan](GIT_DEPENDENCY_PLAN.md),
 [Git Trusted Build](GIT_TRUSTED_BUILD.md),
 [Git Artifact Build Status](GIT_ARTIFACT_BUILD_STATUS.md),
 [Git arm64-v8a Artifact Pipeline](GIT_ARM64_ARTIFACT_PIPELINE.md),
@@ -67,6 +73,10 @@ runtime-abi
 git-status
 git-doctor
 git-artifact production-status
+git-build-status
+git-source-status
+git-deps-status
+git-build-blockers
 dev-doctor
 ```
 

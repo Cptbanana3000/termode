@@ -131,7 +131,9 @@ installer model without adding real binary runtime support.
 - v0.48 Verified Git Artifact Bundle / Smoke Test
 - v0.49 Git Artifact Build / arm64-v8a Production
 - v0.50 Git Artifact Production / Trusted Build
-- v0.51 Git Artifact Payload Build / Device Verification
+- v0.51 Git Artifact Build Environment / NDK Source Build
+- v0.52 Git Source Acquisition / Dependency Build Plan
+- v0.53 Git Source + Dependency Preparation
 - v0.52+ Node.js / npm / Python / Dev Stack Presets
 - v0.52 Full Terminal QA
 - v0.53 Complete Termode Beta

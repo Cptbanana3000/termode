@@ -78,13 +78,29 @@ packages.
 - `git-exec-probe`
 - `git-smoke-test`
 - `git-workspace-smoke-plan`
+- `git-build-status`
+- `git-build-plan`
+- `git-build-requirements`
+- `git-build-next`
+- `git-source-status`
+- `git-source-plan`
+- `git-deps-status`
+- `git-deps-plan`
+- `git-build-inputs`
+- `git-build-blockers`
 
-Git is **planned, not installed** in this build. v0.50 includes the arm64-v8a
-trusted production pipeline, but there is no real Git payload bundled.
+Git is **planned, not installed** in this build. v0.52 defines project-controlled
+source/dependency records and host-only verification, but Perl, trusted source
+inputs, and a real Git payload are absent.
 `runtime-pkg install git` refuses safely,
 `git-version`/`git-exec-probe` report it is not installed, and `bin-which git`
 does not find it. Termode never fakes Git. See
 [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md),
+[Git NDK Build Status](GIT_NDK_BUILD_STATUS.md),
+[Git NDK Source Build](GIT_NDK_SOURCE_BUILD.md),
+[Git Source Acquisition Status](GIT_SOURCE_ACQUISITION_STATUS.md),
+[Git Source Acquisition](GIT_SOURCE_ACQUISITION.md),
+[Git Dependency Plan](GIT_DEPENDENCY_PLAN.md),
 [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md),
 [Git Trusted Build](GIT_TRUSTED_BUILD.md),
 [Git Artifact Build Status](GIT_ARTIFACT_BUILD_STATUS.md),

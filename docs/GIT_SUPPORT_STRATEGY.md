@@ -183,3 +183,22 @@ trusted payload plus Android `git --version` verification.
 
 See [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md) and
 [Git Trusted Build](GIT_TRUSTED_BUILD.md).
+
+## v0.51 Update: NDK Source-Build Environment
+
+The project now detects Android SDK/NDK and host prerequisites, provides a safe
+arm64-v8a preflight, and records the source/dependency build plan. Path B was
+selected: the NDK is present, but reviewed source inputs are absent. Git stays
+unavailable and no runtime safety rule is weakened. See
+[Git NDK Build Status](GIT_NDK_BUILD_STATUS.md) and
+[Git NDK Source Build](GIT_NDK_SOURCE_BUILD.md).
+
+## v0.52 Update: Source And Dependency Acquisition
+
+v0.52 adds explicit build-input examples, schema guidance, safe path and
+checksum validation, Git source verification, and staged dependency reporting.
+No script downloads inputs and the template cannot be treated as real inputs.
+Path B remains selected until reviewed sources and Perl are available. See
+[Git Source Acquisition Status](GIT_SOURCE_ACQUISITION_STATUS.md),
+[Git Source Acquisition](GIT_SOURCE_ACQUISITION.md), and
+[Git Dependency Plan](GIT_DEPENDENCY_PLAN.md).

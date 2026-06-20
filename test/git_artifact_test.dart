@@ -135,6 +135,61 @@ void main() {
       },
     );
 
+    test('git-build commands report honest Path B state', () async {
+      final status = await commandService.execute('git-build-status');
+      final plan = await commandService.execute('git-build-plan');
+      final requirements = await commandService.execute(
+        'git-build-requirements',
+      );
+      final next = await commandService.execute('git-build-next');
+
+      expect(status.output, contains('=== Git Build Status ==='));
+      expect(status.output, contains('Target ABI: arm64-v8a'));
+      expect(status.output, contains('Selected path: B'));
+      expect(status.output, contains('Trusted source: missing'));
+      expect(status.output, contains('Dependencies: missing'));
+      expect(status.output, contains('Git installed: no'));
+      expect(status.output, contains('Overall: PARTIAL'));
+      expect(plan.output, contains('=== Git Build Plan ==='));
+      expect(plan.output, contains('prove git --version on Android'));
+      expect(requirements.output, contains('Android SDK and NDK'));
+      expect(requirements.output, contains('checksum'));
+      expect(
+        next.output,
+        contains('create reviewed Git and dependency inputs'),
+      );
+      expect(next.output, contains('v0.53 Git Source + Dependency'));
+    });
+
+    test('git source and dependency commands report honest blockers', () async {
+      final source = await commandService.execute('git-source-status');
+      final sourcePlan = await commandService.execute('git-source-plan');
+      final dependencies = await commandService.execute('git-deps-status');
+      final dependencyPlan = await commandService.execute('git-deps-plan');
+      final inputs = await commandService.execute('git-build-inputs');
+      final blockers = await commandService.execute('git-build-blockers');
+      final help = await commandService.execute('help');
+      final commands = await commandService.execute('commands');
+
+      expect(source.output, contains('=== Git Source Status ==='));
+      expect(source.output, contains('Trusted source: missing'));
+      expect(source.output, contains('Overall: MISSING'));
+      expect(sourcePlan.output, contains('Choose and record a Git version'));
+      expect(sourcePlan.output, contains('verify_git_source.dart'));
+      expect(dependencies.output, contains('zlib: required'));
+      expect(dependencies.output, contains('curl: later for HTTPS'));
+      expect(dependencies.output, contains('Overall: PLANNED'));
+      expect(dependencyPlan.output, contains('git --version'));
+      expect(dependencyPlan.output, contains('HTTPS clone'));
+      expect(inputs.output, contains('Project-side only'));
+      expect(inputs.output, contains('check_build_inputs.dart'));
+      expect(blockers.output, contains('trusted Git source missing'));
+      expect(blockers.output, contains('Perl missing'));
+      expect(blockers.output, contains('not beta-fatal'));
+      expect(help.output, contains('git-source-status'));
+      expect(commands.output, contains('git-deps-plan'));
+    });
+
     test('git-artifact manifest reports template state', () async {
       final result = await commandService.execute('git-artifact manifest');
       expect(
@@ -190,7 +245,7 @@ void main() {
         expect(next.output, contains('Current state:'));
         expect(
           next.output,
-          contains('v0.51 Git Artifact Payload Build / Device Verification'),
+          contains('v0.53 Git Source + Dependency Preparation'),
         );
         expect(next.output, contains('docs/GIT_TRUSTED_BUILD.md'));
         expect(
@@ -468,7 +523,7 @@ void main() {
       );
     });
 
-    test('v0.50 production docs and helper scripts are present', () {
+    test('v0.51 NDK build docs and helper scripts are present', () {
       expect(
         File('docs/GIT_ARTIFACT_PRODUCTION_STATUS.md').existsSync(),
         isTrue,
@@ -486,6 +541,37 @@ void main() {
         File('tools/git-build/manifest.schema.example.json').existsSync(),
         isTrue,
       );
+      expect(File('docs/GIT_NDK_BUILD_STATUS.md').existsSync(), isTrue);
+      expect(File('docs/GIT_NDK_SOURCE_BUILD.md').existsSync(), isTrue);
+      expect(File('tools/git-build/check_build_env.dart').existsSync(), isTrue);
+      expect(File('tools/git-build/build_git_arm64.dart').existsSync(), isTrue);
+      expect(
+        File('docs/GIT_SOURCE_ACQUISITION_STATUS.md').existsSync(),
+        isTrue,
+      );
+      expect(File('docs/GIT_SOURCE_ACQUISITION.md').existsSync(), isTrue);
+      expect(File('docs/GIT_DEPENDENCY_PLAN.md').existsSync(), isTrue);
+      expect(
+        File('tools/git-build/build-inputs.example.json').existsSync(),
+        isTrue,
+      );
+      expect(
+        File('tools/git-build/build-inputs.schema.example.json').existsSync(),
+        isTrue,
+      );
+      expect(
+        File('tools/git-build/check_build_inputs.dart').existsSync(),
+        isTrue,
+      );
+      expect(
+        File('tools/git-build/verify_git_source.dart').existsSync(),
+        isTrue,
+      );
+      expect(
+        File('tools/git-build/check_dependencies.dart').existsSync(),
+        isTrue,
+      );
+      expect(File('tools/git-build/build-inputs.json').existsSync(), isFalse);
     });
 
     test(
@@ -493,6 +579,16 @@ void main() {
       () async {
         for (final command in [
           'git-artifact',
+          'git-build-status',
+          'git-build-plan',
+          'git-build-requirements',
+          'git-build-next',
+          'git-source-status',
+          'git-source-plan',
+          'git-deps-status',
+          'git-deps-plan',
+          'git-build-inputs',
+          'git-build-blockers',
           'git-exec-probe',
           'git-smoke-test',
           'git-workspace-smoke-plan',
@@ -508,11 +604,17 @@ void main() {
 
         await sessionService.executeCommand('git-artifact status');
         await sessionService.executeCommand('git-artifact production-status');
+        await sessionService.executeCommand('git-build-status');
+        await sessionService.executeCommand('git-source-status');
+        await sessionService.executeCommand('git-deps-status');
         await sessionService.executeCommand('git-exec-probe');
 
         final output = session.lines.map((line) => line.text).join('\n');
         expect(output, contains('=== Git Artifact Status ==='));
         expect(output, contains('=== Git Artifact Production Status ==='));
+        expect(output, contains('=== Git Build Status ==='));
+        expect(output, contains('=== Git Source Status ==='));
+        expect(output, contains('=== Git Dependency Status ==='));
         expect(output, contains('Git is not installed yet.'));
 
         session.isPtyInteractionActive = false;

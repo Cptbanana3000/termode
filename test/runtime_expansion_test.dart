@@ -233,7 +233,7 @@ void main() {
     test('toolchain-status and toolchain-list', () async {
       final status = await commandService.execute('toolchain-status');
       expect(status.output, contains('=== Toolchain Status ==='));
-      expect(status.output, contains('Git production pipeline: ready'));
+      expect(status.output, contains('Git source acquisition: partial'));
       expect(status.output, contains('Node.js: planned'));
       expect(status.output, contains('Overall: ARCHITECTURE PHASE'));
 
@@ -298,7 +298,8 @@ void main() {
 
       final git = await commandService.execute('runtime-install plan git');
       expect(git.output, contains('=== Runtime Install Plan: Git ==='));
-      expect(git.output, contains('Run git --version.'));
+      expect(git.output, contains('git --version'));
+      expect(git.output, contains('git-build-blockers'));
     });
 
     test('runtime-install status and doctor are planning-only', () async {
@@ -312,9 +313,7 @@ void main() {
       expect(status.output, contains('Prototype package: hello-bin'));
       expect(
         status.output,
-        contains(
-          'Next milestone: real Git artifact payload and device verification',
-        ),
+        contains('Next milestone: Git source and dependency preparation'),
       );
 
       final doctor = await commandService.execute('runtime-install doctor');
@@ -385,7 +384,7 @@ void main() {
       expect(result.output, contains('Prefix: LIMITED'));
       expect(result.output, contains('PATH: LIMITED'));
       expect(result.output, contains('Env: LIMITED'));
-      expect(result.output, contains('Git production pipeline: ready'));
+      expect(result.output, contains('Git source acquisition: partial'));
       expect(result.output, contains('Node.js: planned'));
       expect(
         result.output,

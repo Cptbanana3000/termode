@@ -69,5 +69,5 @@ v0.50 extends this with the trusted production pipeline and selects Path B:
 pipeline ready, no real payload yet. See [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md)
 and [Git Trusted Build](GIT_TRUSTED_BUILD.md).
 
-Next milestone if no trusted artifact exists: v0.51 Git Artifact Payload Build /
-Device Verification.
+v0.52 adds audited source/dependency input checks but still has no trusted
+payload. Next milestone: v0.53 Git Source + Dependency Preparation.

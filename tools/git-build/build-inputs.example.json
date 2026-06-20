@@ -1,0 +1,39 @@
+{
+  "template_only": true,
+  "git": {
+    "version": "REPLACE_WITH_GIT_VERSION",
+    "source_type": "archive",
+    "source_path": "tools/git-build/sources/git-REPLACE.tar.xz",
+    "source_url": "https://REPLACE_WITH_REVIEWED_UPSTREAM_URL",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "license": "GPL-2.0-only",
+    "trusted_by": "REPLACE_WITH_REVIEWER"
+  },
+  "dependencies": [
+    {
+      "name": "zlib",
+      "version": "REPLACE",
+      "source_type": "archive",
+      "source_path": "tools/git-build/deps/zlib-REPLACE.tar.xz",
+      "source_url": "https://REPLACE_WITH_REVIEWED_UPSTREAM_URL",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "license": "Zlib",
+      "trusted_by": "REPLACE_WITH_REVIEWER",
+      "required_for": "minimal-local-git"
+    }
+  ],
+  "host_requirements": {
+    "perl": "required",
+    "android_ndk": "required",
+    "cmake": "required",
+    "make": "required",
+    "archive_tool": "required"
+  },
+  "target": {
+    "abi": "arm64-v8a",
+    "min_android_api": 24
+  },
+  "build_mode": "minimal-local-git",
+  "build_method": "REPLACE_WITH_REVIEWED_REPRODUCIBLE_BUILD_METHOD",
+  "acquired_at": "REPLACE_WITH_UTC_DATE"
+}

@@ -135,7 +135,7 @@ class TerminalSessionService extends ChangeNotifier {
         ]);
       }
       lines.addAll([
-        TerminalLine(text: 'Termode v0.50', type: LineType.output),
+        TerminalLine(text: 'Termode v0.52', type: LineType.output),
         TerminalLine(
           text: 'Type "welcome" to get started.',
           type: LineType.output,
@@ -658,6 +658,16 @@ class TerminalSessionService extends ChangeNotifier {
         'git-doctor',
         'git-test-plan',
         'git-workspace-smoke-plan',
+        'git-build-status',
+        'git-build-plan',
+        'git-build-requirements',
+        'git-build-next',
+        'git-source-status',
+        'git-source-plan',
+        'git-deps-status',
+        'git-deps-plan',
+        'git-build-inputs',
+        'git-build-blockers',
         'git-artifact',
         'git-exec-probe',
         'git-smoke-test',

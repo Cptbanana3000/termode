@@ -1,4 +1,4 @@
-# Git Artifact Contract (v0.49, productionized in v0.50)
+# Git Artifact Contract (v0.49, productionized in v0.50-v0.51)
 
 This contract defines what a **real, installable Git package artifact** must
 look like for Termode to install, verify, expose, and run it. It is the trust
@@ -137,6 +137,14 @@ Termode may report Git as available.
 
 See [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md) and
 [Git Trusted Build](GIT_TRUSTED_BUILD.md).
+
+## v0.51 Build Input Gate
+
+Host build scripts and source/dependency folders do not make an artifact
+available. Only `manifest.json` plus real payload files can enter registry
+validation. Staging creates `manifest.candidate.json`; missing inputs,
+zero-byte files, unsafe paths, ABI mismatches, and checksum mismatches remain
+non-installable.
 
 ## Removal Rules
 
