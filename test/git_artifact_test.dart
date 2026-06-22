@@ -158,7 +158,7 @@ void main() {
         next.output,
         contains('Next: resolve Perl on the host environment.'),
       );
-      expect(next.output, contains('v0.57 Git arm64 Build Attempt'));
+      expect(next.output, contains('v0.58 Git Perl Setup Follow-up / Build Readiness'));
     });
 
     test('git source and dependency commands report honest blockers', () async {
@@ -244,7 +244,7 @@ void main() {
         expect(next.output, contains('Current state:'));
         expect(
           next.output,
-          contains('v0.57 Git arm64 Build Attempt'),
+          contains('v0.58 Git Perl Setup Follow-up / Build Readiness'),
         );
         expect(next.output, contains('docs/GIT_TRUSTED_BUILD.md'));
         expect(

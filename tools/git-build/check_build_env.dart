@@ -76,14 +76,13 @@ class GitBuildEnvironment {
         value == null ? 'missing' : 'found ($value)';
     final perlVer = _getPerlVersion(perl);
     final perlBlock = perl == null
-        ? 'Perl: missing\n'
-          'Role: host build prerequisite\n'
+        ? 'Perl: MISSING\n'
           'Blocks Git build: yes\n'
           'Blocks Termode beta: no\n'
-          'Next: install/configure Perl on host, then rerun check_build_env.dart'
-        : 'Perl: found\n'
+          'Run on host: perl --version\n'
+          'See: docs/GIT_PERL_SETUP_WINDOWS.md'
+        : 'Perl: READY\n'
           'Version: $perlVer\n'
-          'Role: host build prerequisite\n'
           'Blocks Git build: no';
     return '=== Git Build Environment ===\n'
         'Host OS: $hostOs\n'

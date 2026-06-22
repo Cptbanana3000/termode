@@ -1,4 +1,4 @@
-# Git Minimal Dependency Strategy (v0.56)
+# Git Minimal Dependency Strategy (v0.57)
 
 This document outlines the minimal dependency requirements and scope boundaries for the first Git build target in Termode.
 

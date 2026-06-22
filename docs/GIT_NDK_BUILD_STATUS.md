@@ -1,7 +1,7 @@
-# Git NDK Build Status (v0.51, extended to v0.56)
+# Git NDK Build Status (v0.51, extended to v0.57)
 
 ## Selected Path
-Termode v0.56 selects **Path B: NDK environment partially available**.
+Termode v0.57 selects **Path B: NDK environment partially available**.
 
 The checked Windows host has:
 - Android SDK: `C:/Users/joell/AppData/Local/Android/Sdk`
@@ -38,6 +38,6 @@ This command reports `PARTIAL` because Perl is still missing.
 - beta readiness: missing Git remains an accepted limitation
 
 ## Next Milestone
-**v0.57 Git arm64 Build Attempt**
+**v0.58 Git Perl Setup Follow-up / Build Readiness**
 
 The next milestone will focus on attempting to run the arm64-v8a NDK cross-compilation once Perl and compiler checks pass.

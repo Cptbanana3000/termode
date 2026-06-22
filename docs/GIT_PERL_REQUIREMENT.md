@@ -1,4 +1,4 @@
-# Git Perl Requirement (v0.56)
+# Git Perl Requirement (v0.57)
 
 This document describes the role of Perl as a build-time dependency for compiling Git.
 

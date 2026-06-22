@@ -1,4 +1,4 @@
-# Git Android NDK Source Build (extended in v0.56)
+# Git Android NDK Source Build (extended in v0.57)
 
 This is the reviewed plan for producing Termode's first real Git artifact. It is a host-side process and never runs inside the Android app.
 
@@ -47,7 +47,7 @@ dart tools/git-build/validate_git_artifact.dart arm64-v8a
 
 `prepare_git_artifact.dart` writes `manifest.candidate.json`, not an installable `manifest.json`, when staging input is supplied. Promotion requires human review and successful validation. It rejects missing output, unsupported or unsafe paths, zero-byte files, and conflicting destination payloads.
 
-v0.56 hardens Perl detection, documents manual setup on Windows hosts, implements the git-build-readiness command and print_build_readiness.dart script, and bumps the app version to v0.56. Perl remains missing on the host. Example and candidate manifests cannot make the build ready.
+v0.57 finalizes host-side Perl prerequisite checking, error handling, and manual setup docs, and bumps the app version to v0.57. Perl remains missing on the host. Example and candidate manifests cannot make the build ready.
 
 ## Android Acceptance
 An artifact is not Git support until all of these succeed on Android:

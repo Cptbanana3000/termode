@@ -39,9 +39,9 @@ void main(List<String> args) {
   stdout.writeln('Overall: $overall');
 
   if (overallReady) {
-    stdout.writeln('Next: Attempt the arm64 build using: dart tools/git-build/build_git_arm64.dart');
+    stdout.writeln('Next: v0.58 Git arm64 Build Attempt.');
   } else if (overallPartial) {
-    stdout.writeln('Next: Install or locate Perl on host, then run: perl --version. See docs/GIT_PERL_SETUP_WINDOWS.md');
+    stdout.writeln('Next: Install/configure Perl on host, then rerun check_build_env.dart.');
   } else {
     final blockers = <String>[];
     if (!gitReady) blockers.add('Git source missing');

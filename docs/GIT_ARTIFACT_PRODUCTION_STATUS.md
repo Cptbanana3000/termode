@@ -1,7 +1,7 @@
-# Git Artifact Production Status (v0.50, extended through v0.56)
+# Git Artifact Production Status (v0.50, extended through v0.57)
 
 ## Selected Path
-Termode v0.56 selects **Path B: reproducible build pipeline completed, no artifact yet**.
+Termode v0.57 selects **Path B: reproducible build pipeline completed, no artifact yet**.
 
 No real trusted Git artifact is present in this repository or bundled APK. Git therefore remains unavailable, `runtime-pkg install git` refuses safely, and no Termode command fakes `git --version`.
 
@@ -23,7 +23,7 @@ This checkout does not contain:
 - a real installable `manifest.json`
 - a successful Android `git --version` proof
 
-(Note: Git 2.44.0 and zlib 1.3.1 source archives have been staged in v0.55 and Perl resolution/readiness is verified in v0.56, but compiled binaries are not produced yet.)
+(Note: Git 2.44.0 and zlib 1.3.1 source archives have been staged in v0.55 and Perl resolution/readiness is finalized in v0.57, but compiled binaries are not produced yet.)
 
 ## Production Gate
 Git can be marked available only after all of these pass:
@@ -48,5 +48,7 @@ v0.55 stages the Git and zlib source archives on the host and promotes the build
 
 v0.56 hardens Perl detection on the host, documents manual setup on Windows hosts, implements the `git-build-readiness` command and `print_build_readiness.dart` script, and bumps the app version to v0.56.
 
-If no trusted artifact exists after v0.56, the next milestone is:
-**v0.57 Git arm64 Build Attempt**
+v0.57 finalizes host-side Perl prerequisite checking, error handling, and manual setup docs, selecting Path B and bumping the app version to v0.57.
+
+If no trusted artifact exists after v0.57, the next milestone is:
+**v0.58 Git Perl Setup Follow-up / Build Readiness**

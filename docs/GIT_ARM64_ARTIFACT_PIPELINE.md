@@ -1,9 +1,9 @@
-# Git arm64-v8a Artifact Pipeline (v0.49-v0.56)
+# Git arm64-v8a Artifact Pipeline (v0.49-v0.57)
 
-This document defines the project-side pipeline for producing a trusted Git artifact for Android `arm64-v8a`.
+This is document defines the project-side pipeline for producing a trusted Git artifact for Android `arm64-v8a`.
 
 ## Artifact State
-No real Git artifact exists in v0.56. The repository contains templates, examples, helper docs, trusted-build docs, candidate manifests, and validation scripts only.
+No real Git artifact exists in v0.57. The repository contains templates, examples, helper docs, trusted-build docs, candidate manifests, and validation scripts only.
 
 ## Layout
 ```text

@@ -1,4 +1,4 @@
-# Git Dependency Plan (v0.56)
+# Git Dependency Plan (v0.57)
 
 Building a useful local Git and building complete remote-capable Git are different scopes. Termode will add dependencies in reviewable stages.
 

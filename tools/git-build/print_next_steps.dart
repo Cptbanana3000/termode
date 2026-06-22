@@ -60,6 +60,7 @@ String _dependencyStatus(BuildInputsDocument inputs) {
 }
 
 String? _projectRoot(List<String> args) {
-  if (args.length == 2 && args[0] == '--project-root') return args[1];
+  final idx = args.indexOf('--project-root');
+  if (idx != -1 && idx + 1 < args.length) return args[idx + 1];
   return null;
 }

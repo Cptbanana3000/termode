@@ -1,6 +1,6 @@
-# Git Build Prerequisite Status (v0.56)
+# Git Build Prerequisite Status (v0.57)
 
-Termode version v0.56 selects **Path B: Partial prerequisite progress** (sources staged, Perl missing, readiness checked).
+Termode version v0.57 selects **Path B: Partial prerequisite progress** (sources staged, Perl missing, readiness checked).
 
 ## Current Host Status
 - **Perl**: Missing. Perl is required on the host to generate header files during the Git NDK build.
@@ -22,3 +22,8 @@ Termode version v0.56 selects **Path B: Partial prerequisite progress** (sources
 - Created `print_build_readiness.dart` to summarize host readiness.
 - Implemented manual Windows setup guidance in `docs/GIT_PERL_SETUP_WINDOWS.md` and registered `docs/GIT_PERL_RESOLUTION_STATUS.md`.
 - Added the `git-build-readiness` command to the terminal catalog and real PTY interception, and bumped versions across the project.
+
+## Progress in v0.57
+- Finalized host-side Perl prerequisite checking, error handling, and manual setup docs.
+- Selected Path B (Perl still missing on the Windows host) and documented the final status.
+- Bumped all in-app diagnostics commands, docs, and version configurations to v0.57.

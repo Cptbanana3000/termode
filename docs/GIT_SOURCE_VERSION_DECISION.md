@@ -1,9 +1,9 @@
-# Git Source Version Decision (v0.56)
+# Git Source Version Decision (v0.57)
 
 This document details the selection and validation requirements for the Git source code in Termode.
 
 ## Selected Version Target
-* **Git Version**: `2.44.0` (pinned target for v0.56)
+* **Git Version**: `2.44.0` (pinned target for v0.57)
 * **Reason for Selection**: Version `2.44.0` is a stable, mature release of Git that provides full compatibility with our NDK cross-compilation target (arm64-v8a) while avoiding unnecessary complexity or experimental features introduced in newer revisions.
 
 ## Expected Source Forms & Locations

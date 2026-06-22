@@ -1,6 +1,6 @@
-# Git Perl Resolution Status (v0.56)
+# Git Perl Resolution Status (v0.57)
 
-Termode version v0.56 selects **Path B: Perl still missing but setup guidance/checkers are improved**.
+Termode version v0.57 selects **Path B: Perl still missing but setup guidance/checkers are improved**.
 
 ## Current Host Status
 - **Perl**: Missing. Perl is required on the host to generate header files during the Git NDK build.

@@ -1,4 +1,4 @@
-# Git Trusted Build (v0.50, extended through v0.56)
+# Git Trusted Build (v0.50, extended through v0.57)
 
 This document defines the trusted production build requirements for a future Termode Git artifact.
 

@@ -1,6 +1,6 @@
-# Git Source + Dependency Preparation Status (v0.56)
+# Git Source + Dependency Preparation Status (v0.57)
 
-Termode version v0.56 selects **Path B** for its source/dependency preparation.
+Termode version v0.57 selects **Path B** for its source/dependency preparation.
 
 ## Chosen Path: Path B
 Source/dependency preparation is completed:

@@ -1,4 +1,4 @@
-# Git zlib Strategy (v0.56)
+# Git zlib Strategy (v0.57)
 
 This document details the strategy for acquiring, reviewing, and staging **zlib** as the primary dependency for building Git on Android.
 

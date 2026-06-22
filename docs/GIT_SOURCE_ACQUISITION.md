@@ -1,4 +1,4 @@
-# Git Source Acquisition (v0.56)
+# Git Source Acquisition (v0.57)
 
 Termode needs auditable source because a native Git binary executes inside the application sandbox and becomes part of the trusted runtime prefix. A random binary cannot establish its source, patches, ABI, dependencies, license, or security properties.
 
@@ -18,7 +18,7 @@ Termode needs auditable source because a native Git binary executes inside the a
 
 ## Required Metadata
 Every Git source record must include:
-- Git version (pinned to `2.44.0` in v0.56).
+- Git version (pinned to `2.44.0` in v0.57).
 - Source type and safe project-relative path.
 - Upstream URL or auditable source note.
 - License (`GPL-2.0-only` for Git).

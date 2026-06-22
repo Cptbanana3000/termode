@@ -19,7 +19,7 @@ class GitBuildService {
     return '=== Git Build Status ===\n'
         'Target ABI: arm64-v8a\n'
         'Selected Git version: $selectedGitVersion\n'
-        'Phase: Git Perl Resolution / arm64 Build Readiness\n'
+        'Phase: Git Perl Setup / Build Readiness Finalization\n'
         'Selected path: B (prerequisites partial; source/deps staged; Perl still missing)\n'
         'Build pipeline: prepared\n'
         'Android SDK/NDK: available from v0.51 host check\n'
@@ -81,7 +81,7 @@ class GitBuildService {
         'Next: resolve Perl on the host environment. Perl is the only remaining blocker since sources, zlib, and build-inputs.json are ready.\n'
         'Run on host: perl --version\n'
         'Then rerun: dart tools/git-build/check_build_env.dart\n'
-        'Next milestone: v0.57 Git arm64 Build Attempt (if ready).';
+        'Next milestone: v0.58 Git Perl Setup Follow-up / Build Readiness.';
   }
 
   String sourceStatus() {

@@ -3,7 +3,7 @@
 Termode is a standalone Android terminal project with a REAL PTY shell,
 script packages, workspace folders, and beta QA tooling.
 
-Current status: **v0.56 Git Perl Resolution / arm64 Build Readiness** (terminal foundation beta).
+Current status: **v0.57 Git Perl Setup / Build Readiness Finalization** (terminal foundation beta).
 
 Termode is not a full Linux distribution and is not a Termux replacement yet,
 and it is not a stable v1.0. It is building a complete standalone Android
@@ -13,7 +13,7 @@ integrating into CalypsoIDE.
 Termode has a strong terminal foundation today (REAL PTY, packages, workspaces,
 sessions, QA/beta/onboarding tooling). It does **not** yet include Node.js, npm, Git,
 Python, compilers, or a full Linux package ecosystem — those are **planned, not
-installed**. v0.56 hardens Perl detection on the host, documents manual setup on Windows hosts, implements the `git-build-readiness` command and `print_build_readiness.dart` script, and bumps the app version to v0.56. The local NDK is present, but Perl is missing on the host.
+installed**. v0.57 finalizes host-side Perl prerequisite checking, error handling, and manual setup docs, and bumps the app version to v0.57. The local NDK is present, but Perl is missing on the host.
 It still ships **no Git artifact**, so Git is reported `TEMPLATE_ONLY` or `UNAVAILABLE`/not installed
 and the installer refuses safely. Termode never fakes Git. See
 [Git Build Prerequisite Status](docs/GIT_BUILD_PREREQUISITE_STATUS.md),
@@ -106,7 +106,7 @@ hello
 Termode ships as a debug APK for beta testing:
 
 1. Enable "Install unknown apps" for your file manager or browser.
-2. Copy `Termode-v0.56-git-perl-readiness-debug.apk` to the device and tap to install.
+2. Copy `Termode-v0.57-git-perl-final-debug.apk` to the device and tap to install.
 3. Launch Termode and run `welcome`, then `doctor` and `dev-doctor`.
 
 Full steps and how to clear app data are in
@@ -230,11 +230,13 @@ after the UI polish pass.
 - v0.53 Git Source + Dependency Preparation
 - v0.54 Git Build Prerequisite Resolution
 - v0.55 Git Prerequisite Acquisition / Source Staging
-- v0.56 Git Perl Resolution / arm64 Build Readiness (current)
-- v0.57 Git arm64 Build Attempt (if ready)
-- v0.58 Git Artifact Install / Execution QA (if artifact produced)
-- v0.59+ Node.js / npm / Python / Dev Stack Presets
-- v0.56 Full Terminal QA · v0.57 Complete Termode Beta
+- v0.56 Git Perl Resolution / arm64 Build Readiness
+- v0.57 Git Perl Setup / Build Readiness Finalization (current)
+- v0.58 Git Perl Setup Follow-up / Build Readiness
+- v0.59 Git arm64 Build Attempt (if ready)
+- v0.60 Git Artifact Install / Execution QA (if artifact produced)
+- v0.61+ Node.js / npm / Python / Dev Stack Presets
+- v0.57 Full Terminal QA · v0.58 Complete Termode Beta
 - CalypsoIDE integration later
 
 Node/npm/Python/Git research stays deferred until after the standalone beta

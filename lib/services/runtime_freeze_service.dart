@@ -3,7 +3,7 @@ import 'dart:io';
 import 'runtime_capability_service.dart';
 
 class RuntimeFreezeService {
-  static const nextMilestone = 'v0.56 Git Perl Resolution / arm64 Build Readiness';
+  static const nextMilestone = 'v0.57 Git Perl Setup / Build Readiness Finalization';
 
   static const supportedRuntimeDirection = [
     'script packages through /system/bin/sh',

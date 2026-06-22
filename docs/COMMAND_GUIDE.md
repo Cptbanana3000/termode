@@ -95,7 +95,7 @@ packages.
 - `git-build-next-steps`
 - `git-build-readiness`
 
-Git is **planned, not installed** in this build. v0.56 hardens Perl detection on the host, documents manual setup on Windows hosts, implements the `git-build-readiness` command and `print_build_readiness.dart` script, and bumps the app version to v0.56. Perl remains missing on the host.
+Git is **planned, not installed** in this build. v0.57 finalizes host-side Perl prerequisite checking, error handling, and manual setup docs, and bumps the app version to v0.57. Perl remains missing on the host.
 `runtime-pkg install git` refuses safely,
 `git-version`/`git-exec-probe` report it is not installed, and `bin-which git`
 does not find it. Termode never fakes Git. See

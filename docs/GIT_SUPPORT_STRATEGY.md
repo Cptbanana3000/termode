@@ -1,4 +1,4 @@
-# Git Support Strategy (v0.45)
+# Git Support Strategy (v0.45, extended through v0.57)
 
 v0.45 prepares the **first real-tool path** for Git on top of the v0.44 binary
 package installer prototype. It is a feasibility / installer-path milestone:
@@ -222,4 +222,8 @@ v0.55 focuses on staging official source archives on the host. It downloads git-
 ## v0.56 Update: Git Perl Resolution / arm64 Build Readiness
 
 v0.56 focuses on resolving the host Perl dependency via manual setup instructions, hardening host environment checks, introducing the `git-build-readiness` command and `print_build_readiness.dart` script, and preparing for the first arm64 NDK compilation attempt. Since Perl is still missing from the host environment, the status remains PARTIAL. See [Git Perl Resolution Status](GIT_PERL_RESOLUTION_STATUS.md) and [Git Build Prerequisite Status](GIT_BUILD_PREREQUISITE_STATUS.md).
+
+## v0.57 Update: Git Perl Setup / Build Readiness Finalization
+
+v0.57 finalizes host-side Perl prerequisite checking, error handling, manual setup docs, and bumps all in-app diagnostics commands, docs, and version configurations to v0.57. Since Perl is still missing on the Windows host, the status remains PARTIAL. See [Git Build Readiness Final Status](GIT_BUILD_READINESS_FINAL_STATUS.md) and [Git Build Prerequisite Status](GIT_BUILD_PREREQUISITE_STATUS.md).
 
