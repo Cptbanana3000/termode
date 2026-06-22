@@ -246,7 +246,7 @@ void main() {
         devDoctor.output,
         contains('Runtime package installer: prototype ready'),
       );
-      expect(devDoctor.output, contains('Git source acquisition: partial'));
+      expect(devDoctor.output, contains('Git source prep: Git 2.44.0 selected'));
       expect(devDoctor.output, contains('Overall: PROTOTYPE READY'));
 
       final abi = await commandService.execute('runtime-abi');
@@ -306,7 +306,7 @@ void main() {
       expect(ready.output, contains('Ready for beta testing.'));
 
       final version = await commandService.execute('version');
-      expect(version.output, contains('Termode v0.52'));
+      expect(version.output, contains('Termode v0.56'));
 
       final notes = await commandService.execute('release-notes');
       expect(
@@ -315,10 +315,10 @@ void main() {
       );
 
       final bug = await commandService.execute('bug-report');
-      expect(bug.output, contains('Termode version: v0.52'));
+      expect(bug.output, contains('Termode version: v0.56'));
 
       final qa = await commandService.execute('qa-report');
-      expect(qa.output, contains('Termode v0.52'));
+      expect(qa.output, contains('Termode v0.56'));
     });
   });
 }

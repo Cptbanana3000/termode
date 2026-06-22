@@ -30,13 +30,15 @@ void main(List<String> args) {
   }
   final ready =
       inputs.exists &&
+      !inputs.isCandidate &&
       sourcePresent &&
       sourceErrors.isEmpty &&
       licenseRecorded &&
-      inputs.data?['template_only'] != true;
+      inputs.data?['template_only'] != true &&
+      inputs.data?['candidate'] != true;
   final overall = ready
       ? 'READY'
-      : inputs.exists
+      : (inputs.exists || inputs.candidateExists)
       ? 'PARTIAL'
       : 'NOT READY';
 
@@ -45,7 +47,9 @@ void main(List<String> args) {
   stdout.writeln('Version: $version');
   stdout.writeln('Checksum: $checksum');
   stdout.writeln('License: ${licenseRecorded ? 'recorded' : 'missing'}');
-  if (!inputs.exists) stdout.writeln('Example: $buildInputsExamplePath');
+  if (!inputs.exists && !inputs.candidateExists) {
+    stdout.writeln('Example: $buildInputsExamplePath');
+  }
   for (final error in sourceErrors) {
     stdout.writeln('Blocker: $error');
   }

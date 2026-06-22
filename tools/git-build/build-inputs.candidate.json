@@ -1,0 +1,67 @@
+{
+  "template_only": false,
+  "candidate": true,
+  "selected_git_version": "2.44.0",
+  "source_archive": "tools/git-build/sources/git-2.44.0.tar.xz",
+  "source_tree": "tools/git-build/sources/git-2.44.0/",
+  "source_sha256": "e358738dcb5b5ea340ce900a0015c03ae86e804e7ff64e47aa4631ddee681de3",
+  "source_license": "GPL-2.0-only",
+  "source_provenance": "https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.44.0.tar.xz",
+  "dependency_mode": "minimal-local-git",
+  "required_now": [
+    "perl",
+    "android_ndk",
+    "zlib"
+  ],
+  "deferred_dependencies": [
+    "curl",
+    "openssl_or_tls",
+    "expat",
+    "pcre2"
+  ],
+  "git": {
+    "version": "2.44.0",
+    "source_type": "archive",
+    "source_path": "tools/git-build/sources/git-2.44.0.tar.xz",
+    "source_url": "https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.44.0.tar.xz",
+    "sha256": "e358738dcb5b5ea340ce900a0015c03ae86e804e7ff64e47aa4631ddee681de3",
+    "license": "GPL-2.0-only",
+    "trusted_by": "REPLACE_WITH_REVIEWER"
+  },
+  "dependencies": [
+    {
+      "name": "zlib",
+      "version": "1.3.1",
+      "source_type": "archive",
+      "source_path": "tools/git-build/sources/zlib-1.3.1.tar.xz",
+      "source_url": "https://zlib.net/zlib-1.3.1.tar.xz",
+      "sha256": "38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f883e32",
+      "license": "Zlib",
+      "trusted_by": "REPLACE_WITH_REVIEWER",
+      "required_for": "minimal-local-git"
+    }
+  ],
+  "host_requirements": {
+    "perl": "required",
+    "android_ndk": "required",
+    "cmake": "required",
+    "make": "required",
+    "archive_tool": "required"
+  },
+  "target": {
+    "abi": "arm64-v8a",
+    "min_android_api": 24
+  },
+  "output": {
+    "staging_dir": "tools/runtime-artifacts/git/arm64-v8a/files/",
+    "artifact_dir": "tools/runtime-artifacts/git/arm64-v8a/"
+  },
+  "trust": {
+    "source": "termode-built",
+    "trusted_by": "REPLACE_WITH_REVIEWER",
+    "notes": "Verify build outputs with sha256 checksums."
+  },
+  "build_mode": "minimal-local-git",
+  "build_method": "reproducible-ndk-make-build",
+  "acquired_at": "2026-06-21T23:56:39.998212Z"
+}

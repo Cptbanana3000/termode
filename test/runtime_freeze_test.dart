@@ -118,14 +118,13 @@ void main() {
 
       expect(
         result.output,
-        contains('v0.53 Git Source + Dependency Preparation'),
+        contains('v0.56 Git Perl Resolution / arm64 Build Readiness'),
       );
       expect(
         result.output,
-        contains('acquire reviewed Git and dependency sources'),
+        contains('verify host environment Perl availability'),
       );
-      expect(result.output, contains('prove git --version on device'));
-      expect(result.output, contains('checksum and ABI validation on device'));
+      expect(result.output, contains('run check_build_env.dart and print_build_readiness.dart'));
       expect(result.output, contains('keep Node/npm/Python planned'));
       expect(result.output, contains('runtime expansion is planned'));
     });

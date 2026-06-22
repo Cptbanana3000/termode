@@ -13,6 +13,7 @@ class GitBuildEnvironment {
     required this.cmake,
     required this.make,
     required this.perl,
+    this.perlVersion,
     required this.archiveTool,
     required this.gitSourcePresent,
     required this.dependenciesPresent,
@@ -28,6 +29,7 @@ class GitBuildEnvironment {
   final String? cmake;
   final String? make;
   final String? perl;
+  final String? perlVersion;
   final String? archiveTool;
   final bool gitSourcePresent;
   final bool dependenciesPresent;
@@ -72,6 +74,17 @@ class GitBuildEnvironment {
   String format() {
     String status(String? value) =>
         value == null ? 'missing' : 'found ($value)';
+    final perlVer = _getPerlVersion(perl);
+    final perlBlock = perl == null
+        ? 'Perl: missing\n'
+          'Role: host build prerequisite\n'
+          'Blocks Git build: yes\n'
+          'Blocks Termode beta: no\n'
+          'Next: install/configure Perl on host, then rerun check_build_env.dart'
+        : 'Perl: found\n'
+          'Version: $perlVer\n'
+          'Role: host build prerequisite\n'
+          'Blocks Git build: no';
     return '=== Git Build Environment ===\n'
         'Host OS: $hostOs\n'
         'Android SDK: ${status(androidSdk)}\n'
@@ -82,7 +95,7 @@ class GitBuildEnvironment {
         'C compiler: ${status(compiler)}\n'
         'CMake: ${status(cmake)}\n'
         'Make: ${status(make)}\n'
-        'Perl: ${status(perl)}\n'
+        '$perlBlock\n'
         'Tar/unzip: ${status(archiveTool)}\n'
         'Git source: ${gitSourcePresent ? 'found' : 'missing'}\n'
         'Dependencies: ${dependenciesPresent ? 'found' : 'missing'}\n'
@@ -120,6 +133,7 @@ GitBuildEnvironment detectGitBuildEnvironment({
         ]);
   final sdkCmake = sdk == null ? null : _findSdkCmake(sdk);
   final output = Directory('${root.path}/tools/git-build/output');
+  final perlExe = _findExecutable('perl', env);
 
   return GitBuildEnvironment(
     hostOs: Platform.operatingSystem,
@@ -130,14 +144,17 @@ GitBuildEnvironment detectGitBuildEnvironment({
     compiler: ndkCompiler ?? _findExecutable('clang', env),
     cmake: sdkCmake ?? _findExecutable('cmake', env),
     make: ndkMake ?? _findExecutable('make', env),
-    perl: _findExecutable('perl', env),
+    perl: perlExe,
+    perlVersion: _getPerlVersion(perlExe),
     archiveTool: _findExecutable('tar', env) ?? _findExecutable('unzip', env),
     gitSourcePresent: _hasGitSource(
-      Directory('${root.path}/tools/git-build/sources/git'),
-    ),
+          Directory('${root.path}/tools/git-build/sources/git-2.44.0'),
+        ) ||
+        File('${root.path}/tools/git-build/sources/git-2.44.0.tar.xz').existsSync(),
     dependenciesPresent: _hasDependencySources(
-      Directory('${root.path}/tools/git-build/deps'),
-    ),
+          Directory('${root.path}/tools/git-build/deps'),
+        ) ||
+        File('${root.path}/tools/git-build/sources/zlib-1.3.1.tar.xz').existsSync(),
     outputWritable: _isWritable(output),
   );
 }
@@ -244,6 +261,25 @@ bool _isWritable(Directory directory) {
   } catch (_) {
     return false;
   }
+}
+
+String? _getPerlVersion(String? perlPath) {
+  if (perlPath == null) return null;
+  try {
+    final result = Process.runSync(perlPath, ['--version']);
+    if (result.exitCode == 0) {
+      final lines = result.stdout.toString().split('\n');
+      for (final line in lines) {
+        if (line.contains('This is perl')) {
+          final match = RegExp(r'v[0-9]+\.[0-9]+\.[0-9]+').firstMatch(line);
+          if (match != null) return match.group(0);
+          return line.trim();
+        }
+      }
+      return 'present';
+    }
+  } catch (_) {}
+  return 'present';
 }
 
 void main(List<String> args) {

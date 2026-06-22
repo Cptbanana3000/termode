@@ -1,10 +1,10 @@
-# Git Source Acquisition Status (v0.52)
+# Git Source Acquisition Status (v0.53)
 
 ## Selected Path
 
-Termode v0.52 selects **Path B: toolchain available, acquisition incomplete**.
+Termode v0.53 selects **Path B: toolchain available, preparation incomplete**.
 
-Available from the v0.51 host check:
+Available from the v0.51-v0.52 host check:
 
 - Android SDK and NDK `28.2.13676358`
 - arm64-v8a LLVM compiler
@@ -14,8 +14,8 @@ Available from the v0.51 host check:
 Still missing:
 
 - Perl on the host `PATH`
-- reviewed Git source archive or source tree
-- reviewed zlib/dependency sources
+- reviewed Git source archive or source tree (version 2.44.0 chosen)
+- reviewed zlib/dependency sources (minimal strategy defined)
 - real `tools/git-build/build-inputs.json`
 - arm64-v8a Git artifact
 
@@ -41,7 +41,7 @@ Termode beta readiness.
 
 ## Next
 
-**v0.53 Git Source + Dependency Preparation**
+**v0.54 Git Build Prerequisite Resolution**
 
 Provide reviewed source inputs, record checksums/provenance in a real
 `build-inputs.json`, install/locate Perl, and rerun all host checkers.

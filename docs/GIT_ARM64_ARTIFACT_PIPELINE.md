@@ -1,15 +1,11 @@
-# Git arm64-v8a Artifact Pipeline (v0.49-v0.52)
+# Git arm64-v8a Artifact Pipeline (v0.49-v0.56)
 
-This document defines the project-side pipeline for producing a trusted Git
-artifact for Android `arm64-v8a`.
+This document defines the project-side pipeline for producing a trusted Git artifact for Android `arm64-v8a`.
 
 ## Artifact State
-
-No real Git artifact exists in v0.52. The repository contains templates,
-examples, helper docs, trusted-build docs, and validation scripts only.
+No real Git artifact exists in v0.56. The repository contains templates, examples, helper docs, trusted-build docs, candidate manifests, and validation scripts only.
 
 ## Layout
-
 ```text
 tools/runtime-artifacts/git/
   README.md
@@ -26,13 +22,10 @@ tools/runtime-artifacts/git/
     README.md
 ```
 
-Do not create `manifest.json` for placeholders. A manifest with missing files
-is intentionally `INVALID`.
+Do not create `manifest.json` for placeholders. A manifest with missing files is intentionally `INVALID`.
 
 ## Manifest Requirements
-
 The production manifest must include:
-
 - `name: git`
 - `kind: native-tool`
 - `abi: arm64-v8a`
@@ -49,60 +42,45 @@ The production manifest must include:
 - `verification_command: git --version`
 - `smoke_tests`
 
-Unsafe paths, parent traversal, absolute paths, placeholder checksums, zero byte
-entries, unsupported ABIs, and untrusted sources are rejected.
+Unsafe paths, parent traversal, absolute paths, placeholder checksums, zero byte entries, unsupported ABIs, and untrusted sources are rejected.
 
 ## Helper Scripts
-
 Optional project-side helpers live under `tools/git-build/`:
-
 ```sh
 dart tools/git-build/hash_artifact.dart <file>
 dart tools/git-build/prepare_manifest.dart arm64-v8a
 dart tools/git-build/validate_git_artifact.dart arm64-v8a
 dart tools/git-build/hash_git_artifact.dart <file>
 dart tools/git-build/prepare_git_artifact.dart arm64-v8a
+dart tools/git-build/create_build_inputs_candidate.dart
 ```
 
-The helpers do not download, install, or trust Git. They only hash or validate
-files already staged by the project.
+The helpers do not download, install, or trust Git. They only hash or validate files already staged by the project.
 
-See [Git Trusted Build](GIT_TRUSTED_BUILD.md) for the production gate and
-[Git NDK Source Build](GIT_NDK_SOURCE_BUILD.md) for the v0.51 build plan.
-Source and dependency acquisition is defined in
-[Git Source Acquisition](GIT_SOURCE_ACQUISITION.md) and
-[Git Dependency Plan](GIT_DEPENDENCY_PLAN.md).
+See [Git Trusted Build](GIT_TRUSTED_BUILD.md) for the production gate and [Git NDK Source Build](GIT_NDK_SOURCE_BUILD.md) for the v0.51 build plan. Source and dependency acquisition is defined in [Git Source Acquisition](GIT_SOURCE_ACQUISITION.md) and [Git Dependency Plan](GIT_DEPENDENCY_PLAN.md).
 
 ## Bundle Check
-
 After staging a real artifact:
-
 ```sh
 git-artifact bundle-check
 ```
 
 Expected with no artifact:
-
 ```text
 Overall: TEMPLATE_ONLY
 ```
-
 or:
-
 ```text
 Overall: UNAVAILABLE
 ```
 
 Expected with a valid artifact:
-
 ```text
 Overall: AVAILABLE
 ```
 
 ## Install / Smoke Gate
-
 Only after `bundle-check` is `AVAILABLE`:
-
 ```sh
 runtime-pkg install git
 git-version
@@ -112,15 +90,10 @@ runtime-pkg verify git
 git-doctor
 ```
 
-The installer must validate the manifest, verify hashes, copy only
-manifest-owned files into `TERMODE_PREFIX`, run `git --version`, and mark Git
-installed only after the real version command succeeds. Failures roll back
-copied files.
+The installer must validate the manifest, verify hashes, copy only manifest-owned files into `TERMODE_PREFIX`, run `git --version`, and mark Git installed only after the real version command succeeds. Failures roll back copied files.
 
 ## Workspace Smoke Plan
-
 Do not run workspace mutation automatically. When real Git is installed, run:
-
 ```sh
 git-workspace-smoke-plan
 ```

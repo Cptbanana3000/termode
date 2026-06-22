@@ -19,19 +19,42 @@ void main(List<String> args) {
       ? 'PARTIAL'
       : 'NOT READY';
 
+  String manifestStatus;
+  if (inputs.exists) {
+    manifestStatus = inputs.isCandidate ? 'candidate' : 'present';
+  } else if (inputs.candidateExists) {
+    manifestStatus = 'candidate';
+  } else {
+    manifestStatus = 'missing';
+  }
+
   stdout.writeln('=== Git Build Inputs ===');
-  stdout.writeln('Input manifest: ${inputs.exists ? 'present' : 'missing'}');
+  stdout.writeln('Input manifest: $manifestStatus');
   stdout.writeln('Git source: ${gitPresent ? 'present' : 'missing'}');
   stdout.writeln('Dependencies: $dependencies');
-  stdout.writeln('Perl: ${environment.perl == null ? 'missing' : 'found'}');
+  if (environment.perl == null) {
+    stdout.writeln('Perl: missing');
+    stdout.writeln('Role: host build prerequisite');
+    stdout.writeln('Blocks Git build: yes');
+    stdout.writeln('Blocks Termode beta: no');
+    stdout.writeln('Next: install/configure Perl on host, then rerun check_build_env.dart');
+  } else {
+    stdout.writeln('Perl: found');
+    stdout.writeln('Version: ${environment.perlVersion}');
+    stdout.writeln('Role: host build prerequisite');
+    stdout.writeln('Blocks Git build: no');
+  }
   stdout.writeln(
     'NDK: ${environment.androidNdk == null ? 'missing' : 'found'}',
   );
   stdout.writeln(
-    'Target ABI: ${inputs.exists ? inputs.targetAbi : gitBuildTargetAbi}',
+    'Target ABI: ${inputs.exists || inputs.candidateExists ? inputs.targetAbi : gitBuildTargetAbi}',
   );
-  if (!inputs.exists) {
+  if (!inputs.exists && !inputs.candidateExists) {
     stdout.writeln('Example: $buildInputsExamplePath');
+  }
+  if (inputs.isCandidate) {
+    stdout.writeln('Note: candidate manifest tools/git-build/build-inputs.candidate.json does not make the pipeline READY or Git installable.');
   }
   for (final error in inputs.errors) {
     stdout.writeln('Blocker: $error');

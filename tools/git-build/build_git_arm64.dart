@@ -4,30 +4,35 @@ import 'build_inputs.dart';
 import 'check_build_env.dart';
 
 void main(List<String> args) {
-  final report = detectGitBuildEnvironment();
-  final inputs = loadAndValidateBuildInputs();
-  stdout.writeln(report.format());
-  stdout.writeln();
-  stdout.writeln('=== Git arm64-v8a Build Preflight ===');
-  stdout.writeln('1. Verify trusted Git source provenance and checksum.');
-  stdout.writeln('2. Verify dependency source provenance and checksums.');
-  stdout.writeln('3. Cross-compile dependencies with the Android NDK.');
-  stdout.writeln('4. Cross-compile Git for arm64-v8a.');
-  stdout.writeln('5. Stage output under tools/git-build/output.');
-  stdout.writeln('6. Prepare and validate an artifact candidate.');
+  final root = _projectRoot(args);
+  final report = detectGitBuildEnvironment(projectRoot: root);
+  final inputs = loadAndValidateBuildInputs(projectRoot: root);
 
-  if (!report.ready || !inputs.valid) {
-    final blockers = <String>{...report.blockers, ...inputs.errors}.toList();
-    stderr.writeln('Build not started. Blockers: ${blockers.join(', ')}.');
-    stderr.writeln('No artifact or manifest was generated.');
+  stdout.writeln('=== Git arm64-v8a Build Preflight ===');
+  
+  if (report.perl == null) {
+    stderr.writeln('Cannot start Git arm64 build.');
+    stderr.writeln('Missing: Perl');
+    stderr.writeln('Run: perl --version');
+    stderr.writeln('Then rerun: dart tools/git-build/check_build_env.dart');
     exitCode = 78;
     return;
   }
 
-  stderr.writeln(
-    'Preflight is READY, but automatic compilation is intentionally disabled '
-    'until the reviewed Git/dependency build recipe is checked in.',
-  );
-  stderr.writeln('Follow docs/GIT_NDK_SOURCE_BUILD.md.');
-  exitCode = 78;
+  final ready = report.ready && inputs.valid;
+  if (!ready) {
+    final blockers = <String>{...report.blockers, ...inputs.errors}.toList();
+    stderr.writeln('Cannot start Git arm64 build.');
+    stderr.writeln('Missing: ${blockers.join(', ')}');
+    exitCode = 78;
+    return;
+  }
+
+  stdout.writeln('Build prerequisites are ready.');
+  stdout.writeln('Next milestone can attempt Git arm64 build.');
+}
+
+String? _projectRoot(List<String> args) {
+  if (args.length == 2 && args[0] == '--project-root') return args[1];
+  return null;
 }

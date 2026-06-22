@@ -239,8 +239,8 @@ class CommandService {
   String _betaNextOutput() {
     return '=== Beta Next ===\n'
         'Recommended next milestone:\n'
-        'v0.53 Git Source + Dependency Preparation\n\n'
-        'Reason: v0.52 defines auditable acquisition inputs and checks, but real source/dependency payloads are still missing.';
+        'v0.57 Git arm64 Build Attempt\n\n'
+        'Reason: v0.56 hardens Perl resolution and verifies host build readiness, but Perl is still missing from the host environment.';
   }
 
   /// Computes beta-candidate readiness. Intentional limitations (frozen
@@ -288,7 +288,7 @@ class CommandService {
     String label(String s) => s == 'UNHEALTHY' ? 'UNHEALTHY' : 'OK';
     final prefixReady = await RuntimePrefixService().isInitialized();
     return '=== Termode Beta Candidate ===\n'
-        'Version: v0.52\n'
+        'Version: v0.56\n'
         'Core shell: OK\n'
         'Packages: ${label(r.packages)}\n'
         'Workspaces: ${label(r.workspaces)}\n'
@@ -298,8 +298,8 @@ class CommandService {
         'Prefix: ${prefixReady ? 'initialized' : 'not initialized'}\n'
         'PATH overlay: ${prefixReady ? 'ready' : 'limited'}\n'
         'Runtime package installer: prototype ready\n'
-        'Git source acquisition: partial\n'
-        'Git inputs: source/dependencies/Perl missing\n'
+        'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
+        'Git inputs: Git/zlib staged; build-inputs.json present; Perl missing\n'
         'Git: artifact not installed\n'
         'Toolchains: planned (not installed)\n'
         'Known limitations: yes\n'
@@ -330,7 +330,7 @@ class CommandService {
   }
 
   String _betaCandidateNotesOutput() {
-    return '=== Termode v0.52 Beta Candidate ===\n'
+    return '=== Termode v0.56 Beta Candidate ===\n'
         'Termode is a standalone Android terminal with a REAL PTY shell.\n\n'
         'Highlights:\n'
         '* REAL PTY shell with host command interception\n'
@@ -341,10 +341,10 @@ class CommandService {
         '* settings/theme/status readouts and safe visual reset\n'
         '* preview/localhost diagnostics\n'
         '* prototype runtime package installer with hello-bin\n'
-        '* Git source/dependency acquisition checks (no bundled Git yet)\n'
+        '* Git Perl resolution / arm64 build readiness\n'
         '* QA/beta/onboarding tooling and doctors\n\n'
         'Runtime remains frozen beyond the prototype installer. Git has a\n'
-        'trusted NDK build path but no source, dependencies, or bundled artifact yet; Node/npm/Python are not included.\n'
+        'trusted NDK build path and pinned Git ${GitBuildService.selectedGitVersion} target, with staged Git/zlib sources and build-inputs.json manifest, but no compiled artifact or runtime installation yet; Node/npm/Python are not included.\n'
         'Run beta-candidate limits.';
   }
 
@@ -364,7 +364,7 @@ class CommandService {
 
   String _betaCandidateHelpOutput() {
     return '=== Termode Beta Candidate ===\n'
-        'Termode v0.52 is a terminal-foundation beta (Git acquisition plan prepared).\n\n'
+        'Termode v0.56 is a terminal-foundation beta (Git Perl resolution / arm64 build readiness stage).\n\n'
         'Subcommands:\n'
         '  beta-candidate status     - Show beta candidate readiness summary\n'
         '  beta-candidate checklist  - Show the beta candidate checklist\n'
@@ -439,7 +439,7 @@ class CommandService {
     ]);
     final coreLabel = coreSystems == 'HEALTHY' ? 'OK' : coreSystems;
     return '=== Release Candidate Status ===\n'
-        'Version: v0.52\n'
+        'Version: v0.56\n'
         'Beta candidate: yes\n'
         'Core systems: $coreLabel\n'
         'Known limitations: intentional\n'
@@ -526,7 +526,7 @@ class CommandService {
   String _toolchainStatusOutput() {
     return '=== Toolchain Status ===\n'
         'Runtime package installer: prototype ready\n'
-        'Git source acquisition: partial\n'
+        'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
         'Git: artifact not installed\n'
         'Node.js: planned\n'
         'npm: planned\n'
@@ -565,7 +565,8 @@ class CommandService {
     if (key == 'git') {
       sb.writeln('Installed: no');
       sb.writeln('Artifact: required (verified, ABI-matched)');
-      sb.writeln('Phase: source/dependency acquisition');
+      sb.writeln('Phase: source/dependency preparation');
+      sb.writeln('Selected Git version: ${GitBuildService.selectedGitVersion}');
       sb.writeln('SDK/NDK: available from v0.51 host check');
       sb.writeln('Trusted source/dependencies: missing');
       sb.writeln('Perl: missing from recorded host environment');
@@ -591,7 +592,11 @@ class CommandService {
         '  8. Trusted Git artifact production pipeline (v0.50)\n'
         '  9. Git NDK source-build environment (v0.51)\n'
         ' 10. Git source/dependency acquisition (v0.52)\n'
-        ' 11. Node.js/npm/Python remain planned\n'
+        ' 11. Git source/dependency preparation (v0.53)\n'
+        ' 12. Git build prerequisite resolution (v0.54)\n'
+        ' 13. Git prerequisite acquisition / source staging (v0.55)\n'
+        ' 14. Git Perl resolution / arm64 build readiness (v0.56)\n'
+        ' 15. Node.js/npm/Python remain planned\n'
         'Status: ARCHITECTURE PHASE';
   }
 
@@ -599,8 +604,8 @@ class CommandService {
     final initialized = await RuntimePrefixService().isInitialized();
     return '=== Toolchain Doctor ===\n'
         'Runtime package installer: prototype ready\n'
-        'Git source acquisition: partial\n'
-        'SDK/NDK: available; source/dependencies/Perl: missing\n'
+        'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
+        'SDK/NDK: available; source/dependencies/Perl/build-inputs: missing\n'
         'Git: artifact not installed\n'
         'Node.js: planned (not installed)\n'
         'npm: planned (not installed)\n'
@@ -658,8 +663,10 @@ class CommandService {
           : 'pipeline ready (artifact not bundled)';
       return '=== Runtime Install Plan: Git ===\n'
           'Status: $state\n'
+          'Selected Git version: ${GitBuildService.selectedGitVersion}\n'
+          'Minimal target: ${GitBuildService.minimalTarget}\n'
           'Future/supported steps:\n'
-          '1. Acquire trusted Git and dependency sources.\n'
+          '1. Resolve Perl and acquire trusted Git/dependency sources.\n'
           '2. Verify build-input checksums and provenance.\n'
           '3. Build minimal local Git for arm64-v8a.\n'
           '4. Validate Git package manifest and artifact checksums.\n'
@@ -691,8 +698,8 @@ class CommandService {
     return '=== Runtime Install Status ===\n'
         'Mode: prototype installer available\n'
         'Binary package installer prototype: ready\n'
-        'Git source acquisition: partial\n'
-        'SDK/NDK: available; source/dependencies/Perl: missing\n'
+        'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
+        'SDK/NDK: available; source/dependencies/Perl/build-inputs: missing\n'
         'Git artifact: ${artifact.status}\n'
         'Real Git installed: ${gitInstalled ? 'yes' : 'no'}\n'
         'Git execution: ${gitInstalled ? 'needs verification' : 'not verified'}\n'
@@ -725,7 +732,7 @@ class CommandService {
         'Runtime package metadata: ${runtimePkgReady ? 'OK' : 'CHECK'}\n'
         'Prototype installer: enabled\n'
         'Android ABI: ${abi == null || abi.isEmpty ? 'unknown' : abi}\n'
-        'Git source acquisition: partial\n'
+        'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
         'Git artifact: ${artifact.status}\n'
         'Git: ${await RuntimeBinaryPackageService().gitInstalled() ? 'installed' : 'planned (not installed)'}\n'
         'Git execution: not verified\n'
@@ -801,8 +808,8 @@ class CommandService {
         'Prefix: ${initialized ? 'OK' : 'LIMITED'}\n'
         'PATH: ${initialized ? 'OK' : 'LIMITED'}\n'
         'Env: ${initialized ? 'OK' : 'LIMITED'}\n'
-        'Git source acquisition: partial\n'
-        'SDK/NDK: available; source/dependencies/Perl: missing\n'
+        'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
+        'SDK/NDK: available; source/dependencies/Perl/build-inputs: missing\n'
         'Git: artifact not installed\n'
         'Node.js: planned\n'
         'npm: planned\n'
@@ -831,10 +838,12 @@ class CommandService {
     return '=== Git Status ===\n'
         'Installed: ${installed ? 'yes' : 'no'}\n'
         'Command: git\n'
+        'Selected source target: ${GitBuildService.selectedGitVersion}\n'
         'Version: ${installed ? 'see git-version' : 'not available'}\n'
         'Install method: $installMethod\n'
         'Artifact state: ${artifactStatus.status}\n'
         'Production pipeline: ready\n'
+        'Prep blockers: Perl/source/dependencies/build-inputs\n'
         'Execution: ${installed ? 'needs verification' : 'not verified'}\n'
         'Workspace QA: not ready\n'
         'Prefix: $prefixHealth\n'
@@ -848,6 +857,8 @@ class CommandService {
         'Git is a distributed version control tool: clone, commit, branch, and\n'
         'track history of your project files.\n'
         'Installed: ${installed ? 'yes' : 'no'}\n'
+        'Selected source target: ${GitBuildService.selectedGitVersion}\n'
+        'Minimal first target: ${GitBuildService.minimalTarget}\n'
         'Future install command: runtime-install plan git\n'
         '  (or: runtime-pkg install git once a verified artifact exists)\n'
         'Run: git-artifact bundle-status';
@@ -855,13 +866,15 @@ class CommandService {
 
   String _gitPlanOutput(bool artifactAvailable) {
     return '=== Git Support Plan ===\n'
-        '1. Verify ABI.\n'
-        '2. Validate Git package manifest.\n'
-        '3. Install files into TERMODE_PREFIX.\n'
-        '4. Register git shim.\n'
-        '5. Run git --version.\n'
-        '6. Run git-doctor.\n'
-        '7. Test git init/status in workspace.\n'
+        'Selected Git version: ${GitBuildService.selectedGitVersion}\n'
+        '1. Resolve Perl and stage trusted source/dependency inputs.\n'
+        '2. Verify ABI.\n'
+        '3. Validate Git package manifest.\n'
+        '4. Install files into TERMODE_PREFIX.\n'
+        '5. Register git shim.\n'
+        '6. Run git --version.\n'
+        '7. Run git-doctor.\n'
+        '8. Test git init/status in workspace.\n'
         'Status: ${artifactAvailable ? 'installable (verified artifact present)' : 'pipeline ready (no safe Git artifact in this build)'}\n'
         'Run: git-artifact bundle-status';
   }
@@ -870,6 +883,7 @@ class CommandService {
     final installed = await RuntimeBinaryPackageService().gitInstalled();
     if (!installed) {
       return 'Git is not installed yet.\n'
+          'Selected source target: ${GitBuildService.selectedGitVersion}\n'
           'Run: git-artifact bundle-status\n'
           'Run: runtime-install plan git';
     }
@@ -916,6 +930,7 @@ class CommandService {
         'Runtime package metadata: OK\n'
         'Git artifact: ${artifactStatus.status}\n'
         'Production pipeline: ready\n'
+        'Selected source target: ${GitBuildService.selectedGitVersion}\n'
         'Git package: ${installed ? 'installed' : 'not installed'}\n'
         'bin-which git: ${found ? 'found' : 'not found'}\n'
         'git --version: ${installed ? 'see git-version' : 'not available'}\n'
@@ -977,7 +992,7 @@ class CommandService {
   String _gitArtifactHelpOutput() {
     return '=== Git Artifact ===\n'
         'A verified, ABI-matched Git artifact is required to install real Git.\n'
-        'v0.52 adds audited source/dependency acquisition checks, but no fake Git.\n\n'
+        'v0.56 stages Git/zlib source archives, but no fake Git.\n\n'
         'Subcommands:\n'
         '  git-artifact status    - artifact availability for the current ABI\n'
         '  git-artifact info      - what artifact is required\n'
@@ -1038,9 +1053,11 @@ class CommandService {
         'Git installable: ${a.installable ? 'yes' : 'no'}\n'
         'Git executable: ${executable ? 'yes' : 'no'}\n'
         'Production pipeline: ready\n'
-        'Source acquisition: incomplete\n'
+        'Selected Git version: ${GitBuildService.selectedGitVersion}\n'
+        'Source preparation: incomplete\n'
         'Dependencies: missing\n'
         'Perl: missing from recorded host environment\n'
+        'Build inputs: missing\n'
         'Artifact state: ${a.status}\n'
         'Reason: ${a.reason}\n'
         'Docs: docs/GIT_ARTIFACT_PRODUCTION_STATUS.md\n'
@@ -1105,7 +1122,7 @@ class CommandService {
   String _gitArtifactPipelineOutput() {
     return '=== Git Artifact Pipeline ===\n'
         'Preflight: dart tools/git-build/check_build_env.dart\n'
-        '1. Acquire/build Git from a trusted, documented source.\n'
+        '1. Acquire/build Git ${GitBuildService.selectedGitVersion} from a trusted, documented source.\n'
         '2. Stage files under tools/runtime-artifacts/git/<abi>/.\n'
         '3. Generate manifest.json with tools/git-build/prepare_git_artifact.dart.\n'
         'Template: tools/runtime-artifacts/git/manifest.template.json.\n'
@@ -1113,7 +1130,7 @@ class CommandService {
         '5. Bundle only after registry validation passes.\n'
         '6. Install into TERMODE_PREFIX and register the git shim.\n'
         '7. Run git --version and workspace smoke tests.\n'
-        'Current build: NDK detected; source/dependencies missing; no Git payload bundled.\n'
+        'Current build: NDK detected; Perl/source/dependencies/build-inputs missing; no Git payload bundled.\n'
         'Run: git-artifact production-status';
   }
 
@@ -1153,10 +1170,11 @@ class CommandService {
         'Current state: ${a.status}\n'
         'Real Git artifact bundled: ${a.available ? 'yes' : 'no'}\n'
         'Installable: ${a.installable ? 'yes' : 'no'}\n'
-        'Next safe step: acquire reviewed Git and dependency sources, create\n'
-        'build-inputs.json, and pass the host input/source/dependency checks.\n'
+        'Selected Git version: ${GitBuildService.selectedGitVersion}\n'
+        'Next safe step: install/find Perl, acquire reviewed Git and dependency sources,\n'
+        'create build-inputs.json, and pass the host input/source/dependency checks.\n'
         'Only then build and validate a real arm64-v8a artifact.\n'
-        'Next milestone: v0.53 Git Source + Dependency Preparation.\n'
+        'Next milestone: v0.57 Git arm64 Build Attempt.\n'
         'Docs: docs/GIT_SOURCE_ACQUISITION_STATUS.md\n'
         'Docs: docs/GIT_TRUSTED_BUILD.md\n'
         'Do not download or execute unknown Git binaries.';
@@ -1423,6 +1441,8 @@ class CommandService {
         '  git-build-status, git-build-plan, git-build-requirements, git-build-next\n'
         '  git-source-status, git-source-plan, git-deps-status, git-deps-plan\n'
         '  git-build-inputs, git-build-blockers\n'
+        '  git-perl-status, git-source-version, git-source-checklist\n'
+        '  git-deps-minimal, git-build-next-steps\n'
         '  git-artifact status, git-artifact bundle-status, git-artifact bundle-check\n'
         '  git-artifact production-status, git-artifact smoke-plan, git-artifact next\n'
         '  git-workspace-smoke-plan\n'
@@ -1644,19 +1664,19 @@ class CommandService {
         'Prefix: ${prefixReady ? 'initialized' : 'not initialized'}\n'
         'PATH overlay: ${prefixReady ? 'ready' : 'limited'}\n'
         'Runtime package installer: prototype ready\n'
-        'Git source acquisition: partial\n'
-        'Git inputs: source/dependencies/Perl missing\n'
+        'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
+        'Git inputs: Git/zlib staged; build-inputs.json present; Perl missing\n'
         'Git: artifact not installed\n'
         'Toolchains: planned (not installed)\n'
         'Beta: $beta';
   }
 
   String _versionOutput() {
-    return 'Termode v0.52\n'
+    return 'Termode v0.56\n'
         'Runtime: frozen\n'
         'Shell: REAL PTY\n'
         'Packages: script + runtime prototype\n'
-        'Git: source/dependency acquisition partial (artifact unavailable)';
+        'Git: Perl resolution / arm64 build readiness phase (artifact unavailable)';
   }
 
   String _buildTypeName() {
@@ -1669,23 +1689,27 @@ class CommandService {
   String _buildInfoOutput() {
     return '=== Build Info ===\n'
         'App: Termode\n'
-        'Version: v0.52\n'
+        'Version: v0.56\n'
         'Build type: ${_buildTypeName()}\n'
         'Runtime: prototype installer active\n'
         'Runtime package installer: prototype ready\n'
-        'Git source acquisition: partial\n'
-        'SDK/NDK: available; source/dependencies/Perl: missing\n'
+        'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
+        'SDK/NDK: available; Git/zlib source archives & build-inputs.json: staged; Perl: missing\n'
         'Git artifact: checked at runtime\n'
         'Git execution: verified only after git --version\n'
         'Toolchains: planned (not installed)\n'
         'Shell: REAL PTY\n'
         'Packages: script + runtime prototype\n'
         'Beta candidate: terminal foundation beta\n'
-        'Artifact: Termode-v0.52-git-source-deps-debug.apk';
+        'Artifact: Termode-v0.56-git-perl-readiness-debug.apk';
   }
 
   String _releaseNotesOutput() {
     return '=== Termode Release Notes ===\n'
+        'v0.56 Git Perl Resolution / arm64 Build Readiness\n'
+        'v0.55 Git Prerequisite Acquisition / Source Staging\n'
+        'v0.54 Git Build Prerequisite Resolution\n'
+        'v0.53 Git Source + Dependency Preparation\n'
         'v0.52 Git Source Acquisition / Dependency Build Plan\n'
         'v0.51 Git Artifact Build Environment / NDK Source Build\n'
         'v0.50 Git Artifact Production / Trusted Build\n'
@@ -1731,7 +1755,7 @@ class CommandService {
         ? 'REAL PTY'
         : 'NORMAL';
     return '=== Termode Bug Report ===\n'
-        'Termode version: v0.52\n'
+        'Termode version: v0.56\n'
         'Android ABI: $abi\n'
         'Runtime status: $runtimeStatus\n'
         'Package doctor: $packageStatus\n'
@@ -1940,8 +1964,11 @@ class CommandService {
               '  toolchain-status\n'
               '  git-status\n'
               '  git-build-status\n'
+              '  git-source-version\n'
               '  git-source-status\n'
+              '  git-perl-status\n'
               '  git-deps-status\n'
+              '  git-build-next-steps\n'
               '  git-artifact bundle-status\n'
               '  dev-doctor\n\n'
               'Sub-help:\n'
@@ -3032,6 +3059,24 @@ class CommandService {
 
       case 'git-build-blockers':
         return CommandResult(output: await GitBuildService().blockers());
+
+      case 'git-perl-status':
+        return CommandResult(output: GitBuildService().perlStatus());
+
+      case 'git-source-version':
+        return CommandResult(output: GitBuildService().sourceVersion());
+
+      case 'git-source-checklist':
+        return CommandResult(output: GitBuildService().sourceChecklist());
+
+      case 'git-deps-minimal':
+        return CommandResult(output: GitBuildService().dependenciesMinimal());
+
+      case 'git-build-next-steps':
+        return CommandResult(output: GitBuildService().buildNextSteps());
+
+      case 'git-build-readiness':
+        return CommandResult(output: GitBuildService().buildReadiness());
 
       case 'git':
         return CommandResult(output: await _gitBareOutput());

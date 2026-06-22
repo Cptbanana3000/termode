@@ -618,7 +618,7 @@ class SettingsScreen extends StatelessWidget {
                   style: TextStyle(color: Colors.white),
                 ),
                 trailing: Text(
-                  'v0.52 (Git Source Acquisition / Dependency Build Plan)',
+                  'v0.56 (Git Perl Resolution / arm64 Build Readiness)',
                   style: TextStyle(color: Colors.white60),
                 ),
               ),

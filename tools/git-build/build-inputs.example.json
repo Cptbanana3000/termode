@@ -1,10 +1,28 @@
 {
   "template_only": true,
+  "selected_git_version": "2.44.0",
+  "source_archive": "tools/git-build/sources/git-2.44.0.tar.xz",
+  "source_tree": "tools/git-build/sources/git-2.44.0/",
+  "source_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "source_license": "GPL-2.0-only",
+  "source_provenance": "https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.44.0.tar.xz",
+  "dependency_mode": "minimal-local-git",
+  "required_now": [
+    "perl",
+    "android_ndk",
+    "zlib"
+  ],
+  "deferred_dependencies": [
+    "curl",
+    "openssl_or_tls",
+    "expat",
+    "pcre2"
+  ],
   "git": {
-    "version": "REPLACE_WITH_GIT_VERSION",
+    "version": "2.44.0",
     "source_type": "archive",
-    "source_path": "tools/git-build/sources/git-REPLACE.tar.xz",
-    "source_url": "https://REPLACE_WITH_REVIEWED_UPSTREAM_URL",
+    "source_path": "tools/git-build/sources/git-2.44.0.tar.xz",
+    "source_url": "https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.44.0.tar.xz",
     "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
     "license": "GPL-2.0-only",
     "trusted_by": "REPLACE_WITH_REVIEWER"
@@ -12,10 +30,10 @@
   "dependencies": [
     {
       "name": "zlib",
-      "version": "REPLACE",
+      "version": "1.3.1",
       "source_type": "archive",
-      "source_path": "tools/git-build/deps/zlib-REPLACE.tar.xz",
-      "source_url": "https://REPLACE_WITH_REVIEWED_UPSTREAM_URL",
+      "source_path": "tools/git-build/deps/zlib-1.3.1.tar.xz",
+      "source_url": "https://zlib.net/zlib-1.3.1.tar.xz",
       "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
       "license": "Zlib",
       "trusted_by": "REPLACE_WITH_REVIEWER",
@@ -32,6 +50,15 @@
   "target": {
     "abi": "arm64-v8a",
     "min_android_api": 24
+  },
+  "output": {
+    "staging_dir": "tools/runtime-artifacts/git/arm64-v8a/files/",
+    "artifact_dir": "tools/runtime-artifacts/git/arm64-v8a/"
+  },
+  "trust": {
+    "source": "termode-built",
+    "trusted_by": "REPLACE_WITH_REVIEWER",
+    "notes": "Verify build outputs with sha256 checksums."
   },
   "build_mode": "minimal-local-git",
   "build_method": "REPLACE_WITH_REVIEWED_REPRODUCIBLE_BUILD_METHOD",

@@ -3,11 +3,11 @@ import 'dart:io';
 import 'build_inputs.dart';
 
 const dependencyRoles = <String, String>{
-  'zlib': 'required now for minimal local Git',
-  'curl': 'required later for HTTPS remotes',
-  'openssl/tls': 'required later for HTTPS remotes',
-  'expat': 'planned depending selected features',
-  'pcre2': 'optional/planned',
+  'zlib': 'required now for minimal local Git (Stage 1)',
+  'curl': 'deferred until HTTPS remotes (Stage 3)',
+  'openssl/tls': 'deferred until HTTPS remotes (Stage 3)',
+  'expat': 'deferred/planned depending selected features (Stage 4)',
+  'pcre2': 'optional/planned (Stage 4)',
 };
 
 void main(List<String> args) {
@@ -32,16 +32,38 @@ void main(List<String> args) {
         : hasErrors
         ? 'partial'
         : 'present';
-    stdout.writeln('${entry.key}: $state (${entry.value})');
+    
+    // Determine stage reporting
+    String stageGroup;
+    if (entry.key == 'zlib') {
+      stageGroup = 'required now';
+    } else if (entry.key == 'pcre2') {
+      stageGroup = 'optional';
+    } else {
+      stageGroup = 'deferred';
+    }
+
+    stdout.writeln('${entry.key}: $state ($stageGroup) [${entry.value}]');
   }
-  if (!inputs.exists) {
-    stdout.writeln('Input manifest: missing');
+  String manifestStatus;
+  if (inputs.exists) {
+    manifestStatus = inputs.isCandidate ? 'candidate' : 'present';
+  } else if (inputs.candidateExists) {
+    manifestStatus = 'candidate';
+  } else {
+    manifestStatus = 'missing';
+  }
+  stdout.writeln('Input manifest: $manifestStatus');
+  if (!inputs.exists && !inputs.candidateExists) {
     stdout.writeln('Example: $buildInputsExamplePath');
   }
+
   final zlibReady =
       configured['zlib'] != null &&
       !inputs.errors.any((error) => error.startsWith('zlib '));
-  final overall = zlibReady ? 'PARTIAL' : 'PLANNED';
+  final overall = zlibReady
+      ? (inputs.isCandidate ? 'PARTIAL' : 'READY')
+      : 'PLANNED';
   stdout.writeln('Overall: $overall');
-  if (!zlibReady) exitCode = 2;
+  if (overall != 'READY') exitCode = 2;
 }

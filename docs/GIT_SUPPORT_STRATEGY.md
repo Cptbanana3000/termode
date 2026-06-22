@@ -202,3 +202,24 @@ Path B remains selected until reviewed sources and Perl are available. See
 [Git Source Acquisition Status](GIT_SOURCE_ACQUISITION_STATUS.md),
 [Git Source Acquisition](GIT_SOURCE_ACQUISITION.md), and
 [Git Dependency Plan](GIT_DEPENDENCY_PLAN.md).
+
+## v0.53 Update: Git Source + Dependency Preparation
+
+v0.53 selects Git version 2.44.0, documents the host Perl build prerequisite,
+defines the Stage 1 zlib minimal dependency strategy, and prepares build manifest templates.
+No real source payload is staged yet and Git remains honestly unavailable. See
+[Git Source + Dependency Preparation Status](GIT_SOURCE_DEPENDENCY_PREP_STATUS.md) and
+[Git Source Version Decision](GIT_SOURCE_VERSION_DECISION.md).
+
+## v0.54 Update: Git Build Prerequisite Resolution
+
+v0.54 focuses on host-side build readiness. It resolves and narrows host-side prerequisites (Perl detection, staging rules for GPL-2.0-only Git sources, zlib-1.3.1 dependency strategies, and candidate build-inputs json structures). Git remains honestly unavailable until real verified inputs are promoted. See [Git Build Prerequisite Status](GIT_BUILD_PREREQUISITE_STATUS.md).
+
+## v0.55 Update: Git Prerequisite Acquisition / Source Staging
+
+v0.55 focuses on staging official source archives on the host. It downloads git-2.44.0.tar.xz and zlib-1.3.1.tar.xz to the tools/git-build/sources/ staging folder, verifies their SHA-256 checksums, and promotes build-inputs.json. Since Perl is still missing from the host environment, the overall pipeline remains PARTIAL and Git is unavailable in-app. See [Git Build Prerequisite Status](GIT_BUILD_PREREQUISITE_STATUS.md).
+
+## v0.56 Update: Git Perl Resolution / arm64 Build Readiness
+
+v0.56 focuses on resolving the host Perl dependency via manual setup instructions, hardening host environment checks, introducing the `git-build-readiness` command and `print_build_readiness.dart` script, and preparing for the first arm64 NDK compilation attempt. Since Perl is still missing from the host environment, the status remains PARTIAL. See [Git Perl Resolution Status](GIT_PERL_RESOLUTION_STATUS.md) and [Git Build Prerequisite Status](GIT_BUILD_PREREQUISITE_STATUS.md).
+

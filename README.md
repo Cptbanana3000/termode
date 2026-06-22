@@ -3,7 +3,7 @@
 Termode is a standalone Android terminal project with a REAL PTY shell,
 script packages, workspace folders, and beta QA tooling.
 
-Current status: **v0.52 Git Source Acquisition / Dependency Build Plan** (terminal foundation beta).
+Current status: **v0.56 Git Perl Resolution / arm64 Build Readiness** (terminal foundation beta).
 
 Termode is not a full Linux distribution and is not a Termux replacement yet,
 and it is not a stable v1.0. It is building a complete standalone Android
@@ -11,14 +11,16 @@ terminal/dev environment — easier and more guided than Termux — and only lat
 integrating into CalypsoIDE.
 
 Termode has a strong terminal foundation today (REAL PTY, packages, workspaces,
-sessions, QA/beta tooling). It does **not** yet include Node.js, npm, Git,
+sessions, QA/beta/onboarding tooling). It does **not** yet include Node.js, npm, Git,
 Python, compilers, or a full Linux package ecosystem — those are **planned, not
-installed**. v0.52 adds audited source/dependency input templates and host-only
-verification scripts on top of the v0.51 NDK preflight. The local NDK is
-present, but Perl and trusted Git/dependency sources are missing. It still ships
-**no Git artifact**, so Git is reported
-`TEMPLATE_ONLY` or `UNAVAILABLE`/not installed and the installer refuses
-safely. Termode never fakes Git. See
+installed**. v0.56 hardens Perl detection on the host, documents manual setup on Windows hosts, implements the `git-build-readiness` command and `print_build_readiness.dart` script, and bumps the app version to v0.56. The local NDK is present, but Perl is missing on the host.
+It still ships **no Git artifact**, so Git is reported `TEMPLATE_ONLY` or `UNAVAILABLE`/not installed
+and the installer refuses safely. Termode never fakes Git. See
+[Git Build Prerequisite Status](docs/GIT_BUILD_PREREQUISITE_STATUS.md),
+[Git Source Version Decision](docs/GIT_SOURCE_VERSION_DECISION.md),
+[Git Minimal Dependency Strategy](docs/GIT_MINIMAL_DEPENDENCY_STRATEGY.md),
+[Git zlib Strategy](docs/GIT_ZLIB_STRATEGY.md),
+[Git Perl Requirement](docs/GIT_PERL_REQUIREMENT.md),
 [Git Artifact Contract](docs/GIT_ARTIFACT_CONTRACT.md),
 [Git NDK Build Status](docs/GIT_NDK_BUILD_STATUS.md),
 [Git NDK Source Build](docs/GIT_NDK_SOURCE_BUILD.md),
@@ -104,7 +106,7 @@ hello
 Termode ships as a debug APK for beta testing:
 
 1. Enable "Install unknown apps" for your file manager or browser.
-2. Copy `Termode-v0.52-git-source-deps-debug.apk` to the device and tap to install.
+2. Copy `Termode-v0.56-git-perl-readiness-debug.apk` to the device and tap to install.
 3. Launch Termode and run `welcome`, then `doctor` and `dev-doctor`.
 
 Full steps and how to clear app data are in
@@ -224,10 +226,15 @@ after the UI polish pass.
 - v0.49 Git Artifact Build / arm64-v8a Production
 - v0.50 Git Artifact Production / Trusted Build
 - v0.51 Git Artifact Build Environment / NDK Source Build
-- v0.52 Git Source Acquisition / Dependency Build Plan (current)
+- v0.52 Git Source Acquisition / Dependency Build Plan
 - v0.53 Git Source + Dependency Preparation
-- v0.54+ Node.js / npm / Python / Dev Stack Presets
-- v0.52 Full Terminal QA · v0.53 Complete Termode Beta
+- v0.54 Git Build Prerequisite Resolution
+- v0.55 Git Prerequisite Acquisition / Source Staging
+- v0.56 Git Perl Resolution / arm64 Build Readiness (current)
+- v0.57 Git arm64 Build Attempt (if ready)
+- v0.58 Git Artifact Install / Execution QA (if artifact produced)
+- v0.59+ Node.js / npm / Python / Dev Stack Presets
+- v0.56 Full Terminal QA · v0.57 Complete Termode Beta
 - CalypsoIDE integration later
 
 Node/npm/Python/Git research stays deferred until after the standalone beta
@@ -235,6 +242,11 @@ stabilizes.
 
 ## Docs
 
+- [Git Build Prerequisite Status](docs/GIT_BUILD_PREREQUISITE_STATUS.md)
+- [Git Source Version Decision](docs/GIT_SOURCE_VERSION_DECISION.md)
+- [Git Minimal Dependency Strategy](docs/GIT_MINIMAL_DEPENDENCY_STRATEGY.md)
+- [Git zlib Strategy](docs/GIT_ZLIB_STRATEGY.md)
+- [Git Perl Requirement](docs/GIT_PERL_REQUIREMENT.md)
 - [Git Artifact Contract](docs/GIT_ARTIFACT_CONTRACT.md)
 - [Git NDK Build Status](docs/GIT_NDK_BUILD_STATUS.md)
 - [Git NDK Source Build](docs/GIT_NDK_SOURCE_BUILD.md)

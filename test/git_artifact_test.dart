@@ -146,19 +146,19 @@ void main() {
       expect(status.output, contains('=== Git Build Status ==='));
       expect(status.output, contains('Target ABI: arm64-v8a'));
       expect(status.output, contains('Selected path: B'));
-      expect(status.output, contains('Trusted source: missing'));
-      expect(status.output, contains('Dependencies: missing'));
+      expect(status.output, contains('Trusted source: staged (archive present)'));
+      expect(status.output, contains('Dependencies: staged (zlib archive present)'));
       expect(status.output, contains('Git installed: no'));
       expect(status.output, contains('Overall: PARTIAL'));
       expect(plan.output, contains('=== Git Build Plan ==='));
       expect(plan.output, contains('prove git --version on Android'));
       expect(requirements.output, contains('Android SDK and NDK'));
-      expect(requirements.output, contains('checksum'));
+      expect(requirements.output, contains('SHA-256'));
       expect(
         next.output,
-        contains('create reviewed Git and dependency inputs'),
+        contains('Next: resolve Perl on the host environment.'),
       );
-      expect(next.output, contains('v0.53 Git Source + Dependency'));
+      expect(next.output, contains('v0.57 Git arm64 Build Attempt'));
     });
 
     test('git source and dependency commands report honest blockers', () async {
@@ -172,19 +172,18 @@ void main() {
       final commands = await commandService.execute('commands');
 
       expect(source.output, contains('=== Git Source Status ==='));
-      expect(source.output, contains('Trusted source: missing'));
-      expect(source.output, contains('Overall: MISSING'));
-      expect(sourcePlan.output, contains('Choose and record a Git version'));
+      expect(source.output, contains('Trusted source: staged (archive present)'));
+      expect(source.output, contains('Overall: STAGED'));
+      expect(sourcePlan.output, contains('Obtain the reviewed Git 2.44.0'));
       expect(sourcePlan.output, contains('verify_git_source.dart'));
-      expect(dependencies.output, contains('zlib: required'));
+      expect(dependencies.output, contains('zlib: required for minimal local Git'));
       expect(dependencies.output, contains('curl: later for HTTPS'));
-      expect(dependencies.output, contains('Overall: PLANNED'));
+      expect(dependencies.output, contains('Overall: STAGED'));
       expect(dependencyPlan.output, contains('git --version'));
       expect(dependencyPlan.output, contains('HTTPS clone'));
       expect(inputs.output, contains('Project-side only'));
       expect(inputs.output, contains('check_build_inputs.dart'));
-      expect(blockers.output, contains('trusted Git source missing'));
-      expect(blockers.output, contains('Perl missing'));
+      expect(blockers.output, contains('Perl missing from the recorded host environment'));
       expect(blockers.output, contains('not beta-fatal'));
       expect(help.output, contains('git-source-status'));
       expect(commands.output, contains('git-deps-plan'));
@@ -245,7 +244,7 @@ void main() {
         expect(next.output, contains('Current state:'));
         expect(
           next.output,
-          contains('v0.53 Git Source + Dependency Preparation'),
+          contains('v0.57 Git arm64 Build Attempt'),
         );
         expect(next.output, contains('docs/GIT_TRUSTED_BUILD.md'));
         expect(
@@ -571,7 +570,7 @@ void main() {
         File('tools/git-build/check_dependencies.dart').existsSync(),
         isTrue,
       );
-      expect(File('tools/git-build/build-inputs.json').existsSync(), isFalse);
+      expect(File('tools/git-build/build-inputs.json').existsSync(), isTrue);
     });
 
     test(

@@ -233,7 +233,7 @@ void main() {
     test('toolchain-status and toolchain-list', () async {
       final status = await commandService.execute('toolchain-status');
       expect(status.output, contains('=== Toolchain Status ==='));
-      expect(status.output, contains('Git source acquisition: partial'));
+      expect(status.output, contains('Git source prep: Git 2.44.0 selected'));
       expect(status.output, contains('Node.js: planned'));
       expect(status.output, contains('Overall: ARCHITECTURE PHASE'));
 
@@ -384,7 +384,7 @@ void main() {
       expect(result.output, contains('Prefix: LIMITED'));
       expect(result.output, contains('PATH: LIMITED'));
       expect(result.output, contains('Env: LIMITED'));
-      expect(result.output, contains('Git source acquisition: partial'));
+      expect(result.output, contains('Git source prep: Git 2.44.0 selected'));
       expect(result.output, contains('Node.js: planned'));
       expect(
         result.output,

@@ -3,16 +3,43 @@
   "title": "Termode Git build inputs",
   "type": "object",
   "required": [
+    "selected_git_version",
+    "source_archive",
+    "source_tree",
+    "source_sha256",
+    "source_license",
+    "source_provenance",
+    "dependency_mode",
+    "required_now",
+    "deferred_dependencies",
     "git",
     "dependencies",
     "host_requirements",
     "target",
+    "output",
+    "trust",
     "build_mode",
     "build_method",
     "acquired_at"
   ],
   "properties": {
-    "template_only": { "const": false },
+    "template_only": { "type": "boolean" },
+    "candidate": { "type": "boolean" },
+    "selected_git_version": { "type": "string", "minLength": 1 },
+    "source_archive": { "type": "string", "minLength": 1 },
+    "source_tree": { "type": "string", "minLength": 1 },
+    "source_sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
+    "source_license": { "type": "string", "minLength": 1 },
+    "source_provenance": { "type": "string", "minLength": 1 },
+    "dependency_mode": { "type": "string", "minLength": 1 },
+    "required_now": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "deferred_dependencies": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
     "git": { "$ref": "#/$defs/source" },
     "dependencies": {
       "type": "array",
@@ -36,6 +63,23 @@
       "properties": {
         "abi": { "const": "arm64-v8a" },
         "min_android_api": { "type": "integer", "minimum": 21 }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["staging_dir", "artifact_dir"],
+      "properties": {
+        "staging_dir": { "type": "string", "minLength": 1 },
+        "artifact_dir": { "type": "string", "minLength": 1 }
+      }
+    },
+    "trust": {
+      "type": "object",
+      "required": ["source", "trusted_by"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "trusted_by": { "type": "string", "minLength": 1 },
+        "notes": { "type": "string" }
       }
     },
     "build_mode": {

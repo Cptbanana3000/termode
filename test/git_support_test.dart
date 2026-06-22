@@ -175,7 +175,7 @@ void main() {
       expect(plan.output, contains('register git shim'));
       expect(
         plan.output,
-        contains('Acquire trusted Git and dependency sources'),
+        contains('Resolve Perl and acquire trusted Git/dependency sources.'),
       );
       expect(plan.output, contains('HTTPS remotes and credentials are later'));
 
@@ -195,14 +195,14 @@ void main() {
       final info = await commandService.execute('toolchain-info git');
       expect(info.output, contains('=== Toolchain: Git ==='));
       expect(info.output, contains('Installed: no'));
-      expect(info.output, contains('Phase: source/dependency acquisition'));
+      expect(info.output, contains('Phase: source/dependency preparation'));
       expect(info.output, contains('Trusted source/dependencies: missing'));
 
       final status = await commandService.execute('toolchain-status');
-      expect(status.output, contains('Git source acquisition: partial'));
+      expect(status.output, contains('Git source prep: Git 2.44.0 selected'));
 
       final dev = await commandService.execute('dev-doctor');
-      expect(dev.output, contains('Git source acquisition: partial'));
+      expect(dev.output, contains('Git source prep: Git 2.44.0 selected'));
     });
 
     test('shim-list does not show active git when absent', () async {
@@ -216,33 +216,33 @@ void main() {
       expect(result.isError, isFalse);
     });
 
-    test('version surfaces mention v0.52', () async {
+    test('version surfaces mention v0.56', () async {
       final version = await commandService.execute('version');
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
       final bug = await commandService.execute('bug-report');
       final qa = await commandService.execute('qa-report');
 
-      expect(version.output, contains('Termode v0.52'));
+      expect(version.output, contains('Termode v0.56'));
       expect(
         notes.output,
-        contains('v0.52 Git Source Acquisition / Dependency Build Plan'),
+        contains('v0.56 Git Perl Resolution / arm64 Build Readiness'),
       );
       expect(
         changelog.output,
-        contains('v0.52 Git Source Acquisition / Dependency Build Plan'),
+        contains('v0.54 Git Build Prerequisite Resolution'),
       );
-      expect(bug.output, contains('Termode version: v0.52'));
-      expect(qa.output, contains('Termode v0.52'));
+      expect(bug.output, contains('Termode version: v0.56'));
+      expect(qa.output, contains('Termode v0.56'));
     });
 
-    test('build-info reports Git acquisition path and v0.52', () async {
+    test('build-info reports Git acquisition path and v0.56', () async {
       final result = await commandService.execute('build-info');
-      expect(result.output, contains('Version: v0.52'));
-      expect(result.output, contains('Git source acquisition: partial'));
+      expect(result.output, contains('Version: v0.56'));
+      expect(result.output, contains('Git source prep: Git 2.44.0 selected'));
       expect(
         result.output,
-        contains('Artifact: Termode-v0.52-git-source-deps-debug.apk'),
+        contains('Artifact: Termode-v0.56-git-perl-readiness-debug.apk'),
       );
     });
 
@@ -256,18 +256,26 @@ void main() {
         'git-doctor',
         'git-test-plan',
         'git-workspace-smoke-plan',
+        'git-perl-status',
+        'git-source-version',
+        'git-source-checklist',
+        'git-deps-minimal',
+        'git-build-next-steps',
       ]) {
         expect(kTermodeCommands, contains(command));
       }
 
       final help = await commandService.execute('help');
       expect(help.output, contains('git-status'));
+      expect(help.output, contains('git-perl-status'));
 
       final commands = await commandService.execute('commands');
       expect(commands.output, contains('git-status'));
+      expect(commands.output, contains('git-perl-status'));
 
       final all = await commandService.execute('commands --all');
       expect(all.output, contains('git-doctor'));
+      expect(all.output, contains('git-perl-status'));
     });
 
     test('REAL PTY host interception includes git commands', () async {
@@ -288,6 +296,33 @@ void main() {
 
       session.isPtyInteractionActive = false;
       session.isRealPtyActive = false;
+    });
+
+    test('v0.56 informational Git commands print correctly', () async {
+      final perlStatus = await commandService.execute('git-perl-status');
+      expect(perlStatus.output, contains('=== Git Perl Status ==='));
+      expect(perlStatus.output, contains('Role: host build prerequisite'));
+
+      final sourceVersion = await commandService.execute('git-source-version');
+      expect(sourceVersion.output, contains('=== Git Source Version ==='));
+      expect(sourceVersion.output, contains('Selected Git version: 2.44.0'));
+
+      final checklist = await commandService.execute('git-source-checklist');
+      expect(checklist.output, contains('=== Git Source Checklist ==='));
+      expect(checklist.output, contains('1. choose Git version (2.44.0)'));
+
+      final depsMinimal = await commandService.execute('git-deps-minimal');
+      expect(depsMinimal.output, contains('=== Git Minimal Dependencies ==='));
+      expect(depsMinimal.output, contains('zlib: required now'));
+
+      final nextSteps = await commandService.execute('git-build-next-steps');
+      expect(nextSteps.output, contains('=== Git Build Next Steps ==='));
+      expect(nextSteps.output, contains('1. Install or locate Perl on the host.'));
+
+      final buildReadiness = await commandService.execute('git-build-readiness');
+      expect(buildReadiness.output, contains('=== Git Build Readiness ==='));
+      expect(buildReadiness.output, contains('Perl: MISSING'));
+      expect(buildReadiness.output, contains('Overall: PARTIAL'));
     });
   });
 }

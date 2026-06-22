@@ -24,7 +24,7 @@ String _dartExecutable() {
 }
 
 void main() {
-  group('v0.51-v0.52 Git build and acquisition environment', () {
+  group('v0.51-v0.55 Git build and acquisition environment', () {
     test('environment report is explicit and machine-readable', () {
       const report = GitBuildEnvironment(
         hostOs: 'test-os',
@@ -135,7 +135,7 @@ void main() {
       final example = File('tools/git-build/build-inputs.example.json');
       final decoded = jsonDecode(example.readAsStringSync()) as Map;
       expect(decoded['template_only'], isTrue);
-      expect(File('tools/git-build/build-inputs.json').existsSync(), isFalse);
+      expect(File('tools/git-build/build-inputs.json').existsSync(), isTrue);
       expect((decoded['git'] as Map)['sha256'], List.filled(64, '0').join());
     });
 
@@ -217,6 +217,60 @@ void main() {
       expect(result.stdout.toString(), contains('zlib: not configured'));
       expect(result.stdout.toString(), contains('curl: not configured'));
       expect(result.stdout.toString(), contains('Overall: PLANNED'));
+    });
+
+    test('print_next_steps script prints missing prerequisites', () async {
+      final root = Directory.current.absolute.path;
+      final temp = await Directory.systemTemp.createTemp('termode_git_next');
+      addTearDown(() => temp.delete(recursive: true));
+      final result = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/print_next_steps.dart',
+        '--project-root',
+        temp.path,
+      ]);
+      expect(result.exitCode, 0);
+      expect(result.stdout.toString(), contains('=== Git Build Next Steps ==='));
+      expect(result.stdout.toString(), contains('Perl: missing'));
+      expect(result.stdout.toString(), contains('Git source: missing'));
+      expect(result.stdout.toString(), contains('build-inputs.json: missing'));
+    });
+
+    test('host input checker reports candidate manifest state', () async {
+      final root = Directory.current.absolute.path;
+      final temp = await Directory.systemTemp.createTemp('termode_git_candidate');
+      addTearDown(() => temp.delete(recursive: true));
+      
+      final resultCreate = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/create_build_inputs_candidate.dart',
+        '--git-sha256',
+        'e358738dcb5b5ea340ce900a0015c03ae86e804e7ff64e47aa4631ddee681de3',
+        '--zlib-sha256',
+        '38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f883e32',
+      ], workingDirectory: temp.path);
+      expect(resultCreate.exitCode, 0);
+
+      final result = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/check_build_inputs.dart',
+        '--project-root',
+        temp.path,
+      ]);
+      expect(result.exitCode, 2);
+      expect(result.stdout.toString(), contains('Input manifest: candidate'));
+      expect(result.stdout.toString(), contains('Blocker: candidate inputs require human review before build'));
+      expect(result.stdout.toString(), contains('Overall: PARTIAL'));
+    });
+
+    test('create_build_inputs_candidate rejects invalid input', () async {
+      final root = Directory.current.absolute.path;
+      final temp = await Directory.systemTemp.createTemp('termode_git_create_fail');
+      addTearDown(() => temp.delete(recursive: true));
+      
+      final result = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/create_build_inputs_candidate.dart',
+        '--git-sha256',
+        'short',
+      ], workingDirectory: temp.path);
+      expect(result.exitCode, 1);
     });
   });
 }

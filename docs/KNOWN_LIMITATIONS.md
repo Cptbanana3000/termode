@@ -1,7 +1,6 @@
 # Known Limitations
 
-Termode is beta software. v0.52 prepares audited source/dependency acquisition
-inputs, but Perl and trusted Git/dependency sources are missing and it ships
+Termode is beta software. v0.56 hardens Perl detection on the host, documents manual setup on Windows hosts, implements the `git-build-readiness` command and `print_build_readiness.dart` script, and bumps the app version to v0.56. Perl remains missing on the host and it ships
 **no real Git artifact**, so Git - like Node/npm/Python -
 is still **planned, not installed**.
 `git-artifact status` may report `TEMPLATE_ONLY` in a source checkout or

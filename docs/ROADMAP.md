@@ -25,8 +25,9 @@ CalypsoIDE as a plug-and-play terminal/runtime engine.
 - compilers
 - full Termux-replacement status
 
-These are **planned, not installed**. v0.52 defines audited Git source and
-dependency acquisition, but still ships no real Git artifact, so Git is reported
+These are **planned, not installed**. v0.53 defines audited Git source and
+dependency preparation (version selected, Perl requirement documented, dependency strategy
+defined), but still ships no real Git artifact, so Git is reported
 planned/not installed and the installer refuses safely. See
 [Git Support Strategy](GIT_SUPPORT_STRATEGY.md),
 [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md),
@@ -53,16 +54,18 @@ planned/not installed and the installer refuses safely. See
 - v0.49 Git Artifact Build / arm64-v8a Production
 - v0.50 Git Artifact Production / Trusted Build
 - v0.51 Git Artifact Build Environment / NDK Source Build
-- v0.52 Git Source Acquisition / Dependency Build Plan (current)
+- v0.52 Git Source Acquisition / Dependency Build Plan
 - v0.53 Git Source + Dependency Preparation
-- v0.54+ Node.js / npm / Python / Dev Stack Presets
-- v0.52 Full Terminal QA
-- v0.53 Complete Termode Beta
+- v0.54 Git Build Prerequisite Resolution
+- v0.55 Git Prerequisite Acquisition / Source Staging
+- v0.56 Git Perl Resolution / arm64 Build Readiness (current)
+- v0.57 Git arm64 Build Attempt (if ready)
+- v0.58 Git Artifact Install / Execution QA (if artifact produced)
+- v0.59+ Node.js / npm / Python / Dev Stack Presets
+- v0.56 Full Terminal QA · v0.57 Complete Termode Beta
 - CalypsoIDE integration later
 
-v0.52 adds project-side build-input templates and verification scripts. No real
-source or artifact is bundled yet, so v0.53 prepares reviewed source and
-dependencies before a build attempt. See [Git Source Acquisition](GIT_SOURCE_ACQUISITION.md).
+v0.56 hardens Perl detection on the host, documents manual setup on Windows hosts, implements the `git-build-readiness` command and `print_build_readiness.dart` script, and bumps the app version to v0.56. Perl remains missing on the host, so the pipeline status is PARTIAL and Git is unavailable in-app. See [Git Perl Resolution Status](GIT_PERL_RESOLUTION_STATUS.md), [Git Build Prerequisite Status](GIT_BUILD_PREREQUISITE_STATUS.md), and [Git Source + Dependency Preparation Status](GIT_SOURCE_DEPENDENCY_PREP_STATUS.md).
 
 ## Product First
 
