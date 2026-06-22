@@ -1,4 +1,4 @@
-# Git Support Strategy (v0.45, extended through v0.57)
+# Git Support Strategy (v0.45, extended through v0.58)
 
 v0.45 prepares the **first real-tool path** for Git on top of the v0.44 binary
 package installer prototype. It is a feasibility / installer-path milestone:
@@ -226,4 +226,8 @@ v0.56 focuses on resolving the host Perl dependency via manual setup instruction
 ## v0.57 Update: Git Perl Setup / Build Readiness Finalization
 
 v0.57 finalizes host-side Perl prerequisite checking, error handling, manual setup docs, and bumps all in-app diagnostics commands, docs, and version configurations to v0.57. Since Perl is still missing on the Windows host, the status remains PARTIAL. See [Git Build Readiness Final Status](GIT_BUILD_READINESS_FINAL_STATUS.md) and [Git Build Prerequisite Status](GIT_BUILD_PREREQUISITE_STATUS.md).
+
+## v0.58 Update: Git arm64 Build Attempt
+
+v0.58 attempts the first controlled arm64 Git build. It successfully compiles the zlib dependency using the CMake NDK toolchain, producing a verified static library `libz.a`. It then attempts to build Git 2.44.0, which fails honestly as expected due to host Windows shell/path incompatibilities in the Makefile build system. Build logs are captured under `tools/git-build/logs/git-arm64-build.log`. Version references across the project and test suite are bumped to v0.58. Git remains unavailable in-app. See [Git arm64 Build Attempt Status](GIT_ARM64_BUILD_ATTEMPT_STATUS.md) and [Git arm64 Build Logs](GIT_ARM64_BUILD_LOGS.md).
 

@@ -1,7 +1,7 @@
-# Git NDK Build Status (v0.51, extended to v0.57)
+# Git NDK Build Status (v0.51, extended to v0.58)
 
 ## Selected Path
-Termode v0.57 selects **Path B: NDK environment partially available**.
+Termode v0.58 selects **Path B: Build attempt starts but fails**.
 
 The checked Windows host has:
 - Android SDK: `C:/Users/joell/AppData/Local/Android/Sdk`
@@ -12,14 +12,13 @@ The checked Windows host has:
 - SDK CMake `3.22.1`: present
 - archive tool: present
 - writable project output directory: yes
+- Perl: present (v5.42.2)
+- zlib: built successfully (output library at `tools/git-build/output/arm64-v8a/zlib/lib/libz.a`)
 
-The build is blocked by:
-- Perl is not available on the host `PATH` (required to generate header files during compilation)
-- Git source tree has not been extracted/compiled (archives are staged)
-- zlib dependency has not been extracted/compiled (archives are staged)
-- no reviewed, checked-in cross-build recipe is enabled yet
+The Git build is blocked by:
+- Windows shell/path build issues (Unix Makefile relies on shell features like `/bin/sh` which are unavailable under native Windows cmd/powershell)
 
-Therefore no compile was attempted, no artifact or installable manifest was generated, and Git remains unavailable/not installed.
+Therefore, the build was attempted, zlib succeeded, but Git compilation failed as expected. Git remains unavailable/not installed.
 
 ## Reproduce The Check
 From the repository root:
@@ -27,7 +26,7 @@ From the repository root:
 dart tools/git-build/check_build_env.dart
 ```
 
-This command reports `PARTIAL` because Perl is still missing.
+This command reports `READY`.
 
 ## Runtime Result
 - `git-build-status`: `PARTIAL`
@@ -38,6 +37,6 @@ This command reports `PARTIAL` because Perl is still missing.
 - beta readiness: missing Git remains an accepted limitation
 
 ## Next Milestone
-**v0.58 Git Perl Setup Follow-up / Build Readiness**
+**v0.59 Git Build Fixes**
 
-The next milestone will focus on attempting to run the arm64-v8a NDK cross-compilation once Perl and compiler checks pass.
+The next milestone will focus on resolving the Unix build/Makefile shell compatibility issues on Windows hosts.

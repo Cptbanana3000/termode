@@ -59,15 +59,15 @@ planned/not installed and the installer refuses safely. See
 - v0.54 Git Build Prerequisite Resolution
 - v0.55 Git Prerequisite Acquisition / Source Staging
 - v0.56 Git Perl Resolution / arm64 Build Readiness
-- v0.57 Git Perl Setup / Build Readiness Finalization (current)
-- v0.58 Git Perl Setup Follow-up / Build Readiness
-- v0.59 Git arm64 Build Attempt (if ready)
-- v0.60 Git Artifact Install / Execution QA (if artifact produced)
+- v0.57 Git Perl Setup / Build Readiness Finalization
+- v0.58 Git arm64 Build Attempt (current)
+- v0.59 Git Build Fixes
+- v0.60 Git Artifact Packaging / Install QA
 - v0.61+ Node.js / npm / Python / Dev Stack Presets
-- v0.57 Full Terminal QA · v0.58 Complete Termode Beta
+- v0.58 Full Terminal QA · v0.59 Complete Termode Beta
 - CalypsoIDE integration later
 
-v0.57 finalizes host-side Perl prerequisite checking, error handling, and manual setup docs, and bumps the app version to v0.57. Perl remains missing on the host, so the pipeline status is PARTIAL and Git is unavailable in-app. See [Git Build Readiness Final Status](GIT_BUILD_READINESS_FINAL_STATUS.md), [Git Perl Resolution Status](GIT_PERL_RESOLUTION_STATUS.md), and [Git Build Prerequisite Status](GIT_BUILD_PREREQUISITE_STATUS.md).
+v0.58 attempts the first controlled arm64 Git build, successfully building zlib and honestly logging the Git build Makefile failure, and bumps the app version to v0.58. zlib is built, but Git remains unavailable in-app due to host shell build issues. See [Git arm64 Build Attempt Status](GIT_ARM64_BUILD_ATTEMPT_STATUS.md) and [Git arm64 Build Logs](GIT_ARM64_BUILD_LOGS.md).
 
 ## Product First
 

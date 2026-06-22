@@ -227,6 +227,19 @@ String? _findExecutable(String name, Map<String, String> env) {
       if (candidate.existsSync()) return candidate.absolute.path;
     }
   }
+  if (Platform.isWindows && name == 'perl') {
+    final fallbacks = [
+      'C:\\Strawberry\\perl\\bin\\perl.exe',
+      'C:\\Perl\\bin\\perl.exe',
+      'C:\\msys64\\usr\\bin\\perl.exe',
+      'C:\\Program Files\\Git\\usr\\bin\\perl.exe',
+    ];
+    for (final fallback in fallbacks) {
+      if (File(fallback).existsSync()) {
+        return File(fallback).absolute.path;
+      }
+    }
+  }
   return null;
 }
 

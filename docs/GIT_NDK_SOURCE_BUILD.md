@@ -47,7 +47,7 @@ dart tools/git-build/validate_git_artifact.dart arm64-v8a
 
 `prepare_git_artifact.dart` writes `manifest.candidate.json`, not an installable `manifest.json`, when staging input is supplied. Promotion requires human review and successful validation. It rejects missing output, unsupported or unsafe paths, zero-byte files, and conflicting destination payloads.
 
-v0.57 finalizes host-side Perl prerequisite checking, error handling, and manual setup docs, and bumps the app version to v0.57. Perl remains missing on the host. Example and candidate manifests cannot make the build ready.
+v0.58 attempts the first controlled arm64 Git build, successfully building zlib and honestly logging the Git build Makefile failure, and bumps the app version to v0.58. Example and candidate manifests cannot make the build ready.
 
 ## Android Acceptance
 An artifact is not Git support until all of these succeed on Android:

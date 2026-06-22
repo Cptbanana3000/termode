@@ -306,7 +306,7 @@ void main() {
       expect(ready.output, contains('Ready for beta testing.'));
 
       final version = await commandService.execute('version');
-      expect(version.output, contains('Termode v0.57'));
+      expect(version.output, contains('Termode v0.58'));
 
       final notes = await commandService.execute('release-notes');
       expect(
@@ -315,10 +315,10 @@ void main() {
       );
 
       final bug = await commandService.execute('bug-report');
-      expect(bug.output, contains('Termode version: v0.57'));
+      expect(bug.output, contains('Termode version: v0.58'));
 
       final qa = await commandService.execute('qa-report');
-      expect(qa.output, contains('Termode v0.57'));
+      expect(qa.output, contains('Termode v0.58'));
     });
   });
 }

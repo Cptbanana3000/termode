@@ -15,25 +15,25 @@ class GitBuildService {
   Future<String> status() async {
     final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
     final installed = await RuntimeBinaryPackageService().gitInstalled();
-    final ready = artifact.available && artifact.installable && installed;
     return '=== Git Build Status ===\n'
         'Target ABI: arm64-v8a\n'
         'Selected Git version: $selectedGitVersion\n'
-        'Phase: Git Perl Setup / Build Readiness Finalization\n'
-        'Selected path: B (prerequisites partial; source/deps staged; Perl still missing)\n'
+        'Phase: Git arm64 Build Attempt\n'
+        'Selected path: B (build attempt starts but fails; zlib cross-compile succeeded; Git make build failed)\n'
         'Build pipeline: prepared\n'
-        'Android SDK/NDK: available from v0.51 host check\n'
-        'Perl: missing\n'
+        'Android SDK/NDK: available\n'
+        'Perl: found (v5.42.2)\n'
         'Trusted source: staged (archive present)\n'
         'Expected source archive: $sourceArchivePath\n'
         'Expected source tree: $sourceTreePath\n'
         'Dependency mode: $dependencyMode\n'
         'Minimal target: $minimalTarget\n'
-        'Dependencies: staged (zlib archive present)\n'
+        'Dependencies: zlib built (output/arm64-v8a/zlib/lib/libz.a)\n'
+        'Build attempt: failed (logs at tools/git-build/logs/git-arm64-build.log)\n'
         'Artifact: ${artifact.status.toLowerCase()}\n'
         'Git installed: ${installed ? 'yes' : 'no'}\n'
         'Host detector: tools/git-build/check_build_env.dart\n'
-        'Overall: ${ready ? 'READY' : 'PARTIAL'}';
+        'Overall: PARTIAL (prerequisites ready; build attempted; Git build output missing)';
   }
 
   String plan() {
@@ -64,7 +64,7 @@ class GitBuildService {
         '* reproducible build scripts and logs\n'
         '* artifact manifest and per-file SHA-256 validation\n'
         '* Android install and git --version smoke test\n'
-        'Current host record: SDK/NDK found; Git/zlib staged; build-inputs.json present; Perl missing.';
+        'Current host record: SDK/NDK found; Git/zlib staged; build-inputs.json present; Perl ready; zlib built.';
   }
 
   Future<String> next() async {
@@ -78,10 +78,9 @@ class GitBuildService {
     return '=== Git Build Next ===\n'
         'Artifact: ${artifact.status}\n'
         'Selected Git version: $selectedGitVersion\n'
-        'Next: resolve Perl on the host environment. Perl is the only remaining blocker since sources, zlib, and build-inputs.json are ready.\n'
-        'Run on host: perl --version\n'
-        'Then rerun: dart tools/git-build/check_build_env.dart\n'
-        'Next milestone: v0.58 Git Perl Setup Follow-up / Build Readiness.';
+        'Next: resolve the Unix build issues on Windows / troubleshoot Makefile shell paths.\n'
+        'Logs: tools/git-build/logs/git-arm64-build.log\n'
+        'Next milestone: v0.59 Git Build Fixes.';
   }
 
   String sourceStatus() {
@@ -112,12 +111,12 @@ class GitBuildService {
   String dependenciesStatus() {
     return '=== Git Dependency Status ===\n'
         'Dependency mode: $dependencyMode\n'
-        'zlib: required for minimal local Git\n'
+        'zlib: required for minimal local Git (cross-compilation succeeded)\n'
         'curl: later for HTTPS\n'
         'openssl/TLS: later for HTTPS\n'
         'expat: planned depending selected features\n'
         'pcre2: optional/planned\n'
-        'Dependency sources: staged (zlib archive present)\n'
+        'Dependency sources: staged (zlib built successfully)\n'
         'Overall: STAGED';
   }
 
@@ -145,13 +144,9 @@ class GitBuildService {
   }
 
   Future<String> blockers() async {
-    final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
-    final installed = await RuntimeBinaryPackageService().gitInstalled();
     return '=== Git Build Blockers ===\n'
-        '* selected Git version: $selectedGitVersion\n'
-        '* Perl missing from the recorded host environment\n'
-        '* arm64-v8a artifact: ${artifact.status.toLowerCase()}\n'
-        '* Git installed: ${installed ? 'yes' : 'no'}\n'
+        '* Windows shell/path build issues (Unix Makefile relies on shell features)\n'
+        '* Git build output missing\n'
         'These are development blockers, not beta-fatal app errors.';
   }
 
@@ -159,10 +154,8 @@ class GitBuildService {
     return '=== Git Perl Status ===\n'
         'Role: host build prerequisite\n'
         'Bundled in app: no\n'
-        'Detected: no (last recorded host check: missing)\n'
-        'Blocks Git build: yes\n'
-        'Blocks Termode beta: no\n'
-        'Run on host: perl --version';
+        'Detected: yes (v5.42.2)\n'
+        'Blocks Git build: no';
   }
 
   String sourceVersion() {
@@ -191,7 +184,7 @@ class GitBuildService {
   String dependenciesMinimal() {
     return '=== Git Minimal Dependencies ===\n'
         'Stage 1 target: $minimalTarget\n'
-        'zlib: required now or documented as provided by the build\n'
+        'zlib: built successfully (libz.a available)\n'
         'libcurl: later for HTTPS clone/fetch/push/pull\n'
         'OpenSSL/TLS: later with HTTPS\n'
         'expat: evaluate later\n'
@@ -202,11 +195,9 @@ class GitBuildService {
 
   String buildNextSteps() {
     return '=== Git Build Next Steps ===\n'
-        '1. Install or locate Perl on the host.\n'
-        '2. Rerun check_build_env.dart, check_build_inputs.dart,\n'
-        '   verify_git_source.dart, check_dependencies.dart.\n'
-        '3. Rerun print_build_readiness.dart to verify overall status.\n'
-        '4. Attempt the arm64-v8a build using build_git_arm64.dart only after Perl and compiler checks pass.\n'
+        '1. Investigate the Git build error logs at tools/git-build/logs/git-arm64-build.log.\n'
+        '2. Fix Makefile shell/path compatibility issues.\n'
+        '3. Next milestone: v0.59 Git Build Fixes.\n'
         'No artifact yet. Git remains unavailable.';
   }
 
@@ -216,8 +207,8 @@ class GitBuildService {
         'zlib: READY\n'
         'build-inputs.json: READY\n'
         'NDK: READY\n'
-        'Perl: MISSING\n'
-        'Overall: PARTIAL\n'
-        'Next: Install or locate Perl on host, then run: perl --version. See docs/GIT_PERL_SETUP_WINDOWS.md';
+        'Perl: READY\n'
+        'Overall: READY\n'
+        'Next: Troubleshoot Unix Makefile errors on Windows host.';
   }
 }

@@ -1,0 +1,6 @@
+D:/Projects/termode/tools/git-build/output/arm64-v8a/zlib/lib/libz.so
+D:/Projects/termode/tools/git-build/output/arm64-v8a/zlib/lib/libz.a
+D:/Projects/termode/tools/git-build/output/arm64-v8a/zlib/include/zconf.h
+D:/Projects/termode/tools/git-build/output/arm64-v8a/zlib/include/zlib.h
+D:/Projects/termode/tools/git-build/output/arm64-v8a/zlib/share/man/man3/zlib.3
+D:/Projects/termode/tools/git-build/output/arm64-v8a/zlib/share/pkgconfig/zlib.pc

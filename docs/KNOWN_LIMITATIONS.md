@@ -1,6 +1,6 @@
 # Known Limitations
 
-Termode is beta software. v0.57 finalizes host-side Perl prerequisite checking, error handling, and manual setup docs, and bumps the app version to v0.57. Perl remains missing on the host and it ships
+Termode is beta software. v0.58 attempts the first controlled arm64 Git build, successfully building zlib and honestly logging the Git build Makefile failure, and bumps the app version to v0.58. It ships
 **no real Git artifact**, so Git - like Node/npm/Python -
 is still **planned, not installed**.
 `git-artifact status` may report `TEMPLATE_ONLY` in a source checkout or

@@ -147,7 +147,7 @@ void main() {
       expect(status.output, contains('Target ABI: arm64-v8a'));
       expect(status.output, contains('Selected path: B'));
       expect(status.output, contains('Trusted source: staged (archive present)'));
-      expect(status.output, contains('Dependencies: staged (zlib archive present)'));
+      expect(status.output, contains('Dependencies: zlib built'));
       expect(status.output, contains('Git installed: no'));
       expect(status.output, contains('Overall: PARTIAL'));
       expect(plan.output, contains('=== Git Build Plan ==='));
@@ -156,9 +156,9 @@ void main() {
       expect(requirements.output, contains('SHA-256'));
       expect(
         next.output,
-        contains('Next: resolve Perl on the host environment.'),
+        contains('Next: resolve the Unix build issues on Windows / troubleshoot Makefile shell paths.'),
       );
-      expect(next.output, contains('v0.58 Git Perl Setup Follow-up / Build Readiness'));
+      expect(next.output, contains('v0.59 Git Build Fixes'));
     });
 
     test('git source and dependency commands report honest blockers', () async {
@@ -183,7 +183,7 @@ void main() {
       expect(dependencyPlan.output, contains('HTTPS clone'));
       expect(inputs.output, contains('Project-side only'));
       expect(inputs.output, contains('check_build_inputs.dart'));
-      expect(blockers.output, contains('Perl missing from the recorded host environment'));
+      expect(blockers.output, contains('Windows shell/path build issues'));
       expect(blockers.output, contains('not beta-fatal'));
       expect(help.output, contains('git-source-status'));
       expect(commands.output, contains('git-deps-plan'));

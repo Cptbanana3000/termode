@@ -118,13 +118,13 @@ void main() {
 
       expect(
         result.output,
-        contains('v0.57 Git Perl Setup / Build Readiness Finalization'),
+        contains('v0.59 Git Build Fixes'),
       );
       expect(
         result.output,
-        contains('verify host environment Perl availability'),
+        contains('troubleshoot Git build failure'),
       );
-      expect(result.output, contains('run check_build_env.dart and print_build_readiness.dart'));
+      expect(result.output, contains('resolve Makefile host shell/path incompatibility issues'));
       expect(result.output, contains('keep Node/npm/Python planned'));
       expect(result.output, contains('runtime expansion is planned'));
     });

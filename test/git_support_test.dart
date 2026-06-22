@@ -216,33 +216,33 @@ void main() {
       expect(result.isError, isFalse);
     });
 
-    test('version surfaces mention v0.57', () async {
+    test('version surfaces mention v0.58', () async {
       final version = await commandService.execute('version');
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
       final bug = await commandService.execute('bug-report');
       final qa = await commandService.execute('qa-report');
 
-      expect(version.output, contains('Termode v0.57'));
+      expect(version.output, contains('Termode v0.58'));
       expect(
         notes.output,
-        contains('v0.57 Git Perl Setup / Build Readiness Finalization'),
+        contains('v0.58 Git arm64 Build Attempt'),
       );
       expect(
         changelog.output,
         contains('v0.54 Git Build Prerequisite Resolution'),
       );
-      expect(bug.output, contains('Termode version: v0.57'));
-      expect(qa.output, contains('Termode v0.57'));
+      expect(bug.output, contains('Termode version: v0.58'));
+      expect(qa.output, contains('Termode v0.58'));
     });
 
-    test('build-info reports Git acquisition path and v0.57', () async {
+    test('build-info reports Git acquisition path and v0.58', () async {
       final result = await commandService.execute('build-info');
-      expect(result.output, contains('Version: v0.57'));
+      expect(result.output, contains('Version: v0.58'));
       expect(result.output, contains('Git source prep: Git 2.44.0 selected'));
       expect(
         result.output,
-        contains('Artifact: Termode-v0.57-git-perl-final-debug.apk'),
+        contains('Artifact: Termode-v0.58-git-arm64-build-attempt-debug.apk'),
       );
     });
 
@@ -298,7 +298,7 @@ void main() {
       session.isRealPtyActive = false;
     });
 
-    test('v0.57 informational Git commands print correctly', () async {
+    test('v0.58 informational Git commands print correctly', () async {
       final perlStatus = await commandService.execute('git-perl-status');
       expect(perlStatus.output, contains('=== Git Perl Status ==='));
       expect(perlStatus.output, contains('Role: host build prerequisite'));
@@ -313,16 +313,16 @@ void main() {
 
       final depsMinimal = await commandService.execute('git-deps-minimal');
       expect(depsMinimal.output, contains('=== Git Minimal Dependencies ==='));
-      expect(depsMinimal.output, contains('zlib: required now'));
+      expect(depsMinimal.output, contains('zlib: built successfully'));
 
       final nextSteps = await commandService.execute('git-build-next-steps');
       expect(nextSteps.output, contains('=== Git Build Next Steps ==='));
-      expect(nextSteps.output, contains('1. Install or locate Perl on the host.'));
+      expect(nextSteps.output, contains('1. Investigate the Git build error logs at tools/git-build/logs/git-arm64-build.log.'));
 
       final buildReadiness = await commandService.execute('git-build-readiness');
       expect(buildReadiness.output, contains('=== Git Build Readiness ==='));
-      expect(buildReadiness.output, contains('Perl: MISSING'));
-      expect(buildReadiness.output, contains('Overall: PARTIAL'));
+      expect(buildReadiness.output, contains('Perl: READY'));
+      expect(buildReadiness.output, contains('Overall: READY'));
     });
   });
 }

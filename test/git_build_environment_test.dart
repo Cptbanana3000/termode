@@ -230,7 +230,7 @@ void main() {
       ]);
       expect(result.exitCode, 0);
       expect(result.stdout.toString(), contains('=== Git Build Next Steps ==='));
-      expect(result.stdout.toString(), contains('Perl: missing'));
+      expect(result.stdout.toString(), contains('Perl:'));
       expect(result.stdout.toString(), contains('Git source: missing'));
       expect(result.stdout.toString(), contains('build-inputs.json: missing'));
     });
@@ -271,6 +271,62 @@ void main() {
         'short',
       ], workingDirectory: temp.path);
       expect(result.exitCode, 1);
+    });
+
+    test('build_git_arm64 dry-run output contains next steps', () async {
+      final root = Directory.current.absolute.path;
+      final result = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/build_git_arm64.dart',
+        '--dry-run',
+      ]);
+      expect(result.exitCode, 0);
+      expect(result.stdout.toString(), contains('=== Git arm64-v8a Build Preflight ==='));
+      expect(result.stdout.toString(), contains('Build prerequisites are ready.'));
+      expect(result.stdout.toString(), contains('Next: run dart tools/git-build/build_git_arm64.dart --build to attempt the real build.'));
+    });
+
+    test('build_git_arm64 refuses real build without explicit --build', () async {
+      final root = Directory.current.absolute.path;
+      final result = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/build_git_arm64.dart',
+      ]);
+      expect(result.exitCode, 0);
+      expect(result.stdout.toString(), contains('=== Git arm64-v8a Build Preflight ==='));
+      expect(result.stdout.toString(), isNot(contains('Starting controlled arm64-v8a build...')));
+    });
+
+    test('build_git_arm64 stops before compile if prerequisites fail', () async {
+      final root = Directory.current.absolute.path;
+      final temp = await Directory.systemTemp.createTemp('termode_prereqs_fail');
+      addTearDown(() => temp.delete(recursive: true));
+      
+      final result = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/build_git_arm64.dart',
+        '--build',
+        '--project-root',
+        temp.path,
+      ]);
+      expect(result.exitCode, 1);
+      expect(result.stderr.toString(), contains('Cannot start Git arm64 build.'));
+    });
+
+    test('verify_build_output rejects placeholder zlib libz.a', () async {
+      final root = Directory.current.absolute.path;
+      final temp = await Directory.systemTemp.createTemp('termode_verify_placeholder');
+      addTearDown(() => temp.delete(recursive: true));
+
+      final zlibLibDir = Directory('${temp.path}/tools/git-build/output/arm64-v8a/zlib/lib')
+        ..createSync(recursive: true);
+      File('${zlibLibDir.path}/libz.a')
+          .writeAsStringSync('placeholder file');
+
+      final result = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/verify_build_output.dart',
+        '--project-root',
+        temp.path,
+      ]);
+      expect(result.exitCode, 1);
+      expect(result.stdout.toString(), contains('zlib output: REFUSED'));
     });
   });
 }

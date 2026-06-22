@@ -1,13 +1,13 @@
-# Git Build Prerequisite Status (v0.57)
+# Git Build Prerequisite Status (v0.58)
 
-Termode version v0.57 selects **Path B: Partial prerequisite progress** (sources staged, Perl missing, readiness checked).
+Termode version v0.58 selects **Path B: Build attempt starts but fails** (prerequisites ready; build attempted; zlib succeeded; Git make failed).
 
 ## Current Host Status
-- **Perl**: Missing. Perl is required on the host to generate header files during the Git NDK build.
+- **Perl**: READY (v5.42.2 found on host).
 - **Git source**: Staged (`tools/git-build/sources/git-2.44.0.tar.xz`). Checksum matched.
-- **zlib source**: Staged (`tools/git-build/sources/zlib-1.3.1.tar.xz`). Checksum matched.
+- **zlib source**: Staged and compiled (`libz.a` static library produced at `tools/git-build/output/arm64-v8a/zlib/lib/libz.a`).
 - **build-inputs.json**: Promoted (present and verified).
-- **Git artifact**: Unavailable.
+- **Git artifact**: Unavailable (make build failed).
 - **Git installation**: Refused safely.
 
 ## Progress in v0.55
@@ -27,3 +27,9 @@ Termode version v0.57 selects **Path B: Partial prerequisite progress** (sources
 - Finalized host-side Perl prerequisite checking, error handling, and manual setup docs.
 - Selected Path B (Perl still missing on the Windows host) and documented the final status.
 - Bumped all in-app diagnostics commands, docs, and version configurations to v0.57.
+
+## Progress in v0.58
+- Perl setup follow-up completed: Strawberry Perl v5.42.2 detected on host, with fallback paths added to `check_build_env.dart` for robust detection.
+- Successfully cross-compiled zlib 1.3.1 using NDK toolchain and CMake, outputting `libz.a` under `tools/git-build/output/arm64-v8a/zlib/`.
+- Attempted Git 2.44.0 cross-compilation using NDK compiler and Makefile, failing honestly due to Windows shell/path limitations.
+- Captured build attempt logs under `tools/git-build/logs/git-arm64-build.log` and classified the failure honestly.

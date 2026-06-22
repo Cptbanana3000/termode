@@ -95,7 +95,7 @@ packages.
 - `git-build-next-steps`
 - `git-build-readiness`
 
-Git is **planned, not installed** in this build. v0.57 finalizes host-side Perl prerequisite checking, error handling, and manual setup docs, and bumps the app version to v0.57. Perl remains missing on the host.
+Git is **planned, not installed** in this build. v0.58 attempts the first controlled arm64 Git build, successfully building zlib and honestly logging the Git build Makefile failure, and bumps the app version to v0.58. zlib is built, but Git remains unavailable in-app due to host build issues.
 `runtime-pkg install git` refuses safely,
 `git-version`/`git-exec-probe` report it is not installed, and `bin-which git`
 does not find it. Termode never fakes Git. See

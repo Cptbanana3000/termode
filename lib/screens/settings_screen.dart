@@ -618,7 +618,7 @@ class SettingsScreen extends StatelessWidget {
                   style: TextStyle(color: Colors.white),
                 ),
                 trailing: Text(
-                  'v0.57 (Git Perl Setup / Build Readiness Finalization)',
+                  'v0.58 (Git arm64 Build Attempt)',
                   style: TextStyle(color: Colors.white60),
                 ),
               ),

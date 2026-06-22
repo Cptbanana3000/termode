@@ -1,0 +1,13 @@
+D:/Projects/termode/tools/git-build/output/workspace/zlib/build/CMakeFiles/zlib.dir
+D:/Projects/termode/tools/git-build/output/workspace/zlib/build/CMakeFiles/zlibstatic.dir
+D:/Projects/termode/tools/git-build/output/workspace/zlib/build/CMakeFiles/example.dir
+D:/Projects/termode/tools/git-build/output/workspace/zlib/build/CMakeFiles/minigzip.dir
+D:/Projects/termode/tools/git-build/output/workspace/zlib/build/CMakeFiles/example64.dir
+D:/Projects/termode/tools/git-build/output/workspace/zlib/build/CMakeFiles/minigzip64.dir
+D:/Projects/termode/tools/git-build/output/workspace/zlib/build/CMakeFiles/test.dir
+D:/Projects/termode/tools/git-build/output/workspace/zlib/build/CMakeFiles/edit_cache.dir
+D:/Projects/termode/tools/git-build/output/workspace/zlib/build/CMakeFiles/rebuild_cache.dir
+D:/Projects/termode/tools/git-build/output/workspace/zlib/build/CMakeFiles/list_install_components.dir
+D:/Projects/termode/tools/git-build/output/workspace/zlib/build/CMakeFiles/install.dir
+D:/Projects/termode/tools/git-build/output/workspace/zlib/build/CMakeFiles/install/local.dir
+D:/Projects/termode/tools/git-build/output/workspace/zlib/build/CMakeFiles/install/strip.dir
