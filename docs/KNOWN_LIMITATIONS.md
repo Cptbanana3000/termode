@@ -1,8 +1,6 @@
 # Known Limitations
 
-Termode is beta software. v0.58 attempts the first controlled arm64 Git build, successfully building zlib and honestly logging the Git build Makefile failure, and bumps the app version to v0.58. It ships
-**no real Git artifact**, so Git - like Node/npm/Python -
-is still **planned, not installed**.
+Termode is beta software. v0.62 resolves compile blockers (missing headers/libraries like OpenSSL, thread cancellation under Bionic, sync_file_range) and successfully compiles a real Git 2.44.0 arm64-v8a binary under Git Bash using a minimal-local build strategy. It ships **no real Git artifact** inside the app assets yet (packaging/staging is scheduled for v0.63), so Git - like Node/npm/Python - is still **planned, not installed**.
 `git-artifact status` may report `TEMPLATE_ONLY` in a source checkout or
 `UNAVAILABLE` in an installed APK. Termode never fakes Git; `git`,
 `git-version`, `git-exec-probe`, and `bin-which git` all report it as not

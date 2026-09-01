@@ -79,6 +79,7 @@ packages.
 - `git-smoke-test`
 - `git-workspace-smoke-plan`
 - `git-build-status`
+- `git-build-host-strategy`
 - `git-build-plan`
 - `git-build-requirements`
 - `git-build-next`
@@ -95,7 +96,7 @@ packages.
 - `git-build-next-steps`
 - `git-build-readiness`
 
-Git is **planned, not installed** in this build. v0.58 attempts the first controlled arm64 Git build, successfully building zlib and honestly logging the Git build Makefile failure, and bumps the app version to v0.58. zlib is built, but Git remains unavailable in-app due to host build issues.
+Git is **planned, not installed** in this build. v0.62 resolves compile blockers (missing headers/libraries like OpenSSL, thread cancellation under Bionic, sync_file_range) and successfully compiles a real Git 2.44.0 arm64-v8a binary under Git Bash using a minimal-local build strategy. Git remains unavailable in-app (packaging/staging is scheduled for v0.63).
 `runtime-pkg install git` refuses safely,
 `git-version`/`git-exec-probe` report it is not installed, and `bin-which git`
 does not find it. Termode never fakes Git. See

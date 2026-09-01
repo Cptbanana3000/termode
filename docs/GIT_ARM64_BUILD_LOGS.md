@@ -27,3 +27,10 @@ From the command prompt:
 Get-Content tools/git-build/logs/git-arm64-build.log -Tail 50
 ```
 or by opening the logs in an editor.
+
+## Update in v0.59
+In v0.59, log analysis was automated with [analyze_git_build_log.dart](file:///d:/Projects/termode/tools/git-build/analyze_git_build_log.dart). Developers can run it on the host:
+```powershell
+dart tools/git-build/analyze_git_build_log.dart
+```
+This automatically parses `tools/git-build/logs/git-arm64-build.log` and outputs a diagnosis.

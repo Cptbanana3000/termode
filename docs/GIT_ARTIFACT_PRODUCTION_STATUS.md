@@ -23,7 +23,7 @@ This checkout does not contain:
 - a real installable `manifest.json`
 - a successful Android `git --version` proof
 
-(Note: Git 2.44.0 and zlib 1.3.1 source archives have been staged in v0.55, Perl was resolved in v0.58, zlib cross-compilation succeeded, but Git compilation failed due to host Windows shell/path incompatibilities.)
+(Note: Git 2.44.0 and zlib 1.3.1 source archives have been staged in v0.55, Perl was resolved in v0.58, path normalization was improved in v0.59, zlib cross-compilation succeeded, but Git compilation failed due to host Windows shell/path Makefile incompatibilities.)
 
 ## Production Gate
 Git can be marked available only after all of these pass:
@@ -52,5 +52,7 @@ v0.57 finalizes host-side Perl prerequisite checking, error handling, and manual
 
 v0.58 attempts the first controlled arm64 Git build, successfully building zlib and honestly logging the Git build Makefile failure, selecting Path B and bumping the app version to v0.58.
 
-If no trusted artifact exists after v0.58, the next milestone is:
-**v0.59 Git Build Fixes**
+v0.59 attempts build fixes and automates log analysis, reusing the verified zlib output and honestly logging the Git build Makefile failure, selecting Path C (Windows-native build impractical) and bumping the app version to v0.59.
+
+If no trusted artifact exists after v0.59, the next milestone is:
+**v0.60 Git Build Host Strategy**

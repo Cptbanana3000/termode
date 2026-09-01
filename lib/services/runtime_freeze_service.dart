@@ -3,7 +3,7 @@ import 'dart:io';
 import 'runtime_capability_service.dart';
 
 class RuntimeFreezeService {
-  static const nextMilestone = 'v0.59 Git Build Fixes';
+  static const nextMilestone = 'v0.63 Git Artifact Packaging / Install QA';
 
   static const supportedRuntimeDirection = [
     'script packages through /system/bin/sh',
@@ -46,7 +46,7 @@ class RuntimeFreezeService {
         'Duktape: deferred\n'
         'Node.js: planned (not installed)\n'
         'npm: planned (not installed)\n'
-        'Next focus: attempt arm64 Git build and cross-compile zlib\n'
+        'Next focus: stage Git artifact packaging and install QA\n'
         'Overall: FROZEN';
   }
 
@@ -92,8 +92,8 @@ class RuntimeFreezeService {
         'Recommended next milestone:\n'
         '$nextMilestone\n\n'
         'Focus:\n'
-        '  - troubleshoot Git build failure (logs at tools/git-build/logs/git-arm64-build.log)\n'
-        '  - resolve Makefile host shell/path incompatibility issues\n'
+        '  - package/stage the compiled Git arm64 binary\n'
+        '  - implement on-device installation and QA validation\n'
         '  - keep Node/npm/Python planned but not installed\n'
         '  - package/workspace/terminal QA\n'
         'Runtime implementation stays frozen for now; runtime expansion is planned.';

@@ -1,4 +1,4 @@
-# Git Support Strategy (v0.45, extended through v0.58)
+# Git Support Strategy (v0.45, extended through v0.59)
 
 v0.45 prepares the **first real-tool path** for Git on top of the v0.44 binary
 package installer prototype. It is a feasibility / installer-path milestone:
@@ -230,4 +230,8 @@ v0.57 finalizes host-side Perl prerequisite checking, error handling, manual set
 ## v0.58 Update: Git arm64 Build Attempt
 
 v0.58 attempts the first controlled arm64 Git build. It successfully compiles the zlib dependency using the CMake NDK toolchain, producing a verified static library `libz.a`. It then attempts to build Git 2.44.0, which fails honestly as expected due to host Windows shell/path incompatibilities in the Makefile build system. Build logs are captured under `tools/git-build/logs/git-arm64-build.log`. Version references across the project and test suite are bumped to v0.58. Git remains unavailable in-app. See [Git arm64 Build Attempt Status](GIT_ARM64_BUILD_ATTEMPT_STATUS.md) and [Git arm64 Build Logs](GIT_ARM64_BUILD_LOGS.md).
+
+## v0.59 Update: Git Build Fixes
+
+v0.59 attempts build fixes and automates log analysis. It improves path normalization, clean folder handling under `tools/git-build/work/`, and reuse of the verified zlib static library. It then runs the Git build attempt, confirming Path C (Windows-native build is impractical without a Unix-like build shell) and logging the failure. Version references across the project and test suite are bumped to v0.59. Git remains unavailable in-app. See [Git Build Fixes Status](GIT_BUILD_FIXES_STATUS.md) and [Git Windows Build Issue](GIT_WINDOWS_BUILD_ISSUE.md).
 

@@ -239,8 +239,8 @@ class CommandService {
   String _betaNextOutput() {
     return '=== Beta Next ===\n'
         'Recommended next milestone:\n'
-        'v0.59 Git Build Fixes\n\n'
-        'Reason: v0.58 runs the first controlled arm64 build attempt. zlib compilation succeeded, but Git compilation failed due to host Windows shell/path incompatibilities. The next step is to troubleshoot/fix the Makefile build process.';
+        'v0.63 Git Artifact Packaging / Install QA\n\n'
+        'Reason: v0.62 resolved compile issues with missing headers and thread cancellation under Git Bash, successfully compiling a real arm64 Git binary using a minimal local build strategy. The next milestone is to package this binary and implement on-device installation and QA validation.';
   }
 
   /// Computes beta-candidate readiness. Intentional limitations (frozen
@@ -285,10 +285,10 @@ class CommandService {
 
   Future<String> _betaCandidateStatusOutput() async {
     final r = await _betaCandidateReadiness();
-    String label(String s) => s == 'UNHEALTHY' ? 'UNHEALTHY' : 'OK';
     final prefixReady = await RuntimePrefixService().isInitialized();
+    String label(String s) => s == 'UNHEALTHY' ? 'UNHEALTHY' : 'OK';
     return '=== Termode Beta Candidate ===\n'
-        'Version: v0.58\n'
+        'Version: v0.62\n'
         'Core shell: OK\n'
         'Packages: ${label(r.packages)}\n'
         'Workspaces: ${label(r.workspaces)}\n'
@@ -299,8 +299,8 @@ class CommandService {
         'PATH overlay: ${prefixReady ? 'ready' : 'limited'}\n'
         'Runtime package installer: prototype ready\n'
         'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
-        'Git inputs: Git/zlib staged; build-inputs.json present; Perl missing\n'
-        'Git: artifact not installed\n'
+        'Git inputs: Git/zlib staged; build-inputs.json present; Perl ready; host strategy selected\n'
+        'Git: compiled successfully (arm64 binary available, packaging deferred)\n'
         'Toolchains: planned (not installed)\n'
         'Known limitations: yes\n'
         'Overall: ${r.ready ? 'BETA CANDIDATE' : 'NEEDS FIXES'}';
@@ -330,7 +330,7 @@ class CommandService {
   }
 
   String _betaCandidateNotesOutput() {
-    return '=== Termode v0.58 Beta Candidate ===\n'
+    return '=== Termode v0.62 Beta Candidate ===\n'
         'Termode is a standalone Android terminal with a REAL PTY shell.\n\n'
         'Highlights:\n'
         '* REAL PTY shell with host command interception\n'
@@ -341,10 +341,10 @@ class CommandService {
         '* settings/theme/status readouts and safe visual reset\n'
         '* preview/localhost diagnostics\n'
         '* prototype runtime package installer with hello-bin\n'
-        '* Git arm64 build attempt\n'
+        '* Git minimal-local arm64 build succeeded under Git Bash\n'
         '* QA/beta/onboarding tooling and doctors\n\n'
         'Runtime remains frozen beyond the prototype installer. Git has a\n'
-        'trusted NDK build path and pinned Git ${GitBuildService.selectedGitVersion} target, with staged Git/zlib sources and build-inputs.json manifest, but no compiled artifact or runtime installation yet; Node/npm/Python are not included.\n'
+        'trusted NDK build path and pinned Git ${GitBuildService.selectedGitVersion} target, successfully compiled under Git Bash, but runtime packaging and on-device installation are deferred to v0.63; Node/npm/Python are not included.\n'
         'Run beta-candidate limits.';
   }
 
@@ -364,7 +364,7 @@ class CommandService {
 
   String _betaCandidateHelpOutput() {
     return '=== Termode Beta Candidate ===\n'
-        'Termode v0.58 is a terminal-foundation beta (Git arm64 build attempt stage).\n\n'
+        'Termode v0.62 is a terminal-foundation beta (Git Bash build stage).\n\n'
         'Subcommands:\n'
         '  beta-candidate status     - Show beta candidate readiness summary\n'
         '  beta-candidate checklist  - Show the beta candidate checklist\n'
@@ -439,7 +439,7 @@ class CommandService {
     ]);
     final coreLabel = coreSystems == 'HEALTHY' ? 'OK' : coreSystems;
     return '=== Release Candidate Status ===\n'
-        'Version: v0.58\n'
+        'Version: v0.62\n'
         'Beta candidate: yes\n'
         'Core systems: $coreLabel\n'
         'Known limitations: intentional\n'
@@ -598,7 +598,11 @@ class CommandService {
         ' 14. Git Perl resolution / arm64 build readiness (v0.56)\n'
         ' 15. Git Perl setup / build readiness finalization (v0.57)\n'
         ' 16. Git arm64 build attempt (v0.58)\n'
-        ' 17. Node.js/npm/Python remain planned\n'
+        ' 17. Git build fixes (v0.59)\n'
+        ' 18. Git build host strategy (v0.60)\n'
+        ' 19. Git arm64 build under Git Bash (v0.61)\n'
+        ' 20. Git Bash build fixes (v0.62)\n'
+        ' 21. Node.js/npm/Python remain planned\n'
         'Status: ARCHITECTURE PHASE';
   }
 
@@ -994,7 +998,7 @@ class CommandService {
   String _gitArtifactHelpOutput() {
     return '=== Git Artifact ===\n'
         'A verified, ABI-matched Git artifact is required to install real Git.\n'
-        'v0.58 attempts Git/zlib source compilation, but no fake Git.\n\n'
+        'v0.62 implements Git Bash build fixes and compiles a real arm64 Git binary.\n\n'
         'Subcommands:\n'
         '  git-artifact status    - artifact availability for the current ABI\n'
         '  git-artifact info      - what artifact is required\n'
@@ -1173,11 +1177,11 @@ class CommandService {
         'Real Git artifact bundled: ${a.available ? 'yes' : 'no'}\n'
         'Installable: ${a.installable ? 'yes' : 'no'}\n'
         'Selected Git version: ${GitBuildService.selectedGitVersion}\n'
-        'Next safe step: install/find Perl, acquire reviewed Git and dependency sources,\n'
-        'create build-inputs.json, and pass the host input/source/dependency checks.\n'
+        'Next safe step: Package the compiled binary and stage it in the app assets,\n'
+        'and run smoke tests on a physical device.\n'
         'Only then build and validate a real arm64-v8a artifact.\n'
-        'Next milestone: v0.58 Git Perl Setup Follow-up / Build Readiness.\n'
-        'Docs: docs/GIT_SOURCE_ACQUISITION_STATUS.md\n'
+        'Next milestone: v0.63 Git Artifact Packaging / Install QA.\n'
+        'Docs: docs/GIT_BASH_BUILD_FIXES_STATUS.md\n'
         'Docs: docs/GIT_TRUSTED_BUILD.md\n'
         'Do not download or execute unknown Git binaries.';
   }
@@ -1442,7 +1446,7 @@ class CommandService {
         '  git-status, git-info, git-plan, git-version, git-doctor, git-test-plan\n'
         '  git-build-status, git-build-plan, git-build-requirements, git-build-next\n'
         '  git-source-status, git-source-plan, git-deps-status, git-deps-plan\n'
-        '  git-build-inputs, git-build-blockers\n'
+        '  git-build-inputs, git-build-blockers, git-build-host-strategy\n'
         '  git-perl-status, git-source-version, git-source-checklist\n'
         '  git-deps-minimal, git-build-next-steps\n'
         '  git-artifact status, git-artifact bundle-status, git-artifact bundle-check\n'
@@ -1674,11 +1678,11 @@ class CommandService {
   }
 
   String _versionOutput() {
-    return 'Termode v0.58\n'
+    return 'Termode v0.62\n'
         'Runtime: frozen\n'
         'Shell: REAL PTY\n'
         'Packages: script + runtime prototype\n'
-        'Git: arm64 build attempt phase (artifact unavailable)';
+        'Git: Git Bash build fixes phase (binary compiled, packaging deferred)';
   }
 
   String _buildTypeName() {
@@ -1691,23 +1695,27 @@ class CommandService {
   String _buildInfoOutput() {
     return '=== Build Info ===\n'
         'App: Termode\n'
-        'Version: v0.58\n'
+        'Version: v0.62\n'
         'Build type: ${_buildTypeName()}\n'
         'Runtime: prototype installer active\n'
         'Runtime package installer: prototype ready\n'
         'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
-        'SDK/NDK: available; Git/zlib source archives & build-inputs.json: staged; Perl: ready; zlib: built\n'
+        'SDK/NDK: available; Git/zlib source archives & build-inputs.json: staged; Perl: ready; zlib: built; Git: compiled\n'
         'Git artifact: checked at runtime\n'
         'Git execution: verified only after git --version\n'
         'Toolchains: planned (not installed)\n'
         'Shell: REAL PTY\n'
         'Packages: script + runtime prototype\n'
         'Beta candidate: terminal foundation beta\n'
-        'Artifact: Termode-v0.58-git-arm64-build-attempt-debug.apk';
+        'Artifact: Termode-v0.62-git-bash-build-fixes-debug.apk';
   }
 
   String _releaseNotesOutput() {
     return '=== Termode Release Notes ===\n'
+        'v0.62 Git Bash Build Fixes\n'
+        'v0.61 Git arm64 Build Under Git Bash\n'
+        'v0.60 Git Build Host Strategy\n'
+        'v0.59 Git Build Fixes\n'
         'v0.58 Git arm64 Build Attempt\n'
         'v0.57 Git Perl Setup / Build Readiness Finalization\n'
         'v0.56 Git Perl Resolution / arm64 Build Readiness\n'
@@ -1759,7 +1767,7 @@ class CommandService {
         ? 'REAL PTY'
         : 'NORMAL';
     return '=== Termode Bug Report ===\n'
-        'Termode version: v0.58\n'
+        'Termode version: v0.62\n'
         'Android ABI: $abi\n'
         'Runtime status: $runtimeStatus\n'
         'Package doctor: $packageStatus\n'
@@ -1968,6 +1976,7 @@ class CommandService {
               '  toolchain-status\n'
               '  git-status\n'
               '  git-build-status\n'
+              '  git-build-host-strategy\n'
               '  git-source-version\n'
               '  git-source-status\n'
               '  git-perl-status\n'
@@ -3036,6 +3045,9 @@ class CommandService {
 
       case 'git-build-status':
         return CommandResult(output: await GitBuildService().status());
+
+      case 'git-build-host-strategy':
+        return CommandResult(output: GitBuildService().hostStrategy());
 
       case 'git-build-plan':
         return CommandResult(output: GitBuildService().plan());

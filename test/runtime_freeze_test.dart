@@ -118,13 +118,13 @@ void main() {
 
       expect(
         result.output,
-        contains('v0.59 Git Build Fixes'),
+        contains('v0.63 Git Artifact Packaging / Install QA'),
       );
       expect(
         result.output,
-        contains('troubleshoot Git build failure'),
+        contains('package/stage the compiled Git arm64 binary'),
       );
-      expect(result.output, contains('resolve Makefile host shell/path incompatibility issues'));
+      expect(result.output, contains('implement on-device installation and QA validation'));
       expect(result.output, contains('keep Node/npm/Python planned'));
       expect(result.output, contains('runtime expansion is planned'));
     });

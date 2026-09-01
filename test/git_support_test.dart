@@ -216,33 +216,33 @@ void main() {
       expect(result.isError, isFalse);
     });
 
-    test('version surfaces mention v0.58', () async {
+    test('version surfaces mention v0.62', () async {
       final version = await commandService.execute('version');
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
       final bug = await commandService.execute('bug-report');
       final qa = await commandService.execute('qa-report');
 
-      expect(version.output, contains('Termode v0.58'));
+      expect(version.output, contains('Termode v0.62'));
       expect(
         notes.output,
-        contains('v0.58 Git arm64 Build Attempt'),
+        contains('v0.62 Git Bash Build Fixes'),
       );
       expect(
         changelog.output,
         contains('v0.54 Git Build Prerequisite Resolution'),
       );
-      expect(bug.output, contains('Termode version: v0.58'));
-      expect(qa.output, contains('Termode v0.58'));
+      expect(bug.output, contains('Termode version: v0.62'));
+      expect(qa.output, contains('Termode v0.62'));
     });
 
-    test('build-info reports Git acquisition path and v0.58', () async {
+    test('build-info reports Git acquisition path and v0.62', () async {
       final result = await commandService.execute('build-info');
-      expect(result.output, contains('Version: v0.58'));
+      expect(result.output, contains('Version: v0.62'));
       expect(result.output, contains('Git source prep: Git 2.44.0 selected'));
       expect(
         result.output,
-        contains('Artifact: Termode-v0.58-git-arm64-build-attempt-debug.apk'),
+        contains('Artifact: Termode-v0.62-git-bash-build-fixes-debug.apk'),
       );
     });
 
@@ -298,7 +298,7 @@ void main() {
       session.isRealPtyActive = false;
     });
 
-    test('v0.58 informational Git commands print correctly', () async {
+    test('v0.62 informational Git commands print correctly', () async {
       final perlStatus = await commandService.execute('git-perl-status');
       expect(perlStatus.output, contains('=== Git Perl Status ==='));
       expect(perlStatus.output, contains('Role: host build prerequisite'));
@@ -317,7 +317,7 @@ void main() {
 
       final nextSteps = await commandService.execute('git-build-next-steps');
       expect(nextSteps.output, contains('=== Git Build Next Steps ==='));
-      expect(nextSteps.output, contains('1. Investigate the Git build error logs at tools/git-build/logs/git-arm64-build.log.'));
+      expect(nextSteps.output, contains('1. Git Bash build executed and succeeded using minimal-local flags.'));
 
       final buildReadiness = await commandService.execute('git-build-readiness');
       expect(buildReadiness.output, contains('=== Git Build Readiness ==='));

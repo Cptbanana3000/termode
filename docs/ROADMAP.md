@@ -60,14 +60,17 @@ planned/not installed and the installer refuses safely. See
 - v0.55 Git Prerequisite Acquisition / Source Staging
 - v0.56 Git Perl Resolution / arm64 Build Readiness
 - v0.57 Git Perl Setup / Build Readiness Finalization
-- v0.58 Git arm64 Build Attempt (current)
+- v0.58 Git arm64 Build Attempt
 - v0.59 Git Build Fixes
-- v0.60 Git Artifact Packaging / Install QA
-- v0.61+ Node.js / npm / Python / Dev Stack Presets
-- v0.58 Full Terminal QA · v0.59 Complete Termode Beta
+- v0.60 Git Build Host Strategy
+- v0.61 Git arm64 Build Under Git Bash
+- v0.62 Git Bash Build Fixes (current)
+- v0.63 Git Artifact Packaging / Install QA
+- v0.64+ Node.js / npm / Python / Dev Stack Presets
+- v0.63 Full Terminal QA · v0.64 Complete Termode Beta
 - CalypsoIDE integration later
 
-v0.58 attempts the first controlled arm64 Git build, successfully building zlib and honestly logging the Git build Makefile failure, and bumps the app version to v0.58. zlib is built, but Git remains unavailable in-app due to host shell build issues. See [Git arm64 Build Attempt Status](GIT_ARM64_BUILD_ATTEMPT_STATUS.md) and [Git arm64 Build Logs](GIT_ARM64_BUILD_LOGS.md).
+v0.62 resolves compile blockers (missing headers/libraries like OpenSSL, thread cancellation under Bionic, sync_file_range) and successfully compiles a real Git 2.44.0 arm64-v8a binary under Git Bash using a minimal-local build strategy. See [Git Bash Build Fixes Status](GIT_BASH_BUILD_FIXES_STATUS.md) and [Git Bash Build Logs](GIT_BASH_BUILD_LOGS.md).
 
 ## Product First
 

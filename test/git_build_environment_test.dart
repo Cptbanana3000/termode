@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../tools/git-build/check_build_env.dart';
 import '../tools/git-build/build_inputs.dart';
+import '../tools/git-build/path_translation.dart';
 
 String _dartExecutable() {
   var directory = File(Platform.resolvedExecutable).parent;
@@ -281,8 +282,8 @@ void main() {
       ]);
       expect(result.exitCode, 0);
       expect(result.stdout.toString(), contains('=== Git arm64-v8a Build Preflight ==='));
-      expect(result.stdout.toString(), contains('Build prerequisites are ready.'));
-      expect(result.stdout.toString(), contains('Next: run dart tools/git-build/build_git_arm64.dart --build to attempt the real build.'));
+      expect(result.stdout.toString(), contains('Shell preflight status: READY'));
+      expect(result.stdout.toString(), contains('Next: run dart tools/git-build/build_git_arm64.dart --build --shell=git-bash --minimal-local to attempt the real build.'));
     });
 
     test('build_git_arm64 refuses real build without explicit --build', () async {
@@ -328,5 +329,106 @@ void main() {
       expect(result.exitCode, 1);
       expect(result.stdout.toString(), contains('zlib output: REFUSED'));
     });
+
+    test('analyze_git_build_log classifies Windows shell/path issue and missing log', () async {
+      final root = Directory.current.absolute.path;
+      final temp = await Directory.systemTemp.createTemp('termode_analyze_log_test');
+      addTearDown(() => temp.delete(recursive: true));
+
+      // Test missing log behavior
+      final resultMissing = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/analyze_git_build_log.dart',
+        '--project-root',
+        temp.path,
+      ]);
+      expect(resultMissing.exitCode, 1);
+      expect(resultMissing.stdout.toString(), contains('Failure category: unknown failure'));
+
+      // Test Makefile target failure classification
+      final logDir = Directory('${temp.path}/tools/git-build/logs')..createSync(recursive: true);
+      File('${logDir.path}/git-arm64-build.log').writeAsStringSync(
+        'CreateProcess(NULL, sh.exe -c "/bin/sh ./GIT-VERSION-GEN", ...) failed.\n'
+        'make: *** [Makefile:3092: GIT-CFLAGS] Error 1'
+      );
+
+      final resultClassified = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/analyze_git_build_log.dart',
+        '--project-root',
+        temp.path,
+      ]);
+      expect(resultClassified.exitCode, 0);
+      expect(resultClassified.stdout.toString(), contains('Failure category: Makefile target failure'));
+      expect(resultClassified.stdout.toString(), contains('Failing command: make: *** [Makefile:3092: GIT-CFLAGS] Error 1'));
+
+      // Test missing OpenSSL header classification
+      File('${logDir.path}/git-arm64-build.log').writeAsStringSync(
+        'In file included from credential.c:1:\n'
+        'git-compat-util.h:345:10: fatal error: \'openssl/ssl.h\' file not found\n'
+        '#include <openssl/ssl.h>\n'
+        '         ^\n'
+        '1 error generated.\n'
+        'make: *** [Makefile:2714: credential.o] Error 1'
+      );
+
+      final resultOpenSSL = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/analyze_git_build_log.dart',
+        '--project-root',
+        temp.path,
+      ]);
+      expect(resultOpenSSL.exitCode, 0);
+      expect(resultOpenSSL.stdout.toString(), contains('Failure category: missing OpenSSL header'));
+      expect(resultOpenSSL.stdout.toString(), contains('Relevant error: openssl/ssl.h'));
+    });
+
+    test('detect_build_shell executes successfully', () async {
+      final root = Directory.current.absolute.path;
+      final result = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/detect_build_shell.dart',
+      ]);
+      expect(result.exitCode, 0);
+      expect(result.stdout.toString(), contains('=== Build Shell Detection ==='));
+      expect(result.stdout.toString(), contains('PowerShell:'));
+      expect(result.stdout.toString(), contains('cmd.exe:'));
+      expect(result.stdout.toString(), contains('Recommended shell:'));
+    });
+
+    test('verify_build_output reports missing git output and verified zlib', () async {
+      final root = Directory.current.absolute.path;
+      final temp = await Directory.systemTemp.createTemp('termode_verify_git_missing');
+      addTearDown(() => temp.delete(recursive: true));
+
+      // Stage verified zlib (must be non-placeholder, non-empty, and doesn't contain 'fake' or 'placeholder')
+      final zlibLibDir = Directory('${temp.path}/tools/git-build/output/arm64-v8a/zlib/lib')..createSync(recursive: true);
+      File('${zlibLibDir.path}/libz.a').writeAsStringSync('valid binary static archive header');
+
+      final result = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/verify_build_output.dart',
+        '--project-root',
+        temp.path,
+      ]);
+      expect(result.exitCode, 0);
+      expect(result.stdout.toString(), contains('zlib output: VERIFIED'));
+      expect(result.stdout.toString(), contains('Git output: MISSING'));
+    });
+
+    test('path translation converts Windows paths to POSIX safely', () {
+      expect(translateToPosixPath(r'C:\foo\bar'), '/c/foo/bar');
+      expect(translateToPosixPath(r'd:\Projects\termode'), '/d/Projects/termode');
+      expect(translateToPosixPath(r'E:'), '/e');
+      expect(translateToPosixPath(r'C:\path with spaces\sub'), "'/c/path with spaces/sub'");
+      expect(translateToPosixPath(r''), '');
+    });
+
+    test('print_build_host_strategy executes successfully', () async {
+      final root = Directory.current.absolute.path;
+      final result = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/print_build_host_strategy.dart',
+      ]);
+      expect(result.exitCode, 0);
+      expect(result.stdout.toString(), contains('=== Git Build Host Strategy ==='));
+      expect(result.stdout.toString(), contains('Windows-native shell: blocked'));
+      expect(result.stdout.toString(), contains('Selected strategy:'));
+    });
   });
 }
+

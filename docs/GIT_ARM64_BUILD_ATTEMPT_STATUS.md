@@ -30,3 +30,6 @@ The next milestone will focus on resolving the Windows shell/path incompatibilit
 - Providing mock Unix scripts or shell shims.
 - Porting/modifying the Git Makefile to run natively on Windows.
 - Running the build pipeline inside a WSL or MSYS2 environment that passes NDK compilers correctly.
+
+## Update in v0.59
+In v0.59, path normalization was improved, and previous log analysis was added to the build script. The build was re-attempted and confirmed Path C (Windows-native build is impractical without a Unix-like build shell). See [docs/GIT_BUILD_FIXES_STATUS.md](GIT_BUILD_FIXES_STATUS.md) for more details.

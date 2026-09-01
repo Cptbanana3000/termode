@@ -145,20 +145,20 @@ void main() {
 
       expect(status.output, contains('=== Git Build Status ==='));
       expect(status.output, contains('Target ABI: arm64-v8a'));
-      expect(status.output, contains('Selected path: B'));
+      expect(status.output, contains('Selected path: Path A'));
       expect(status.output, contains('Trusted source: staged (archive present)'));
       expect(status.output, contains('Dependencies: zlib built'));
       expect(status.output, contains('Git installed: no'));
-      expect(status.output, contains('Overall: PARTIAL'));
+      expect(status.output, contains('Overall: SUCCESS'));
       expect(plan.output, contains('=== Git Build Plan ==='));
       expect(plan.output, contains('prove git --version on Android'));
       expect(requirements.output, contains('Android SDK and NDK'));
       expect(requirements.output, contains('SHA-256'));
       expect(
         next.output,
-        contains('Next: resolve the Unix build issues on Windows / troubleshoot Makefile shell paths.'),
+        contains('Next: Packaging and staging runtime assets in next milestone.'),
       );
-      expect(next.output, contains('v0.59 Git Build Fixes'));
+      expect(next.output, contains('v0.63 Git Artifact Packaging / Install QA'));
     });
 
     test('git source and dependency commands report honest blockers', () async {
@@ -244,7 +244,7 @@ void main() {
         expect(next.output, contains('Current state:'));
         expect(
           next.output,
-          contains('v0.58 Git Perl Setup Follow-up / Build Readiness'),
+          contains('v0.63 Git Artifact Packaging / Install QA'),
         );
         expect(next.output, contains('docs/GIT_TRUSTED_BUILD.md'));
         expect(

@@ -37,6 +37,6 @@ This command reports `READY`.
 - beta readiness: missing Git remains an accepted limitation
 
 ## Next Milestone
-**v0.59 Git Build Fixes**
+**v0.60 Git Build Host Strategy**
 
-The next milestone will focus on resolving the Unix build/Makefile shell compatibility issues on Windows hosts.
+The next milestone will focus on defining and documenting the verified Unix-like build shell execution pathway.

@@ -39,7 +39,7 @@ void main(List<String> args) {
   stdout.writeln('Overall: $overall');
 
   if (overallReady) {
-    stdout.writeln('Next: v0.58 Git arm64 Build Attempt.');
+    stdout.writeln('Next: Run tools/git-build/build_git_arm64.dart to compile Git.');
   } else if (overallPartial) {
     stdout.writeln('Next: Install/configure Perl on host, then rerun check_build_env.dart.');
   } else {

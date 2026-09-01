@@ -46,7 +46,7 @@ void main(List<String> args) {
       stdout.writeln('Git output: REFUSED (placeholder or fake output detected)');
     } else {
       final sha = calculateSha256(bytes);
-      stdout.writeln('Git output: VERIFIED (Warning: Unexpected build output present!)');
+      stdout.writeln('Git output: VERIFIED');
       stdout.writeln('  Path: tools/git-build/output/arm64-v8a/git/bin/git');
       stdout.writeln('  Size: ${bytes.length} bytes');
       stdout.writeln('  SHA-256: $sha');

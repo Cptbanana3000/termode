@@ -18,9 +18,9 @@ void main() {
         (widget) =>
             (widget is Text &&
                 widget.data != null &&
-                widget.data!.contains('Termode v0.58')) ||
+                widget.data!.contains('Termode v0.62')) ||
             (widget is RichText &&
-                widget.text.toPlainText().contains('Termode v0.58')),
+                widget.text.toPlainText().contains('Termode v0.62')),
       ),
       findsOneWidget,
     );

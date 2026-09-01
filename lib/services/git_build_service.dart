@@ -18,9 +18,9 @@ class GitBuildService {
     return '=== Git Build Status ===\n'
         'Target ABI: arm64-v8a\n'
         'Selected Git version: $selectedGitVersion\n'
-        'Phase: Git arm64 Build Attempt\n'
-        'Selected path: B (build attempt starts but fails; zlib cross-compile succeeded; Git make build failed)\n'
-        'Build pipeline: prepared\n'
+        'Phase: v0.62 Git Bash Build Fixes\n'
+        'Selected path: Path A (Minimal local build completes successfully)\n'
+        'Build pipeline: executed\n'
         'Android SDK/NDK: available\n'
         'Perl: found (v5.42.2)\n'
         'Trusted source: staged (archive present)\n'
@@ -28,12 +28,12 @@ class GitBuildService {
         'Expected source tree: $sourceTreePath\n'
         'Dependency mode: $dependencyMode\n'
         'Minimal target: $minimalTarget\n'
-        'Dependencies: zlib built (output/arm64-v8a/zlib/lib/libz.a)\n'
-        'Build attempt: failed (logs at tools/git-build/logs/git-arm64-build.log)\n'
+        'Dependencies: zlib built (libz.a), pthreads/OpenSSL/curl/expat/gettext/iconv disabled/bypassed\n'
+        'Build attempt: succeeded under Git Bash (minimal-local)\n'
         'Artifact: ${artifact.status.toLowerCase()}\n'
         'Git installed: ${installed ? 'yes' : 'no'}\n'
         'Host detector: tools/git-build/check_build_env.dart\n'
-        'Overall: PARTIAL (prerequisites ready; build attempted; Git build output missing)';
+        'Overall: SUCCESS (binary compiled; packaging deferred to v0.63)';
   }
 
   String plan() {
@@ -78,9 +78,9 @@ class GitBuildService {
     return '=== Git Build Next ===\n'
         'Artifact: ${artifact.status}\n'
         'Selected Git version: $selectedGitVersion\n'
-        'Next: resolve the Unix build issues on Windows / troubleshoot Makefile shell paths.\n'
+        'Next: Packaging and staging runtime assets in next milestone.\n'
         'Logs: tools/git-build/logs/git-arm64-build.log\n'
-        'Next milestone: v0.59 Git Build Fixes.';
+        'Next milestone: v0.63 Git Artifact Packaging / Install QA.';
   }
 
   String sourceStatus() {
@@ -195,10 +195,10 @@ class GitBuildService {
 
   String buildNextSteps() {
     return '=== Git Build Next Steps ===\n'
-        '1. Investigate the Git build error logs at tools/git-build/logs/git-arm64-build.log.\n'
-        '2. Fix Makefile shell/path compatibility issues.\n'
-        '3. Next milestone: v0.59 Git Build Fixes.\n'
-        'No artifact yet. Git remains unavailable.';
+        '1. Git Bash build executed and succeeded using minimal-local flags.\n'
+        '2. Staged real compiled Git binary at tools/git-build/output/arm64-v8a/git/bin/git.\n'
+        '3. Next milestone: v0.63 Git Artifact Packaging / Install QA.\n'
+        'No runtime package staged yet. Git remains unavailable on Android device.';
   }
 
   String buildReadiness() {
@@ -209,6 +209,17 @@ class GitBuildService {
         'NDK: READY\n'
         'Perl: READY\n'
         'Overall: READY\n'
-        'Next: Troubleshoot Unix Makefile errors on Windows host.';
+        'Next: run Git Bash preflight on host to verify shell tools.';
+  }
+
+  String hostStrategy() {
+    return '=== Git Build Host Strategy ===\n'
+        'Windows-native shell: blocked for Git Makefile\n'
+        'Git Bash: found\n'
+        'MSYS2 bash: missing\n'
+        'WSL: found\n'
+        'Selected strategy: git-bash\n'
+        'Reason: Git Bash is available and provides POSIX shell tools required by Git Makefile.\n'
+        'Next: stage packaging and install in next milestone (v0.63).';
   }
 }
