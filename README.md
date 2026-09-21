@@ -3,7 +3,7 @@
 Termode is a standalone Android terminal project with a REAL PTY shell,
 script packages, workspace folders, and beta QA tooling.
 
-Current status: **v0.69 Node.js & Full Runtime Bundling QA** (terminal foundation beta).
+Current status: **v0.70 Authentic Google V8 Node.js Runtime Engine & Full Packaging** (terminal foundation beta).
 
 Termode is not a full Linux distribution and is not a Termux replacement yet,
 and it is not a stable v1.0. It is building a complete standalone Android
@@ -12,7 +12,7 @@ integrating into CalypsoIDE.
 
 Termode has a strong terminal foundation today (REAL PTY, packages, workspaces,
 sessions, QA/beta/onboarding tooling), verified **local-only Git 2.44.0 on arm64-v8a Android**,
-the **Node.js v20.11.0 runtime execution engine** (`libtermode_node_exec.so`, `runtime-pkg install node`, `node --version`, `node -e`),
+the **authentic Google V8 Node.js v24.18.0 runtime execution engine** (`libtermode_node_exec.so`, `runtime-pkg install node`, `node --version`, `node -e`),
 the **npm package management engine** (`npm init`, `npm ls`, `npm run`, `npm doctor`, `npm-status`, `npm-info`, `npx`),
 built-in **Dev Stack Presets** (`stack-list`, `stack-init`, `stack-info`, `stack-doctor` with `node-express`, `static-web`, and `react-ts` templates),
 and the headless **Calypso IDE Integration Bridge** (`TermodeEngine` facade and `TermodeEmbeddableTerminal` widget).

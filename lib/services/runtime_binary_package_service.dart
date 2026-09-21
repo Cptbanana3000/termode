@@ -226,6 +226,7 @@ class RuntimeBinaryPackageService {
   }
 
   File? _resolveNodePrefixFile(String relPath, Map<String, String> paths) {
+    if (!_isSafeGitRelativePath(relPath)) return null;
     var installPath = relPath.replaceAll('\\', '/');
     if (installPath.startsWith('usr/')) {
       installPath = installPath.substring(4);
@@ -926,22 +927,11 @@ class RuntimeBinaryPackageService {
       if (strategy != 'native-library-dir') {
         throw StateError('unsupported executable strategy: $strategy');
       }
-      if (files.length != 1 || files.first is! Map) {
-        throw StateError('Node package must contain one reviewed executable');
+      if (files.isEmpty) {
+        throw StateError('Node package contains no files');
       }
-      final meta = Map<String, dynamic>.from(files.first as Map);
-      final relPath = meta['path'].toString();
-      final logicalPath = manifest['logical_install_path']?.toString() ?? '';
-      final destination = _resolveNodePrefixFile(logicalPath, paths);
-      if (destination == null) throw StateError('invalid logical Node path');
-      await destination.parent.create(recursive: true);
-      final existingType = await FileSystemEntity.type(
-        destination.path,
-        followLinks: false,
-      );
-      if (existingType != FileSystemEntityType.notFound) {
-        throw StateError('unmanaged logical path already exists: $logicalPath');
-      }
+      final logicalPath = manifest['logical_install_path']?.toString() ?? 'bin/node';
+      final entrypoint = manifest['entrypoint']?.toString() ?? 'bin/node';
 
       late final String backingPath;
       late final String executableStorage;
@@ -963,52 +953,124 @@ class RuntimeBinaryPackageService {
         }
         executableStorage = 'native-library-dir';
       } else {
-        // Host tests
-        final source = artifact.location == 'project'
-            ? File(
-                '${RuntimeArtifactRegistryService.nodeArtifactsRoot}/$abi/files/$relPath',
-              )
-            : null;
-        if (source != null && source.existsSync()) {
-          await source.copy(destination.path);
-        } else {
-          final bytes = await registry.readBundledNodeFile(relPath);
-          if (bytes == null) {
-            throw StateError('bundled artifact file missing: $relPath');
-          }
-          await destination.writeAsBytes(bytes, flush: true);
-        }
-        createdLogicalPaths.add(destination.path);
-        backingPath = destination.path;
         executableStorage = 'app-private-prefix-host-test';
+        final hostExecDest = _resolveNodePrefixFile(logicalPath, paths);
+        if (hostExecDest == null) throw StateError('invalid logical Node path');
+        backingPath = hostExecDest.path;
       }
 
-      final backingFile = File(backingPath);
-      if (!await backingFile.exists()) {
-        throw StateError('executable backing file missing: $backingPath');
-      }
-      final backingBytes = await backingFile.readAsBytes();
-      final actual = _calculateSha256(backingBytes);
-      final expected = meta['sha256'].toString().toLowerCase();
-      final expectedBytes = meta['bytes'];
-      if (actual.toLowerCase() != expected ||
-          expectedBytes is! int ||
-          backingBytes.length != expectedBytes) {
-        throw StateError('packaged executable checksum/size mismatch');
-      }
-      if (backingBytes.length < 4 ||
-          backingBytes[0] != 0x7f ||
-          backingBytes[1] != 0x45 ||
-          backingBytes[2] != 0x4c ||
-          backingBytes[3] != 0x46) {
-        throw StateError('packaged executable is not an ELF binary');
-      }
-      checksums[relPath] = actual;
-      installedFiles.add(relPath);
+      for (final rawItem in files) {
+        if (rawItem is! Map) {
+          throw StateError('Node package contains invalid file entry');
+        }
+        final meta = Map<String, dynamic>.from(rawItem);
+        final relPath = meta['path'].toString();
+        final expectedSha = meta['sha256'].toString().toLowerCase();
+        final expectedBytes = meta['bytes'];
 
-      if (Platform.isAndroid) {
-        await Link(destination.path).create(backingPath);
-        createdLogicalPaths.add(destination.path);
+        final destination = _resolveNodePrefixFile(relPath, paths);
+        if (destination == null) {
+          throw StateError('invalid destination for Node file: $relPath');
+        }
+        await destination.parent.create(recursive: true);
+
+        if (relPath == entrypoint) {
+          if (Platform.isAndroid) {
+            final backingFile = File(backingPath);
+            if (!await backingFile.exists()) {
+              throw StateError('executable backing file missing: $backingPath');
+            }
+            final backingBytes = await backingFile.readAsBytes();
+            final actual = _calculateSha256(backingBytes);
+            if (actual.toLowerCase() != expectedSha ||
+                expectedBytes is! int ||
+                backingBytes.length != expectedBytes) {
+              throw StateError('packaged executable checksum/size mismatch');
+            }
+            if (backingBytes.length < 4 ||
+                backingBytes[0] != 0x7f ||
+                backingBytes[1] != 0x45 ||
+                backingBytes[2] != 0x4c ||
+                backingBytes[3] != 0x46) {
+              throw StateError('packaged executable is not an ELF binary');
+            }
+            final existingType = await FileSystemEntity.type(
+              destination.path,
+              followLinks: false,
+            );
+            if (existingType != FileSystemEntityType.notFound) {
+              await _deleteLogicalEntity(destination.path);
+            }
+            await Link(destination.path).create(backingPath);
+            createdLogicalPaths.add(destination.path);
+            checksums[relPath] = actual;
+            installedFiles.add(relPath);
+          } else {
+            final existingType = await FileSystemEntity.type(
+              destination.path,
+              followLinks: false,
+            );
+            if (existingType != FileSystemEntityType.notFound) {
+              await _deleteLogicalEntity(destination.path);
+            }
+            final source = artifact.location == 'project'
+                ? File(
+                    '${RuntimeArtifactRegistryService.nodeArtifactsRoot}/$abi/files/$relPath',
+                  )
+                : null;
+            if (source != null && source.existsSync()) {
+              await source.copy(destination.path);
+            } else {
+              final bytes = await registry.readBundledNodeFile(relPath);
+              if (bytes == null) {
+                throw StateError('bundled artifact file missing: $relPath');
+              }
+              await destination.writeAsBytes(bytes, flush: true);
+            }
+            final writtenBytes = await destination.readAsBytes();
+            final actual = _calculateSha256(writtenBytes);
+            if (actual.toLowerCase() != expectedSha ||
+                expectedBytes is! int ||
+                writtenBytes.length != expectedBytes) {
+              throw StateError('packaged executable checksum/size mismatch');
+            }
+            createdLogicalPaths.add(destination.path);
+            checksums[relPath] = actual;
+            installedFiles.add(relPath);
+          }
+        } else {
+          final existingType = await FileSystemEntity.type(
+            destination.path,
+            followLinks: false,
+          );
+          if (existingType != FileSystemEntityType.notFound) {
+            await _deleteLogicalEntity(destination.path);
+          }
+          final source = artifact.location == 'project'
+              ? File(
+                  '${RuntimeArtifactRegistryService.nodeArtifactsRoot}/$abi/files/$relPath',
+                )
+              : null;
+          if (source != null && source.existsSync()) {
+            await source.copy(destination.path);
+          } else {
+            final bytes = await registry.readBundledNodeFile(relPath);
+            if (bytes == null) {
+              throw StateError('bundled artifact file missing: $relPath');
+            }
+            await destination.writeAsBytes(bytes, flush: true);
+          }
+          final writtenBytes = await destination.readAsBytes();
+          final actual = _calculateSha256(writtenBytes);
+          if (actual.toLowerCase() != expectedSha ||
+              expectedBytes is! int ||
+              writtenBytes.length != expectedBytes) {
+            throw StateError('file checksum/size mismatch for $relPath');
+          }
+          createdLogicalPaths.add(destination.path);
+          checksums[relPath] = actual;
+          installedFiles.add(relPath);
+        }
       }
 
       final probeResult = await runNode(['--version']);
@@ -1044,10 +1106,11 @@ class RuntimeBinaryPackageService {
       metadata['packages'] = packages;
       await _writeMetadata(metadata);
       await _prefix.generateEnvScript();
+      final entrypointEntity = _resolveNodePrefixFile(logicalPath, paths);
       return RuntimeBinaryPackageResult(
         'Installed: node\n'
         'Command: node\n'
-        'Logical path: ${destination.path}\n'
+        'Logical path: ${entrypointEntity?.path ?? logicalPath}\n'
         'Executable backing path: $backingPath\n'
         'Executable storage: $executableStorage\n'
         'Execution verified: yes\n'
@@ -1303,7 +1366,9 @@ class RuntimeBinaryPackageService {
       }
       final backingPath = pkg['executable_backing_path']?.toString() ?? '';
       final backingFile = File(backingPath);
-      final expected = checksums[entrypoint]?.toString() ?? '';
+      final expected = checksums[entrypoint]?.toString() ??
+          checksums['bin/node']?.toString() ??
+          '';
       if (backingPath.isEmpty || !await backingFile.exists()) {
         return const RuntimeBinaryPackageResult(
           '=== Runtime Package Verify: node ===\n'
@@ -1324,6 +1389,23 @@ class RuntimeBinaryPackageService {
           'Status: UNHEALTHY',
           isError: true,
         );
+      }
+      if (nodeExecutorForTesting != null || Platform.isAndroid) {
+        final probeResult = await runNode(['--version']);
+        final probe = _preferredOutput(probeResult);
+        if (probeResult.exitCode != 0 ||
+            !RegExp(r'^v\d+\.\d+\.\d+').hasMatch(probe.toLowerCase())) {
+          return RuntimeBinaryPackageResult(
+            '=== Runtime Package Verify: node ===\n'
+            'Metadata: OK\n'
+            'Files: OK\n'
+            'Checksum: OK\n'
+            'Command: FAIL\n'
+            'Output: $probe\n'
+            'Status: UNHEALTHY',
+            isError: true,
+          );
+        }
       }
       return RuntimeBinaryPackageResult(
         '=== Runtime Package Verify: node ===\n'

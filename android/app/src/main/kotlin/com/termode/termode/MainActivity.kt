@@ -146,6 +146,8 @@ class MainActivity: FlutterActivity() {
                                 env["TERMODE_CONFIG"] = configDir.absolutePath
                                 env["TERMODE_PREFERRED_CWD"] = homeDir.absolutePath
                                 env["TMPDIR"] = tmpDir.absolutePath
+                                env["OPENSSL_CONF"] = "/dev/null"
+                                env["LD_LIBRARY_PATH"] = "${java.io.File(usrDir, "lib").absolutePath}:${applicationInfo.nativeLibraryDir}"
                                 env["PATH"] = "${binDir.absolutePath}:/system/bin:/system/xbin:/vendor/bin:/product/bin"
                                 env["TERM"] = "xterm-256color"
 
@@ -500,6 +502,11 @@ class MainActivity: FlutterActivity() {
                                     put("TERMODE_CONFIG", configDir.absolutePath)
                                     put("TMPDIR", tmpDir.absolutePath)
                                     put("NODE_PATH", nodePath)
+                                    put("OPENSSL_CONF", "/dev/null")
+                                    put(
+                                        "LD_LIBRARY_PATH",
+                                        "${java.io.File(usrDir, "lib").absolutePath}:${applicationInfo.nativeLibraryDir}"
+                                    )
                                     put(
                                         "PATH",
                                         "${java.io.File(usrDir, "bin").absolutePath}:" +
@@ -507,19 +514,71 @@ class MainActivity: FlutterActivity() {
                                     )
                                 }
                             }.start()
-                            val stdout = process.inputStream.bufferedReader().readText().trimEnd()
-                            val stderrText = process.errorStream.bufferedReader().readText().trimEnd()
-                            val finished = process.waitFor(timeoutMs, TimeUnit.MILLISECONDS)
-                            if (!finished) {
-                                process.destroyForcibly()
-                                throw java.util.concurrent.TimeoutException("Node command timed out after ${timeoutMs}ms")
+
+                            val stdoutBuilder = StringBuilder()
+                            val stderrBuilder = StringBuilder()
+
+                            val stdoutThread = thread {
+                                try {
+                                    val reader = process.inputStream.bufferedReader()
+                                    var line: String?
+                                    while (reader.readLine().also { line = it } != null) {
+                                        synchronized(stdoutBuilder) {
+                                            if (stdoutBuilder.length < 50000) {
+                                                stdoutBuilder.append(line).append("\n")
+                                            }
+                                        }
+                                    }
+                                } catch (_: Exception) {}
                             }
+
+                            val stderrThread = thread {
+                                try {
+                                    val reader = process.errorStream.bufferedReader()
+                                    var line: String?
+                                    while (reader.readLine().also { line = it } != null) {
+                                        synchronized(stderrBuilder) {
+                                            if (stderrBuilder.length < 50000) {
+                                                stderrBuilder.append(line).append("\n")
+                                            }
+                                        }
+                                    }
+                                } catch (_: Exception) {}
+                            }
+
+                            val isProbeOrEval = arguments.any { it == "--version" || it == "-v" || it == "-e" || it == "--help" || it == "-h" }
+                            val waitLimitMs = if (isProbeOrEval) timeoutMs else 2500L
+
+                            val finished = process.waitFor(waitLimitMs, TimeUnit.MILLISECONDS)
+
+                            val stdoutStr: String
+                            val stderrStr: String
+                            val exitCode: Int
+
+                            if (finished) {
+                                stdoutThread.join(500)
+                                stderrThread.join(500)
+                                stdoutStr = synchronized(stdoutBuilder) { stdoutBuilder.toString().trimEnd() }
+                                stderrStr = synchronized(stderrBuilder) { stderrBuilder.toString().trimEnd() }
+                                exitCode = process.exitValue()
+                            } else {
+                                stdoutStr = synchronized(stdoutBuilder) { stdoutBuilder.toString().trimEnd() }
+                                stderrStr = synchronized(stderrBuilder) { stderrBuilder.toString().trimEnd() }
+                                if (isProbeOrEval) {
+                                    process.destroyForcibly()
+                                    throw java.util.concurrent.TimeoutException("Node command timed out after ${timeoutMs}ms")
+                                } else {
+                                    activeProcesses["node_server_${System.currentTimeMillis()}"] = process
+                                    exitCode = 0
+                                }
+                            }
+
                             Handler(Looper.getMainLooper()).post {
                                 result.success(
                                     mapOf(
-                                        "stdout" to stdout,
-                                        "stderr" to stderrText,
-                                        "exitCode" to process.exitValue(),
+                                        "stdout" to (if (stdoutStr.isNotEmpty()) stdoutStr else if (!finished) "Node.js server listening in background" else ""),
+                                        "stderr" to stderrStr,
+                                        "exitCode" to exitCode,
                                         "executablePath" to nodeExecutable.absolutePath,
                                         "workingDirectory" to workingDir.absolutePath
                                     )
@@ -1535,7 +1594,9 @@ class MainActivity: FlutterActivity() {
                                 "TERMODE_PREFERRED_CWD",
                                 "GIT_CONFIG_NOSYSTEM",
                                 "GIT_TEMPLATE_DIR",
-                                "XDG_CONFIG_HOME"
+                                "XDG_CONFIG_HOME",
+                                "LD_LIBRARY_PATH",
+                                "OPENSSL_CONF"
                             ),
                             arrayOf(
                                 "termode:\$ ",
@@ -1549,7 +1610,9 @@ class MainActivity: FlutterActivity() {
                                 workingDir.absolutePath,
                                 "1",
                                 java.io.File(usrDir, "share/git-core/templates").absolutePath,
-                                configDir.absolutePath
+                                configDir.absolutePath,
+                                "${java.io.File(usrDir, "lib").absolutePath}:${applicationInfo.nativeLibraryDir}",
+                                "/dev/null"
                             ),
                             cols,
                             rows

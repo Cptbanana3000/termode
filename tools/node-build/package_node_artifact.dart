@@ -3,56 +3,69 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 
 const abi = 'arm64-v8a';
-const nodeVersion = '20.11.0';
+const nodeVersion = '24.18.0';
 const executablePackageName = 'libtermode_node_exec.so';
 
 void main(List<String> args) async {
-  print('=== Packaging Node.js Runtime Artifact ===');
+  print('=== Packaging Node.js Authentic V8 Runtime Artifact ===');
 
-  final sourcePath = args.isNotEmpty
-      ? args[0]
-      : 'tools/node-build/output/arm64-v8a/node/bin/node';
-  final sourceFile = File(sourcePath);
-
-  if (!sourceFile.existsSync()) {
-    stderr.writeln('ERROR: Source binary missing: $sourcePath');
+  final nodeBinFile = File('tools/runtime-artifacts/node/arm64-v8a/files/bin/node');
+  if (!nodeBinFile.existsSync()) {
+    stderr.writeln('ERROR: Source binary missing: ${nodeBinFile.path}');
     exit(1);
   }
 
-  final bytes = await sourceFile.readAsBytes();
-  if (bytes.length < 4 ||
-      bytes[0] != 0x7f ||
-      bytes[1] != 0x45 ||
-      bytes[2] != 0x4c ||
-      bytes[3] != 0x46) {
+  final nodeBytes = await nodeBinFile.readAsBytes();
+  if (nodeBytes.length < 4 ||
+      nodeBytes[0] != 0x7f ||
+      nodeBytes[1] != 0x45 ||
+      nodeBytes[2] != 0x4c ||
+      nodeBytes[3] != 0x46) {
     stderr.writeln('ERROR: File is not an ELF binary.');
     exit(1);
   }
 
-  final sha = sha256.convert(bytes).toString();
-  final size = bytes.length;
+  final nodeSha = sha256.convert(nodeBytes).toString();
+  print('Node ELF: ${nodeBinFile.path} (${nodeBytes.length} bytes)');
+  print('SHA256: $nodeSha');
 
-  print('Binary: $sourcePath ($size bytes)');
-  print('SHA256: $sha');
-
-  // 1. Stage into runtime-artifacts files/bin/node
-  final stagedFile = File('tools/runtime-artifacts/node/arm64-v8a/files/bin/node');
-  await stagedFile.parent.create(recursive: true);
-  await stagedFile.writeAsBytes(bytes, flush: true);
-  print('Staged: ${stagedFile.path}');
-
-  // 2. Stage into Android jniLibs
+  // Stage into Android jniLibs
   final jniLibFile = File('android/app/src/main/jniLibs/arm64-v8a/$executablePackageName');
   await jniLibFile.parent.create(recursive: true);
-  await jniLibFile.writeAsBytes(bytes, flush: true);
+  await jniLibFile.writeAsBytes(nodeBytes, flush: true);
   print('Native Payload: ${jniLibFile.path}');
 
-  // 3. Write manifest.json
+  // Scan all files in tools/runtime-artifacts/node/arm64-v8a/files
+  final filesRoot = Directory('tools/runtime-artifacts/node/arm64-v8a/files');
+  final fileList = <Map<String, dynamic>>[];
+  final shaMap = <String, String>{};
+
+  final allEntities = filesRoot.listSync(recursive: true);
+  for (final entity in allEntities) {
+    if (entity is File) {
+      final relPath = entity.path
+          .replaceAll('\\', '/')
+          .replaceFirst('tools/runtime-artifacts/node/arm64-v8a/files/', '');
+      final bytes = await entity.readAsBytes();
+      final sha = sha256.convert(bytes).toString();
+      fileList.add({
+        'path': relPath,
+        'sha256': sha,
+        'bytes': bytes.length,
+      });
+      shaMap[relPath] = sha;
+      print('  + $relPath (${bytes.length} bytes, sha: ${sha.substring(0, 8)}...)');
+    }
+  }
+
+  // Sort files by path for deterministic manifest
+  fileList.sort((a, b) => (a['path'] as String).compareTo(b['path'] as String));
+
   final manifest = <String, dynamic>{
     'name': 'node',
     'version': nodeVersion,
-    'termode_milestone': 'v0.69',
-    'created_by': 'Termode reproducible NDK build',
+    'termode_milestone': 'v0.70',
+    'created_by': 'Termode upstream Android Bionic V8 build',
     'candidate': false,
     'template_only': false,
     'kind': 'native-tool',
@@ -62,25 +75,17 @@ void main(List<String> args) async {
     'logical_install_path': 'bin/node',
     'executable_strategy': 'native-library-dir',
     'executable_package_name': executablePackageName,
-    'original_binary_sha256': sha,
-    'packaged_executable_sha256': sha,
+    'original_binary_sha256': nodeSha,
+    'packaged_executable_sha256': nodeSha,
     'execution_policy_note':
-        'Logical prefix mapping only; execute the immutable APK payload from applicationInfo.nativeLibraryDir.',
+        'Logical prefix mapping only; execute the immutable APK payload from applicationInfo.nativeLibraryDir with LD_LIBRARY_PATH pointing to usr/lib.',
     'local_only': true,
     'remote_features_deferred': false,
-    'files': [
-      {
-        'path': 'bin/node',
-        'sha256': sha,
-        'bytes': size,
-      }
-    ],
-    'sha256': {
-      'bin/node': sha,
-    },
-    'source': 'termode-built',
+    'files': fileList,
+    'sha256': shaMap,
+    'source': 'upstream-termux-bionic',
     'source_url': 'https://nodejs.org',
-    'build_method': 'reproducible-ndk-clang-build',
+    'build_method': 'bionic-ndk-build',
     'license': 'MIT',
     'trusted_by': 'Termode',
     'verification_command': 'node --version',
@@ -88,7 +93,14 @@ void main(List<String> args) async {
       'node --version',
       'node -e "console.log(\'hello termode node\')"',
     ],
-    'dependencies': <String>[],
+    'dependencies': <String>[
+      'c-ares',
+      'libicu',
+      'libsqlite',
+      'openssl',
+      'zlib',
+      'libc++_shared',
+    ],
     'created_at': DateTime.now().toUtc().toIso8601String(),
   };
 
@@ -97,5 +109,5 @@ void main(List<String> args) async {
     const JsonEncoder.withIndent('  ').convert(manifest) + '\n',
   );
   print('Manifest: ${manifestFile.path}');
-  print('Packaging SUCCESS!');
+  print('Packaging SUCCESS! (${fileList.length} files tracked)');
 }

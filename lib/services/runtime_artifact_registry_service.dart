@@ -33,6 +33,7 @@ class RuntimeArtifactRegistryService {
   static const Set<String> trustedSources = {
     'termode-vendored',
     'termode-built',
+    'upstream-termux-bionic',
   };
 
   static const Set<String> supportedExecutableStrategies = {
@@ -356,6 +357,21 @@ class RuntimeArtifactRegistryService {
     }
     if (files is! List || files.isEmpty) {
       errors.add('missing files');
+    } else {
+      for (final item in files) {
+        if (item is! Map) {
+          errors.add('invalid file entry');
+          continue;
+        }
+        final path = item['path']?.toString() ?? '';
+        final sha = item['sha256']?.toString() ?? '';
+        final bytes = item['bytes'];
+        if (!_isSafeRelativePath(path)) errors.add('unsafe file path');
+        if (!RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(sha)) {
+          errors.add('invalid checksum');
+        }
+        if (bytes is! int || bytes <= 0) errors.add('invalid file byte count');
+      }
     }
     return errors..sort();
   }

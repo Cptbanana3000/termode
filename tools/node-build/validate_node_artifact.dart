@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 
 void main(List<String> args) async {
-  print('=== Validating Node.js Runtime Artifact ===');
+  print('=== Validating Node.js Authentic V8 Runtime Artifact ===');
   final targetAbi = args.isNotEmpty ? args[0] : 'arm64-v8a';
   final manifestFile = File('tools/runtime-artifacts/node/$targetAbi/manifest.json');
 
@@ -38,20 +38,28 @@ void main(List<String> args) async {
     exit(1);
   }
 
-  // Check staged binary
-  final stagedPath = 'tools/runtime-artifacts/node/$targetAbi/files/bin/node';
-  final stagedFile = File(stagedPath);
-  if (!stagedFile.existsSync()) {
-    stderr.writeln('ERROR: Staged binary missing: $stagedPath');
-    exit(1);
-  }
-
-  final stagedBytes = await stagedFile.readAsBytes();
-  final stagedSha = sha256.convert(stagedBytes).toString();
-  final expectedSha = manifest['original_binary_sha256'];
-  if (stagedSha != expectedSha) {
-    stderr.writeln('ERROR: Checksum mismatch ($stagedSha vs $expectedSha)');
-    exit(1);
+  // Validate all files in manifest
+  final files = manifest['files'] as List;
+  for (final item in files) {
+    final relPath = item['path'] as String;
+    final expectedSha = item['sha256'] as String;
+    final expectedBytes = item['bytes'] as int;
+    final file = File('tools/runtime-artifacts/node/$targetAbi/files/$relPath');
+    if (!file.existsSync()) {
+      stderr.writeln('ERROR: Staged file missing: ${file.path}');
+      exit(1);
+    }
+    final bytes = await file.readAsBytes();
+    if (bytes.length != expectedBytes) {
+      stderr.writeln('ERROR: File size mismatch for $relPath (${bytes.length} vs $expectedBytes)');
+      exit(1);
+    }
+    final actualSha = sha256.convert(bytes).toString();
+    if (actualSha != expectedSha) {
+      stderr.writeln('ERROR: Checksum mismatch for $relPath ($actualSha vs $expectedSha)');
+      exit(1);
+    }
+    print('  [OK] $relPath ($expectedBytes bytes)');
   }
 
   // Check jniLibs binary
@@ -63,13 +71,13 @@ void main(List<String> args) async {
   }
   final jniBytes = await jniFile.readAsBytes();
   final jniSha = sha256.convert(jniBytes).toString();
-  if (jniSha != expectedSha) {
-    stderr.writeln('ERROR: jniLibs checksum mismatch ($jniSha vs $expectedSha)');
+  final expectedJniSha = manifest['packaged_executable_sha256'];
+  if (jniSha != expectedJniSha) {
+    stderr.writeln('ERROR: jniLibs checksum mismatch ($jniSha vs $expectedJniSha)');
     exit(1);
   }
 
   print('Manifest: OK');
-  print('Staged Binary: OK (SHA256: $stagedSha)');
-  print('jniLibs Payload: OK (Size: ${jniBytes.length} bytes)');
-  print('Artifact VALIDATED successfully!');
+  print('jniLibs Payload: OK (Size: ${jniBytes.length} bytes, SHA256: $jniSha)');
+  print('Artifact VALIDATED successfully! (${files.length} files verified)');
 }

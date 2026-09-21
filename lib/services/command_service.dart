@@ -1087,7 +1087,7 @@ class CommandService {
         'Remote Git: deferred';
   }
 
-  // --- v0.69 Node.js Execution and Runtime Bundling -------------------------
+  // --- v0.70 Authentic Node.js V8 Execution and Runtime Bundling -----------
 
   Future<String> _nodeBareOutput(List<String> arguments) async {
     final pkg = RuntimeBinaryPackageService();
@@ -1099,7 +1099,7 @@ class CommandService {
           'Run: runtime-pkg install node\n'
           'Run: node-artifact status\n'
           'Run: node-doctor\n'
-          'v0.69 provides the Node.js arm64 execution engine.';
+          'v0.70 provides the authentic Google V8 Node.js arm64 execution engine.';
     }
 
     final effectiveArgs = arguments.isEmpty ? ['--version'] : arguments;
@@ -1140,7 +1140,7 @@ class CommandService {
     sb.writeln('Execution Verified: ${verified ? "yes" : "no"}');
     sb.writeln('Active Working Directory: $cwd');
     sb.writeln('NODE_PATH Integration: enabled');
-    sb.writeln('Milestone: v0.69 (Node.js & Full Runtime Bundling QA)');
+    sb.writeln('Milestone: v0.70 (Authentic Node.js V8 Runtime & Full Bundling)');
     return sb.toString().trimRight();
   }
 
@@ -1193,7 +1193,7 @@ class CommandService {
         'Execution strategy: native-library-dir\n'
         'Backing path: ${backing ?? "libtermode_node_exec.so"}\n'
         'Execution verified: ${verified ? "yes" : "no"}\n'
-        'Milestone: v0.69 (Node.js & Full Runtime Bundling QA)';
+        'Milestone: v0.70 (Authentic Node.js V8 Runtime & Full Bundling)';
   }
 
   Future<String> _nodeInfoOutput() async {

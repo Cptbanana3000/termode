@@ -16,7 +16,7 @@ import 'package:termode/services/virtual_filesystem.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('v0.66 Node.js arm64 Prototype Foundation', () {
+  group('v0.70 Node.js arm64 Authentic V8 Engine', () {
     late Directory tempDir;
     late CommandService commandService;
 
@@ -98,7 +98,7 @@ void main() {
 
       final validManifest = <String, dynamic>{
         'name': 'node',
-        'version': '20.11.0',
+        'version': '24.18.0',
         'kind': 'native-tool',
         'command': 'node',
         'abi': 'arm64-v8a',
@@ -106,9 +106,9 @@ void main() {
         'logical_install_path': 'bin/node',
         'executable_strategy': 'native-library-dir',
         'executable_package_name': 'libtermode_node_exec.so',
-        'source': 'termode-built',
+        'source': 'upstream-termux-bionic',
         'files': [
-          {'path': 'bin/node', 'sha256': 'abc', 'bytes': 100}
+          {'path': 'bin/node', 'sha256': 'a' * 64, 'bytes': 100}
         ],
       };
 
@@ -150,7 +150,7 @@ void main() {
       expect(result.output, contains('Package: node'));
       expect(result.output, contains('Artifact ABI: arm64-v8a'));
       expect(result.output, contains('NODE_PATH Integration: enabled'));
-      expect(result.output, contains('Milestone: v0.69 (Node.js & Full Runtime Bundling QA)'));
+      expect(result.output, contains('Milestone: v0.70 (Authentic Node.js V8 Runtime & Full Bundling)'));
     });
 
     test('node-artifact status, verify, and template commands work', () async {
@@ -173,7 +173,7 @@ void main() {
     test('node-status and node-info output informative messages', () async {
       final status = await commandService.execute('node-status');
       expect(status.output, contains('Package: node'));
-      expect(status.output, contains('Milestone: v0.69 (Node.js & Full Runtime Bundling QA)'));
+      expect(status.output, contains('Milestone: v0.70 (Authentic Node.js V8 Runtime & Full Bundling)'));
 
       final info = await commandService.execute('node-info');
       expect(info.output, contains('Package: node'));
@@ -187,7 +187,7 @@ void main() {
       expect(result.output, contains('Run: runtime-pkg install node'));
       expect(result.output, contains('Run: node-artifact status'));
       expect(result.output, contains('Run: node-doctor'));
-      expect(result.output, contains('v0.69 provides the Node.js arm64 execution engine.'));
+      expect(result.output, contains('v0.70 provides the authentic Google V8 Node.js arm64 execution engine.'));
     });
 
     test('node command dispatches through test hook when active', () async {
@@ -196,7 +196,7 @@ void main() {
         if (args.contains('--version')) {
           return NativeCommandResult(
             exitCode: 0,
-            stdout: 'v20.11.0\n',
+            stdout: 'v24.18.0\n',
             stderr: '',
           );
         }
@@ -216,7 +216,7 @@ void main() {
       expect(await pkg.nodeInstalled(), isTrue);
 
       final versionResult = await commandService.execute('node --version');
-      expect(versionResult.output, equals('v20.11.0'));
+      expect(versionResult.output, equals('v24.18.0'));
 
       final evalResult =
           await commandService.execute('node -e "console.log(42)"');
@@ -228,7 +228,7 @@ void main() {
           (args, {workingDirectory, timeoutMs}) async {
         return NativeCommandResult(
           exitCode: 0,
-          stdout: 'v20.11.0\n',
+          stdout: 'v24.18.0\n',
           stderr: '',
         );
       };

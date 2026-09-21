@@ -87,6 +87,8 @@ class RuntimePrefixService {
       'HOME': p['home']!,
       'TMPDIR': '${p['sandbox']}/tmp',
       'TERM': 'xterm-256color',
+      'LD_LIBRARY_PATH': '${p['lib']}',
+      'OPENSSL_CONF': '/dev/null',
     };
   }
 
@@ -484,6 +486,8 @@ class RuntimePrefixService {
         'HOME',
         'TMPDIR',
         'TERM',
+        'LD_LIBRARY_PATH',
+        'OPENSSL_CONF',
       ]) {
         sb.writeln('export $key=${_shQuote(env[key]!)}');
       }

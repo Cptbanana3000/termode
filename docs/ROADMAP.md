@@ -1,10 +1,12 @@
 # Roadmap
 
-Current milestone: **v0.69 Node.js & Full Runtime Bundling QA**. Establishing
-the authentic reproducible Node.js arm64-v8a native execution engine, immutable APK
-native payload (`libtermode_node_exec.so`), runtime package installation (`runtime-pkg install node`),
-verified CLI commands (`node --version`, `node -e`), and dev stack execution synergy.
-The next milestone is **v0.70 Dev Server Supervision & Background Process Management**.
+Current milestone: **v0.70 Authentic Google V8 Node.js Runtime Engine & Full Packaging**. Bundling
+the authentic upstream Node.js v24.18.0 Google V8 ARM64 ELF binary (`libtermode_node_exec.so`),
+complete Bionic dynamic shared libraries (ICU, OpenSSL, c-ares, SQLite3, zlib, libc++_shared),
+immutable native library execution compliance with Android 10+ W^X (`nativeLibraryDir`),
+automatic shared library extraction to `$TERMODE_PREFIX/usr/lib/`, real TCP socket binding,
+and live HTTP server capability verified directly against Chrome on physical hardware.
+The next milestone is **v0.71 Dev Server Supervision & Background Process Management**.
 
 Termode is building a complete standalone Android terminal/dev environment
 first — easier and more guided than Termux — and only later integrating into
@@ -21,13 +23,12 @@ CalypsoIDE as a plug-and-play terminal/runtime engine.
 - safe prefix/PATH/environment infrastructure
 - runtime package installer with `hello-bin` and reviewed local-only Git
 - real local Git 2.44.0 on supported arm64-v8a Android devices
-- real Node.js v20.11.0 JavaScript runtime on supported arm64-v8a Android devices
+- **authentic upstream Google V8 Node.js v24.18.0 runtime engine** with full Bionic dynamic libraries on ARM64
 - developer stack presets (node-express, static-web, react-ts) and Calypso IDE bridge facade
 
 ## What Termode Does Not Have Yet
 
-- Node.js
-- npm
+- npm registry client / live remote package downloads (in progress)
 - remote Git transports and advanced Git helpers
 - Python
 - a full Linux package ecosystem
@@ -77,9 +78,9 @@ after v0.64 on-device smoke verification; remote Git remains planned. See
 - v0.65 Local Git UX Polish
 - v0.66 Node.js arm64 Prototype
 - v0.67 npm Package Management Prototype
-- v0.68 Dev Stack Presets & Calypso IDE Integration Bridge
-- v0.69 Node.js & Full Runtime Bundling QA (current)
-- v0.70 Dev Server Supervision & Background Process Management (next)
+- v0.69 Node.js & Full Runtime Bundling QA
+- v0.70 Authentic Google V8 Node.js Runtime Engine & Full Packaging (current)
+- v0.71 Dev Server Supervision & Background Process Management (next)
 - later: Python / Native Package Ecosystem
 - Calypso IDE embedding via TermodeEngine & TermodeEmbeddableTerminal
 
