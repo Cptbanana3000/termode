@@ -1,5 +1,11 @@
 # Roadmap
 
+Current milestone: **v0.69 Node.js & Full Runtime Bundling QA**. Establishing
+the authentic reproducible Node.js arm64-v8a native execution engine, immutable APK
+native payload (`libtermode_node_exec.so`), runtime package installation (`runtime-pkg install node`),
+verified CLI commands (`node --version`, `node -e`), and dev stack execution synergy.
+The next milestone is **v0.70 Dev Server Supervision & Background Process Management**.
+
 Termode is building a complete standalone Android terminal/dev environment
 first — easier and more guided than Termux — and only later integrating into
 CalypsoIDE as a plug-and-play terminal/runtime engine.
@@ -13,22 +19,23 @@ CalypsoIDE as a plug-and-play terminal/runtime engine.
 - tabs, sessions, history, scrollback, restore
 - QA / beta / onboarding tooling and doctors
 - safe prefix/PATH/environment infrastructure
-- runtime package installer prototype with `hello-bin`
+- runtime package installer with `hello-bin` and reviewed local-only Git
+- real local Git 2.44.0 on supported arm64-v8a Android devices
+- real Node.js v20.11.0 JavaScript runtime on supported arm64-v8a Android devices
+- developer stack presets (node-express, static-web, react-ts) and Calypso IDE bridge facade
 
 ## What Termode Does Not Have Yet
 
 - Node.js
 - npm
-- Git
+- remote Git transports and advanced Git helpers
 - Python
 - a full Linux package ecosystem
 - compilers
 - full Termux-replacement status
 
-These are **planned, not installed**. v0.53 defines audited Git source and
-dependency preparation (version selected, Perl requirement documented, dependency strategy
-defined), but still ships no real Git artifact, so Git is reported
-planned/not installed and the installer refuses safely. See
+These remain **planned, not installed**. The local-only Git subset is supported
+after v0.64 on-device smoke verification; remote Git remains planned. See
 [Git Support Strategy](GIT_SUPPORT_STRATEGY.md),
 [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md),
 [Git Trusted Build](GIT_TRUSTED_BUILD.md),
@@ -64,11 +71,17 @@ planned/not installed and the installer refuses safely. See
 - v0.59 Git Build Fixes
 - v0.60 Git Build Host Strategy
 - v0.61 Git arm64 Build Under Git Bash
-- v0.62 Git Bash Build Fixes (current)
+- v0.62 Git Bash Build Fixes
 - v0.63 Git Artifact Packaging / Install QA
-- v0.64+ Node.js / npm / Python / Dev Stack Presets
-- v0.63 Full Terminal QA · v0.64 Complete Termode Beta
-- CalypsoIDE integration later
+- v0.64 Git On-Device Execution Fixes
+- v0.65 Local Git UX Polish
+- v0.66 Node.js arm64 Prototype
+- v0.67 npm Package Management Prototype
+- v0.68 Dev Stack Presets & Calypso IDE Integration Bridge
+- v0.69 Node.js & Full Runtime Bundling QA (current)
+- v0.70 Dev Server Supervision & Background Process Management (next)
+- later: Python / Native Package Ecosystem
+- Calypso IDE embedding via TermodeEngine & TermodeEmbeddableTerminal
 
 v0.62 resolves compile blockers (missing headers/libraries like OpenSSL, thread cancellation under Bionic, sync_file_range) and successfully compiles a real Git 2.44.0 arm64-v8a binary under Git Bash using a minimal-local build strategy. See [Git Bash Build Fixes Status](GIT_BASH_BUILD_FIXES_STATUS.md) and [Git Bash Build Logs](GIT_BASH_BUILD_LOGS.md).
 

@@ -1,5 +1,8 @@
 # Git Bash Build Fixes Status - Termode v0.62
 
+v0.63 follow-up: the verified output is now packaged as a runtime artifact;
+Android install/execution QA is tracked separately and remains unclaimed.
+
 We have selected **Path A** for this milestone.
 
 ## Selection Status

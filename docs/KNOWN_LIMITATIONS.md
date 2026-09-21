@@ -1,11 +1,13 @@
 # Known Limitations
 
-Termode is beta software. v0.62 resolves compile blockers (missing headers/libraries like OpenSSL, thread cancellation under Bionic, sync_file_range) and successfully compiles a real Git 2.44.0 arm64-v8a binary under Git Bash using a minimal-local build strategy. It ships **no real Git artifact** inside the app assets yet (packaging/staging is scheduled for v0.63), so Git - like Node/npm/Python - is still **planned, not installed**.
-`git-artifact status` may report `TEMPLATE_ONLY` in a source checkout or
-`UNAVAILABLE` in an installed APK. Termode never fakes Git; `git`,
-`git-version`, `git-exec-probe`, and `bin-which git` all report it as not
-installed. A missing Git artifact is expected and does not make the app
-unhealthy. See [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md),
+Termode is beta software. v0.64 supports a deliberately small local Git 2.44.0
+surface on arm64-v8a Android: `git --version`, `git init`, and `git status`
+were verified on-device. Remote Git, OpenSSL, curl, HTTPS/SSH, credentials, LFS,
+submodules, and broader Git workflows remain deferred. The executable is an
+immutable APK payload in Android's `nativeLibraryDir`; the prefix path is a
+logical mapping, not a writable executable copy. Unsupported ABI, altered
+metadata, missing payloads, or failed execution probes are rejected safely.
+Termode never fakes Git. See [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md),
 [Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md),
 [Git NDK Build Status](GIT_NDK_BUILD_STATUS.md),
 [Git NDK Source Build](GIT_NDK_SOURCE_BUILD.md),
@@ -19,7 +21,7 @@ unhealthy. See [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md),
 [Git Build Pipeline](GIT_BUILD_PIPELINE.md),
 [Git Bundle Smoke Test](GIT_BUNDLE_SMOKE_TEST.md), and
 [Git Support Strategy](GIT_SUPPORT_STRATEGY.md).
-Termode does not run Node.js, npm, Git, or Python yet. A `LIMITED` or
+Termode does not run Node.js, npm, Python, or remote Git yet. A `LIMITED` or
 `PROTOTYPE READY`, `ARCHITECTURE PHASE`, or `LIMITED` status is often
 intentional when it refers to frozen runtime work, unlinked Android storage,
 planned toolchains, or a prefix that has not been initialized yet.
@@ -36,13 +38,14 @@ supports:
 - localhost/preview diagnostics
 - prefix/PATH/environment infrastructure for future tools
 - runtime package installer prototype with `hello-bin`
+- reviewed local-only Git package on arm64-v8a
 
 ## Not Included Yet
 
 - Node.js/npm
 - Python
-- Git
-- real native binary package installs
+- remote Git and advanced Git helpers
+- general-purpose native binary package installs
 - native package manager
 - full Linux distribution compatibility
 
@@ -51,10 +54,9 @@ runtimes.
 
 ## Runtime Environment And Planned Toolchains
 
-Git, Node.js, npm, Python, curl/wget, and editors are planned for future
-milestones. v0.44 adds a safe prototype installer with `hello-bin`, but still
-no real Git/Node/npm/Python installs, downloads, or native execution. Explore it
-with:
+Node.js, npm, Python, curl/wget, editors, and remote Git are planned for future
+milestones. v0.64 enables only the reviewed bundled local Git package; no runtime
+download or unknown native execution is allowed. Explore it with:
 
 ```sh
 prefix-status

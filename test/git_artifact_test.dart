@@ -17,9 +17,13 @@ void main() {
   group('v0.47 Git Artifact Acquisition / Build Pipeline', () {
     late Directory tempDir;
     late CommandService commandService;
+    late String realManifest;
 
     setUp(() async {
       tempDir = await Directory.systemTemp.createTemp('termode_gitart_test');
+      realManifest = await File(
+        RuntimeArtifactRegistryService.gitProjectManifestPath('arm64-v8a'),
+      ).readAsString();
       final runtime = RuntimeBootstrapService();
       runtime.overrideBaseDir = tempDir;
       await runtime.init();
@@ -61,7 +65,7 @@ void main() {
       SettingsService().loadFromJson(null);
       await File(
         RuntimeArtifactRegistryService.gitProjectManifestPath('arm64-v8a'),
-      ).delete().catchError((_) => File(''));
+      ).writeAsString(realManifest);
       final filesDir = Directory(
         RuntimeArtifactRegistryService.gitProjectFilesRoot('arm64-v8a'),
       );
@@ -89,20 +93,14 @@ void main() {
       }
     });
 
-    test('git-artifact status reports template-only or unavailable', () async {
+    test('git-artifact status reports bundled artifact available', () async {
       final result = await commandService.execute('git-artifact status');
       expect(result.output, contains('=== Git Artifact Status ==='));
       expect(result.output, contains('Current ABI: arm64-v8a'));
-      expect(result.output, contains('Artifact available: no'));
-      expect(result.output, contains('Installable: no'));
+      expect(result.output, contains('Artifact available: yes'));
+      expect(result.output, contains('Installable: yes'));
       expect(result.output, contains('Template present:'));
-      expect(
-        result.output,
-        anyOf(
-          contains('Overall: TEMPLATE_ONLY'),
-          contains('Overall: UNAVAILABLE'),
-        ),
-      );
+      expect(result.output, contains('Overall: AVAILABLE'));
     });
 
     test('git-artifact info explains requirement', () async {
@@ -110,32 +108,26 @@ void main() {
       expect(result.output, contains('=== Git Artifact Info ==='));
       expect(result.output, contains('verified, ABI-matched Git package'));
       expect(result.output, contains('git --version'));
-      expect(result.output, contains('This build has it: no'));
+      expect(result.output, contains('This build has it: yes'));
       expect(result.output, contains('git-artifact production-status'));
       expect(result.output, contains('git-artifact bundle-status'));
     });
 
-    test(
-      'git-artifact production-status reports Path B without artifact',
-      () async {
-        final result = await commandService.execute(
-          'git-artifact production-status',
-        );
-        expect(
-          result.output,
-          contains('=== Git Artifact Production Status ==='),
-        );
-        expect(result.output, contains('Path: B'));
-        expect(result.output, contains('Artifact exists: no'));
-        expect(result.output, contains('Git installable: no'));
-        expect(result.output, contains('Git executable: no'));
-        expect(result.output, contains('Production pipeline: ready'));
-        expect(result.output, contains('docs/GIT_TRUSTED_BUILD.md'));
-        expect(result.isError, isFalse);
-      },
-    );
+    test('git-artifact production-status reports packaged artifact', () async {
+      final result = await commandService.execute(
+        'git-artifact production-status',
+      );
+      expect(result.output, contains('=== Git Artifact Production Status ==='));
+      expect(result.output, contains('Path: A'));
+      expect(result.output, contains('Artifact exists: yes'));
+      expect(result.output, contains('Git installable: yes'));
+      expect(result.output, contains('Git executable: no'));
+      expect(result.output, contains('Production pipeline: ready'));
+      expect(result.output, contains('docs/GIT_TRUSTED_BUILD.md'));
+      expect(result.isError, isFalse);
+    });
 
-    test('git-build commands report honest Path B state', () async {
+    test('git-build commands report honest Path A state', () async {
       final status = await commandService.execute('git-build-status');
       final plan = await commandService.execute('git-build-plan');
       final requirements = await commandService.execute(
@@ -145,8 +137,11 @@ void main() {
 
       expect(status.output, contains('=== Git Build Status ==='));
       expect(status.output, contains('Target ABI: arm64-v8a'));
-      expect(status.output, contains('Selected path: Path A'));
-      expect(status.output, contains('Trusted source: staged (archive present)'));
+      expect(status.output, contains('Selected path: A'));
+      expect(
+        status.output,
+        contains('Trusted source: staged (archive present)'),
+      );
       expect(status.output, contains('Dependencies: zlib built'));
       expect(status.output, contains('Git installed: no'));
       expect(status.output, contains('Overall: SUCCESS'));
@@ -154,11 +149,8 @@ void main() {
       expect(plan.output, contains('prove git --version on Android'));
       expect(requirements.output, contains('Android SDK and NDK'));
       expect(requirements.output, contains('SHA-256'));
-      expect(
-        next.output,
-        contains('Next: Packaging and staging runtime assets in next milestone.'),
-      );
-      expect(next.output, contains('v0.63 Git Artifact Packaging / Install QA'));
+      expect(next.output, contains('runtime-pkg install git'));
+      expect(next.output, contains('Artifact: AVAILABLE'));
     });
 
     test('git source and dependency commands report honest blockers', () async {
@@ -172,53 +164,50 @@ void main() {
       final commands = await commandService.execute('commands');
 
       expect(source.output, contains('=== Git Source Status ==='));
-      expect(source.output, contains('Trusted source: staged (archive present)'));
+      expect(
+        source.output,
+        contains('Trusted source: staged (archive present)'),
+      );
       expect(source.output, contains('Overall: STAGED'));
       expect(sourcePlan.output, contains('Obtain the reviewed Git 2.44.0'));
       expect(sourcePlan.output, contains('verify_git_source.dart'));
-      expect(dependencies.output, contains('zlib: required for minimal local Git'));
+      expect(
+        dependencies.output,
+        contains('zlib: required for minimal local Git'),
+      );
       expect(dependencies.output, contains('curl: later for HTTPS'));
       expect(dependencies.output, contains('Overall: STAGED'));
       expect(dependencyPlan.output, contains('git --version'));
       expect(dependencyPlan.output, contains('HTTPS clone'));
       expect(inputs.output, contains('Project-side only'));
       expect(inputs.output, contains('check_build_inputs.dart'));
-      expect(blockers.output, contains('Windows shell/path build issues'));
-      expect(blockers.output, contains('not beta-fatal'));
+      expect(blockers.output, contains('No local Git blockers remain'));
+      expect(blockers.output, contains('Remote transports remain'));
       expect(help.output, contains('git-source-status'));
       expect(commands.output, contains('git-deps-plan'));
     });
 
-    test('git-artifact manifest reports template state', () async {
+    test('git-artifact manifest reports packaged state', () async {
       final result = await commandService.execute('git-artifact manifest');
-      expect(
-        result.output,
-        contains('Git artifact manifest is not available in this build.'),
-      );
-      expect(result.output, contains('Template path:'));
-      expect(result.output, contains('Installable: no'));
+      expect(result.output, contains('=== Git Artifact Manifest ==='));
+      expect(result.output, contains('Version: 2.44.0'));
+      expect(result.output, contains('Source: termode-built'));
     });
 
-    test('git-artifact verify when missing', () async {
+    test('git-artifact verifies packaged bytes', () async {
       final result = await commandService.execute('git-artifact verify');
       expect(result.output, contains('=== Git Artifact Verify ==='));
-      expect(result.output, contains('Nothing installable to verify'));
-      expect(result.output, contains('git-artifact bundle-status'));
+      expect(result.output, contains('Manifest/ABI/checksum: OK'));
+      expect(result.output, contains('Overall: AVAILABLE'));
     });
 
-    test('git-artifact doctor reports missing artifact as non-fatal', () async {
+    test('git-artifact doctor reports packaged artifact', () async {
       final result = await commandService.execute('git-artifact doctor');
       expect(result.output, contains('=== Git Artifact Doctor ==='));
       expect(result.output, contains('Current ABI: arm64-v8a'));
-      expect(
-        result.output,
-        anyOf(
-          contains('Artifact: TEMPLATE_ONLY'),
-          contains('Artifact: UNAVAILABLE'),
-        ),
-      );
-      expect(result.output, contains('Manifest: missing'));
-      expect(result.output, contains('not an app failure'));
+      expect(result.output, contains('Artifact: AVAILABLE'));
+      expect(result.output, contains('Manifest: present'));
+      expect(result.output, contains('Install readiness: installable'));
       expect(result.isError, isFalse);
     });
 
@@ -242,10 +231,7 @@ void main() {
         expect(sources.output, contains('termode-built'));
         expect(sources.output, contains('copied Termux binaries'));
         expect(next.output, contains('Current state:'));
-        expect(
-          next.output,
-          contains('v0.63 Git Artifact Packaging / Install QA'),
-        );
+        expect(next.output, contains('v0.66 Node.js arm64 Prototype'));
         expect(next.output, contains('docs/GIT_TRUSTED_BUILD.md'));
         expect(
           next.output,
@@ -280,7 +266,7 @@ void main() {
     test('git-status and git-doctor include artifact unavailable', () async {
       final status = await commandService.execute('git-status');
       expect(status.output, contains('Artifact state:'));
-      expect(status.output, contains('Overall: PLANNED'));
+      expect(status.output, contains('Overall: NOT INSTALLED'));
 
       final doctor = await commandService.execute('git-doctor');
       expect(doctor.output, contains('Git artifact:'));
@@ -314,8 +300,8 @@ void main() {
         expect(status.output, contains('=== Git Bundle Status ==='));
         expect(status.output, contains('Project artifact:'));
         expect(status.output, contains('Bundled artifact:'));
-        expect(status.output, contains('Installable: no'));
-        expect(status.output, contains('Overall: NOT READY'));
+        expect(status.output, contains('Installable: yes'));
+        expect(status.output, contains('Overall: READY'));
         expect(
           plan.output,
           contains('Place files under tools/runtime-artifacts/git/<abi>/files'),
@@ -326,7 +312,7 @@ void main() {
         expect(
           check.output,
           anyOf(
-            contains('Overall: TEMPLATE_ONLY'),
+            contains('Overall: AVAILABLE'),
             contains('Overall: UNAVAILABLE'),
           ),
         );
@@ -340,10 +326,22 @@ void main() {
       final manifest = {
         'name': 'git',
         'version': '2.44.0',
+        'termode_milestone': 'v0.64',
+        'created_by': 'Termode host build pipeline',
+        'candidate': false,
+        'template_only': false,
         'kind': 'native-tool',
         'abi': 'arm64-v8a',
         'command': 'git',
         'entrypoint': 'bin/git',
+        'logical_install_path': 'bin/git',
+        'executable_strategy': 'native-library-dir',
+        'executable_package_name': 'libtermode_git_exec.so',
+        'original_binary_sha256': List.filled(64, 'a').join(),
+        'packaged_executable_sha256': List.filled(64, 'a').join(),
+        'execution_policy_note': 'test native executable mapping',
+        'local_only': true,
+        'remote_features_deferred': true,
         'source': 'termode-built',
         'source_url': 'https://example.invalid/git-source',
         'build_method': 'termode test fixture',
@@ -374,13 +372,18 @@ void main() {
       expect(status.status, 'INVALID');
       expect(status.installable, isFalse);
       expect(status.reason, contains('missing artifact file: bin/git'));
-      expect(check.output, contains('Overall: INVALID'));
+      // The invalid project-side candidate does not override the valid bundled
+      // artifact selected by the runtime registry.
+      expect(check.output, contains('Overall: AVAILABLE'));
 
       final install = await commandService.execute('runtime-pkg install git');
       expect(install.isError, isTrue);
-      expect(install.output, contains('Git artifact failed verification.'));
+      expect(
+        install.output,
+        contains('Git install failed and was rolled back.'),
+      );
       expect(install.output, contains('git-artifact bundle-check'));
-      expect(install.output, contains('docs/GIT_TRUSTED_BUILD.md'));
+      expect(install.output, contains('git-artifact bundle-check'));
     });
 
     test('project artifact with matching checksum can be AVAILABLE', () async {
@@ -390,17 +393,33 @@ void main() {
       );
       final gitFile = File('${filesRoot.path}/bin/git');
       await gitFile.parent.create(recursive: true);
-      await gitFile.writeAsString(
-        'real git placeholder bytes for checksum only',
-      );
+      await gitFile.writeAsBytes([
+        0x7f,
+        0x45,
+        0x4c,
+        0x46,
+        ...utf8.encode('test fixture bytes'),
+      ]);
       final sha = registry.calculateSha256(await gitFile.readAsBytes());
       final manifest = {
         'name': 'git',
         'version': '2.44.0',
+        'termode_milestone': 'v0.64',
+        'created_by': 'Termode host build pipeline',
+        'candidate': false,
+        'template_only': false,
         'kind': 'native-tool',
         'abi': 'arm64-v8a',
         'command': 'git',
         'entrypoint': 'bin/git',
+        'logical_install_path': 'bin/git',
+        'executable_strategy': 'native-library-dir',
+        'executable_package_name': 'libtermode_git_exec.so',
+        'original_binary_sha256': sha,
+        'packaged_executable_sha256': sha,
+        'execution_policy_note': 'test native executable mapping',
+        'local_only': true,
+        'remote_features_deferred': true,
         'source': 'termode-built',
         'source_url': 'https://example.invalid/git-source',
         'build_method': 'termode test fixture',
@@ -433,10 +452,22 @@ void main() {
       final valid = {
         'name': 'git',
         'version': '2.44.0',
+        'termode_milestone': 'v0.64',
+        'created_by': 'Termode host build pipeline',
+        'candidate': false,
+        'template_only': false,
         'kind': 'native-tool',
         'abi': 'arm64-v8a',
         'command': 'git',
         'entrypoint': 'bin/git',
+        'logical_install_path': 'bin/git',
+        'executable_strategy': 'native-library-dir',
+        'executable_package_name': 'libtermode_git_exec.so',
+        'original_binary_sha256': List.filled(64, 'a').join(),
+        'packaged_executable_sha256': List.filled(64, 'a').join(),
+        'execution_policy_note': 'test native executable mapping',
+        'local_only': true,
+        'remote_features_deferred': true,
         'source': 'termode-vendored',
         'source_url': 'https://example.invalid/git-source',
         'build_method': 'termode test fixture',
@@ -455,6 +486,13 @@ void main() {
         ],
       };
       expect(registry.validateGitManifest(valid, 'arm64-v8a'), isEmpty);
+
+      final unsafeStrategy = Map<String, dynamic>.from(valid);
+      unsafeStrategy['executable_strategy'] = '../../execute-anywhere';
+      expect(
+        registry.validateGitManifest(unsafeStrategy, 'arm64-v8a'),
+        contains('unsafe executable strategy'),
+      );
 
       final absolute = Map<String, dynamic>.from(valid);
       absolute['files'] = [
@@ -511,16 +549,20 @@ void main() {
       expect(placeholderErrors, contains('invalid file byte count'));
     });
 
-    test('registry template state is not installable', () async {
-      final status = await RuntimeArtifactRegistryService().gitArtifactStatus();
-      expect(status.available, isFalse);
-      expect(status.installable, isFalse);
-      expect(['TEMPLATE_ONLY', 'UNAVAILABLE'], contains(status.status));
-      expect(
-        RuntimeArtifactRegistryService().validateGitTemplateManifest(),
-        isEmpty,
-      );
-    });
+    test(
+      'registry bundled state is installable before runtime install',
+      () async {
+        final status = await RuntimeArtifactRegistryService()
+            .gitArtifactStatus();
+        expect(status.available, isTrue);
+        expect(status.installable, isTrue);
+        expect(status.status, 'AVAILABLE');
+        expect(
+          RuntimeArtifactRegistryService().validateGitTemplateManifest(),
+          isEmpty,
+        );
+      },
+    );
 
     test('v0.51 NDK build docs and helper scripts are present', () {
       expect(

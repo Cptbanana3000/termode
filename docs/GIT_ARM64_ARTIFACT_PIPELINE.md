@@ -1,9 +1,16 @@
-# Git arm64-v8a Artifact Pipeline (v0.49-v0.59)
+# Git arm64-v8a Artifact Pipeline (v0.49-v0.64)
+
+v0.64 update: the pipeline now produces both the checksum-verified logical
+`files/usr/bin/git` artifact and the byte-identical Android native-library
+package `lib/arm64-v8a/libtermode_git_exec.so`. Android extracts the latter to
+an executable location; the former remains the manifest's logical install path.
 
 This is document defines the project-side pipeline for producing a trusted Git artifact for Android `arm64-v8a`.
 
 ## Artifact State
-No real Git artifact exists in v0.59. The repository contains templates, examples, helper docs, trusted-build docs, candidate manifests, validation scripts, and zlib static library only.
+The repository contains a real Git 2.44.0 arm64-v8a ELF, a promoted v0.64
+manifest, and its native-library packaging copy. All three hashes match
+`4a4883d3e0b18dc082ac99cdb3da5d80e2b988e2a801b418b0bebfe855a467e1`.
 
 ## Layout
 ```text
@@ -17,7 +24,9 @@ tools/runtime-artifacts/git/
     manifest.json        # only when a real trusted artifact exists
     files/
       README.md
-      bin/git            # only when a real trusted artifact exists
+      usr/bin/git        # logical artifact path
+android/app/src/main/jniLibs/arm64-v8a/
+  libtermode_git_exec.so # byte-identical executable APK payload
   checksums/
     README.md
 ```

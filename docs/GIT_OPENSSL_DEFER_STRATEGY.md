@@ -1,5 +1,7 @@
 # OpenSSL/Curl Defer Strategy - Termode v0.62
 
+v0.63 keeps this decision: neither OpenSSL nor curl is silently enabled.
+
 To compile Git for arm64-v8a without introducing complex cross-compilation dependency chains early, we defer both OpenSSL and curl dependencies.
 
 ## Rationale

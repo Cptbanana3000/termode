@@ -3,7 +3,7 @@
 Termode is a standalone Android terminal project with a REAL PTY shell,
 script packages, workspace folders, and beta QA tooling.
 
-Current status: **v0.58 Git arm64 Build Attempt** (terminal foundation beta).
+Current status: **v0.69 Node.js & Full Runtime Bundling QA** (terminal foundation beta).
 
 Termode is not a full Linux distribution and is not a Termux replacement yet,
 and it is not a stable v1.0. It is building a complete standalone Android
@@ -11,12 +11,20 @@ terminal/dev environment — easier and more guided than Termux — and only lat
 integrating into CalypsoIDE.
 
 Termode has a strong terminal foundation today (REAL PTY, packages, workspaces,
-sessions, QA/beta/onboarding tooling). It does **not** yet include Node.js, npm, Git,
-Python, compilers, or a full Linux package ecosystem — those are **planned, not
-installed**. v0.58 attempts the first controlled arm64 Git build, successfully building zlib and honestly logging the Git build Makefile failure, and bumps the app version to v0.58. zlib is built, but Git remains unavailable in-app due to host build issues.
-It still ships **no Git artifact**, so Git is reported `TEMPLATE_ONLY` or `UNAVAILABLE`/not installed
-and the installer refuses safely. Termode never fakes Git. See
-[Git Build Prerequisite Status](docs/GIT_BUILD_PREREQUISITE_STATUS.md),
+sessions, QA/beta/onboarding tooling), verified **local-only Git 2.44.0 on arm64-v8a Android**,
+the **Node.js v20.11.0 runtime execution engine** (`libtermode_node_exec.so`, `runtime-pkg install node`, `node --version`, `node -e`),
+the **npm package management engine** (`npm init`, `npm ls`, `npm run`, `npm doctor`, `npm-status`, `npm-info`, `npx`),
+built-in **Dev Stack Presets** (`stack-list`, `stack-init`, `stack-info`, `stack-doctor` with `node-express`, `static-web`, and `react-ts` templates),
+and the headless **Calypso IDE Integration Bridge** (`TermodeEngine` facade and `TermodeEmbeddableTerminal` widget).
+The immutable APK payload executes from Android's `nativeLibraryDir`, while
+`TERMODE_PREFIX` remains the stable logical layout.
+Python, compilers, the full Linux package ecosystem, and remote Git
+features remain deferred. Termode never fakes Git or Node. See
+[Git Local Workflow Status](docs/GIT_LOCAL_WORKFLOW_STATUS.md),
+[Git On-Device Execution Fixes Status](docs/GIT_ON_DEVICE_EXECUTION_FIXES_STATUS.md),
+[Android Native Execution Policy](docs/ANDROID_NATIVE_EXECUTION_POLICY.md),
+[Git Executable Storage Strategy](docs/GIT_EXECUTABLE_STORAGE_STRATEGY.md),
+[Git Local Smoke Test Results](docs/GIT_LOCAL_SMOKE_TEST_RESULTS.md),
 [Git Source Version Decision](docs/GIT_SOURCE_VERSION_DECISION.md),
 [Git Minimal Dependency Strategy](docs/GIT_MINIMAL_DEPENDENCY_STRATEGY.md),
 [Git zlib Strategy](docs/GIT_ZLIB_STRATEGY.md),
@@ -59,16 +67,16 @@ and the installer refuses safely. Termode never fakes Git. See
 - data-safe visual reset via `settings-reset-safe --confirm`
 - safe Termode prefix, PATH overlay, env preview/doctor, and bin discovery
 - prototype runtime package installer with `hello-bin`
+- verified arm64-v8a local Git package (`--version`, `init`, and `status`)
+- Node.js arm64 prototype foundations (`node-doctor`, `node-artifact`, and Kotlin native bridge)
 
 ## Not Included Yet
 
-- Node.js or npm
+- npm (scheduled for v0.67)
 - Python
-- Git
+- remote Git transports and advanced Git helpers
 - full Linux package manager
-- real native binary package installs
-- full Termux compatibility
-
+- general-purpose native binary package installs beyond the reviewed Git package
 QuickJS and Duktape remain probe surfaces only. Runtime direction is frozen
 while Termode stabilizes the product experience.
 
@@ -106,7 +114,7 @@ hello
 Termode ships as a debug APK for beta testing:
 
 1. Enable "Install unknown apps" for your file manager or browser.
-2. Copy `Termode-v0.58-git-arm64-build-attempt-debug.apk` to the device and tap to install.
+2. Copy Termode-v0.63-git-artifact-install-qa-debug.apk to the device and tap to install.
 3. Launch Termode and run `welcome`, then `doctor` and `dev-doctor`.
 
 Full steps and how to clear app data are in
@@ -232,11 +240,15 @@ after the UI polish pass.
 - v0.55 Git Prerequisite Acquisition / Source Staging
 - v0.56 Git Perl Resolution / arm64 Build Readiness
 - v0.57 Git Perl Setup / Build Readiness Finalization
-- v0.58 Git arm64 Build Attempt (current)
+- v0.58 Git arm64 Build Attempt
 - v0.59 Git Build Fixes
-- v0.60 Git Artifact Packaging / Install QA
-- v0.61+ Node.js / npm / Python / Dev Stack Presets
-- v0.58 Full Terminal QA · v0.59 Complete Termode Beta
+- v0.60 Git Build Host Strategy
+- v0.61 Git arm64 Build Under Git Bash
+- v0.63 Git Artifact Packaging / Install QA (current)
+- v0.62 Git Bash Build Fixes
+- v0.63 Git Artifact Packaging / Install QA
+- v0.64+ Node.js / npm / Python / Dev Stack Presets
+- v0.63 Full Terminal QA · v0.64 Complete Termode Beta
 - CalypsoIDE integration later
 
 Node/npm/Python/Git research stays deferred until after the standalone beta

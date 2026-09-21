@@ -1,5 +1,11 @@
 # Termode Command Guide
 
+v0.64 makes the verified arm64-v8a local Git artifact executable on Android.
+Use `git-artifact bundle-check`, `runtime-pkg install git`,
+`runtime-pkg verify git`, `bin-which git`, `git-version`, and
+`git-smoke-test`. Direct `git --version`, `git init`, and `git status`
+use the same real backing executable. Remote Git commands remain deferred.
+
 Use `welcome`, `examples`, and `glossary` first if you are new.
 
 ## Getting Started
@@ -59,9 +65,10 @@ Use `welcome`, `examples`, and `glossary` first if you are new.
 - `runtime-abi`
 - `hello-bin`
 
-`runtime-pkg install hello-bin` installs only the built-in safe prototype
-package. It does not install Git, Node.js, npm, Python, or real native binary
-packages.
+`runtime-pkg install hello-bin` installs the built-in script prototype.
+`runtime-pkg install git` installs only the reviewed local-only arm64-v8a Git
+mapping after validating the immutable APK payload. Node.js, npm, Python, and
+unknown native packages remain disabled.
 
 ## Git (Feasibility + Artifact)
 

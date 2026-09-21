@@ -276,15 +276,19 @@ void main() {
       final help = await commandService.execute('runtime-install help');
       for (final out in [bare.output, help.output]) {
         expect(out, contains('=== Runtime Install (prototype) ==='));
-        expect(out, contains('Prototype installer is available'));
+        expect(
+          out,
+          contains('Installer is available for hello-bin and the reviewed'),
+        );
         expect(out, contains('runtime-install list'));
       }
 
       final list = await commandService.execute('runtime-install list');
       expect(list.output, contains('Prototype available now:'));
       expect(list.output, contains('* hello-bin'));
+      expect(list.output, contains('Real tools:'));
+      expect(list.output, contains('* git: installable if verified'));
       expect(list.output, contains('Planned future runtimes:'));
-      expect(list.output, contains('* git'));
       expect(list.output, contains('* node'));
     });
 
@@ -302,18 +306,18 @@ void main() {
       expect(git.output, contains('git-build-blockers'));
     });
 
-    test('runtime-install status and doctor are planning-only', () async {
+    test('runtime-install status and doctor report local Git readiness', () async {
       final status = await commandService.execute('runtime-install status');
       expect(status.output, contains('=== Runtime Install Status ==='));
       expect(status.output, contains('Mode: prototype installer available'));
       expect(
         status.output,
-        contains('Real Git/Node/Python installs: not enabled yet'),
+        contains('Remote Git/Node/Python: not enabled'),
       );
       expect(status.output, contains('Prototype package: hello-bin'));
       expect(
         status.output,
-        contains('Next milestone: Git source and dependency preparation'),
+        contains('Next milestone: v0.66 Node.js arm64 Prototype'),
       );
 
       final doctor = await commandService.execute('runtime-install doctor');
@@ -345,7 +349,7 @@ void main() {
       expect(doctorAfter.output, contains('Env: OK'));
       expect(
         doctorAfter.output,
-        contains('Real Git/Node/npm/Python installs: not enabled yet'),
+        contains('Remote Git/Node/npm/Python: not enabled'),
       );
       expect(doctorAfter.output, contains('Overall: PROTOTYPE READY'));
     });

@@ -38,6 +38,17 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    packaging {
+        jniLibs {
+            // Git is packaged as an immutable APK native payload so Android
+            // extracts it into applicationInfo.nativeLibraryDir, an executable
+            // location. Keep the audited ELF byte-for-byte intact.
+            useLegacyPackaging = true
+            keepDebugSymbols += "**/libtermode_git_exec.so"
+            keepDebugSymbols += "**/libtermode_node_exec.so"
+        }
+    }
 }
 
 kotlin {

@@ -4,12 +4,16 @@ import 'sha256_helper.dart';
 
 void main(List<String> args) {
   final idx = args.indexOf('--project-root');
-  final rootPath = (idx != -1 && idx + 1 < args.length) ? args[idx + 1] : Directory.current.path;
+  final rootPath = (idx != -1 && idx + 1 < args.length)
+      ? args[idx + 1]
+      : Directory.current.path;
   final root = Directory(rootPath).absolute;
 
   stdout.writeln('=== Git arm64 Build Output Verification ===');
 
-  final zlibLibDir = Directory('${root.path}/tools/git-build/output/arm64-v8a/zlib/lib');
+  final zlibLibDir = Directory(
+    '${root.path}/tools/git-build/output/arm64-v8a/zlib/lib',
+  );
   final libzFile = File('${zlibLibDir.path}/libz.a');
 
   bool zlibOk = false;
@@ -22,11 +26,15 @@ void main(List<String> args) {
     } else {
       final contentStr = String.fromCharCodes(bytes.take(200));
       if (contentStr.contains('placeholder') || contentStr.contains('fake')) {
-        stdout.writeln('zlib output: REFUSED (placeholder or fake output detected)');
+        stdout.writeln(
+          'zlib output: REFUSED (placeholder or fake output detected)',
+        );
       } else {
         final sha = calculateSha256(bytes);
         stdout.writeln('zlib output: VERIFIED');
-        stdout.writeln('  Path: tools/git-build/output/arm64-v8a/zlib/lib/libz.a');
+        stdout.writeln(
+          '  Path: tools/git-build/output/arm64-v8a/zlib/lib/libz.a',
+        );
         stdout.writeln('  Size: ${bytes.length} bytes');
         stdout.writeln('  SHA-256: $sha');
         zlibOk = true;
@@ -34,8 +42,10 @@ void main(List<String> args) {
     }
   }
 
-  // Git is expected to be missing
-  final gitBinDir = Directory('${root.path}/tools/git-build/output/arm64-v8a/git/bin');
+  // This verifier is read-only. Packaging is handled by package_git_artifact.
+  final gitBinDir = Directory(
+    '${root.path}/tools/git-build/output/arm64-v8a/git/bin',
+  );
   final gitFile = File('${gitBinDir.path}/git');
   if (!gitFile.existsSync()) {
     stdout.writeln('Git output: MISSING (git binary not found)');
@@ -43,7 +53,9 @@ void main(List<String> args) {
     final bytes = gitFile.readAsBytesSync();
     final contentStr = String.fromCharCodes(bytes.take(200));
     if (contentStr.contains('placeholder') || contentStr.contains('fake')) {
-      stdout.writeln('Git output: REFUSED (placeholder or fake output detected)');
+      stdout.writeln(
+        'Git output: REFUSED (placeholder or fake output detected)',
+      );
     } else {
       final sha = calculateSha256(bytes);
       stdout.writeln('Git output: VERIFIED');
@@ -53,8 +65,16 @@ void main(List<String> args) {
     }
   }
 
-  stdout.writeln('Runtime Package Status: UNAVAILABLE');
-  stdout.writeln('Note: Verification completed. No runtime package or manifest was modified.');
+  final manifest = File(
+    '${root.path}/tools/runtime-artifacts/git/arm64-v8a/manifest.json',
+  );
+  stdout.writeln(
+    'Runtime Artifact Status: ${manifest.existsSync() ? 'PACKAGED' : 'UNAVAILABLE'}',
+  );
+  stdout.writeln(
+    'Note: Build-output verification is read-only; run package_git_artifact.dart '
+    'to create or refresh the runtime artifact.',
+  );
 
   if (!zlibOk) {
     exitCode = 1;

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'runtime_capability_service.dart';
 
 class RuntimeFreezeService {
-  static const nextMilestone = 'v0.63 Git Artifact Packaging / Install QA';
+  static const nextMilestone = 'v0.66 Node.js arm64 Prototype';
 
   static const supportedRuntimeDirection = [
     'script packages through /system/bin/sh',
@@ -18,8 +18,8 @@ class RuntimeFreezeService {
     'Node.js',
     'npm',
     'Python',
-    'Git',
-    'native binary package installs',
+    'remote Git transports',
+    'additional native binary packages',
   ];
 
   String help() {
@@ -39,14 +39,14 @@ class RuntimeFreezeService {
         'Runtime implementation: frozen for current beta foundation.\n'
         'Expansion architecture: active through v0.44.\n'
         'Runtime package installer: prototype ready.\n'
-        'Actual external runtimes: not installed yet.\n'
+        'Local-only Git package: enabled through reviewed native payload.\n'
         'Decision: frozen\n'
         'Current JS path: js-proof\n'
         'QuickJS: deferred\n'
         'Duktape: deferred\n'
         'Node.js: planned (not installed)\n'
         'npm: planned (not installed)\n'
-        'Next focus: stage Git artifact packaging and install QA\n'
+        'Next focus: local Git UX polish\n'
         'Overall: FROZEN';
   }
 
@@ -68,9 +68,9 @@ class RuntimeFreezeService {
     return '=== Runtime Freeze Deferred ===\n'
         '* Node.js/npm are not included yet.\n'
         '* Python is not included yet.\n'
-        '* Git has a pipeline, but no bundled artifact yet.\n'
+        '* Git is local-only; remote transports remain deferred.\n'
         '* Runtime package installer is prototype-only.\n'
-        '* Native binary packages are planned, not enabled.\n'
+        '* Additional native binary packages remain planned.\n'
         '* QuickJS/Duktape are probe surfaces only.\n'
         '* Runtime research is frozen for now.\n'
         '* Remote packages remain script-only.';

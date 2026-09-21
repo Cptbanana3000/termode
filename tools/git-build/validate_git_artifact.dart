@@ -120,7 +120,11 @@ bool _isSafeRelativePath(String path) {
   if (normalized.isEmpty || normalized.startsWith('/')) return false;
   if (RegExp(r'^[A-Za-z]:').hasMatch(normalized)) return false;
   if (normalized.split('/').contains('..')) return false;
-  return normalized.startsWith('bin/') ||
+  return normalized.startsWith('usr/bin/') ||
+      normalized.startsWith('usr/lib/') ||
+      normalized.startsWith('usr/libexec/') ||
+      normalized.startsWith('usr/share/') ||
+      normalized.startsWith('bin/') ||
       normalized.startsWith('lib/') ||
       normalized.startsWith('libexec/') ||
       normalized.startsWith('share/');

@@ -1,4 +1,10 @@
-# Git Trusted Build (v0.50, extended through v0.59)
+# Git Trusted Build (v0.50, extended through v0.64)
+
+v0.64 update: the reviewed build output is packaged with its exact source,
+dependency, size, and SHA-256 metadata. Android execution, installation,
+verification, and local version/init/status smoke tests have passed. The trust
+boundary includes the immutable `nativeLibraryDir` backing path and its exact
+manifest-approved package name; arbitrary executable paths are rejected.
 
 This document defines the trusted production build requirements for a future Termode Git artifact.
 
@@ -25,7 +31,7 @@ Rejected sources:
 tools/runtime-artifacts/git/arm64-v8a/
   manifest.json
   files/
-    bin/git
+    usr/bin/git
     lib/...       # only if required
     libexec/...   # only if required
     share/...     # only if required

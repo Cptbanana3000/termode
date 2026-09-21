@@ -61,13 +61,13 @@ void main() {
       }
     });
 
-    test('git-status reports planned/not installed', () async {
+    test('git-status reports packaged/not installed', () async {
       final result = await commandService.execute('git-status');
       expect(result.output, contains('=== Git Status ==='));
       expect(result.output, contains('Installed: no'));
       expect(result.output, contains('Command: git'));
       expect(result.output, contains('Version: not available'));
-      expect(result.output, contains('Overall: PLANNED'));
+      expect(result.output, contains('Overall: NOT INSTALLED'));
       expect(result.isError, isFalse);
     });
 
@@ -85,7 +85,7 @@ void main() {
       expect(result.output, contains('Verify ABI'));
       expect(result.output, contains('Register git shim'));
       expect(result.output, contains('Run git --version'));
-      expect(result.output, contains('no safe Git artifact'));
+      expect(result.output, contains('verified artifact present'));
       expect(result.output, contains('git-artifact bundle-status'));
     });
 
@@ -121,26 +121,29 @@ void main() {
       expect(result.output, contains('runtime-install plan git'));
     });
 
-    test('runtime-pkg info git shows planned package', () async {
+    test('runtime-pkg info git shows installable package', () async {
       final result = await commandService.execute('runtime-pkg info git');
       expect(result.output, contains('=== Runtime Package: git ==='));
       expect(result.output, contains('Kind: native-tool'));
-      expect(result.output, contains('Status: planned (artifact'));
+      expect(
+        result.output,
+        contains('Status: installable (verified artifact)'),
+      );
       expect(result.output, contains('Command: git'));
-      expect(result.output, contains('Artifact available: no'));
+      expect(result.output, contains('Artifact available: yes'));
       expect(result.isError, isFalse);
     });
 
     test(
-      'runtime-pkg install git refuses safely without an artifact',
+      'runtime-pkg install git rolls back when host cannot execute Android ELF',
       () async {
         final result = await commandService.execute('runtime-pkg install git');
         expect(
           result.output,
-          contains('Git artifact is not available in this build.'),
+          contains('Git install failed and was rolled back.'),
         );
-        expect(result.output, contains('Current state:'));
-        expect(result.output, contains('git-artifact bundle-status'));
+        expect(result.output, contains('git --version failed'));
+        expect(result.output, contains('git-artifact bundle-check'));
 
         // Nothing was installed.
         final list = await commandService.execute('runtime-pkg list');
@@ -164,7 +167,7 @@ void main() {
       final result = await commandService.execute('runtime-pkg available');
       expect(result.output, contains('Prototype available now:'));
       expect(result.output, contains('hello-bin'));
-      expect(result.output, contains('Planned real tools:'));
+      expect(result.output, contains('Reviewed real tools:'));
       expect(result.output, contains('* git'));
     });
 
@@ -187,7 +190,7 @@ void main() {
     test('runtime-install doctor handles Git planned state', () async {
       final result = await commandService.execute('runtime-install doctor');
       expect(result.output, contains('Git artifact:'));
-      expect(result.output, contains('Git: planned (not installed)'));
+      expect(result.output, contains('Git: available (not installed)'));
       expect(result.output, contains('Overall: PROTOTYPE READY'));
     });
 
@@ -195,8 +198,8 @@ void main() {
       final info = await commandService.execute('toolchain-info git');
       expect(info.output, contains('=== Toolchain: Git ==='));
       expect(info.output, contains('Installed: no'));
-      expect(info.output, contains('Phase: source/dependency preparation'));
-      expect(info.output, contains('Trusted source/dependencies: missing'));
+      expect(info.output, contains('Phase: local-only execution verified'));
+      expect(info.output, contains('Trusted source/dependencies: verified'));
 
       final status = await commandService.execute('toolchain-status');
       expect(status.output, contains('Git source prep: Git 2.44.0 selected'));
@@ -216,33 +219,32 @@ void main() {
       expect(result.isError, isFalse);
     });
 
-    test('version surfaces mention v0.62', () async {
+    test('version surfaces mention v0.64', () async {
       final version = await commandService.execute('version');
       final notes = await commandService.execute('release-notes');
       final changelog = await commandService.execute('changelog');
       final bug = await commandService.execute('bug-report');
       final qa = await commandService.execute('qa-report');
 
-      expect(version.output, contains('Termode v0.62'));
-      expect(
-        notes.output,
-        contains('v0.62 Git Bash Build Fixes'),
-      );
+      expect(version.output, contains('Termode v0.64'));
+      expect(notes.output, contains('v0.62 Git Bash Build Fixes'));
       expect(
         changelog.output,
         contains('v0.54 Git Build Prerequisite Resolution'),
       );
-      expect(bug.output, contains('Termode version: v0.62'));
-      expect(qa.output, contains('Termode v0.62'));
+      expect(bug.output, contains('Termode version: v0.64'));
+      expect(qa.output, contains('Termode v0.64'));
     });
 
-    test('build-info reports Git acquisition path and v0.62', () async {
+    test('build-info reports Git execution path and v0.64', () async {
       final result = await commandService.execute('build-info');
-      expect(result.output, contains('Version: v0.62'));
+      expect(result.output, contains('Version: v0.64'));
       expect(result.output, contains('Git source prep: Git 2.44.0 selected'));
       expect(
         result.output,
-        contains('Artifact: Termode-v0.62-git-bash-build-fixes-debug.apk'),
+        contains(
+          'Artifact: Termode-v0.64-git-on-device-execution-fixes-debug.apk',
+        ),
       );
     });
 
@@ -286,19 +288,18 @@ void main() {
       session.isPtyInteractionActive = true;
 
       await sessionService.executeCommand('git-status');
-      await sessionService.executeCommand('git');
       await sessionService.executeCommand('runtime-pkg install git');
 
       final output = session.lines.map((line) => line.text).join('\n');
       expect(output, contains('=== Git Status ==='));
-      expect(output, contains('Git is not installed yet.'));
-      expect(output, contains('Git artifact is not available'));
+      expect(output, contains('Artifact state: AVAILABLE'));
+      expect(output, contains('Git install failed and was rolled back'));
 
       session.isPtyInteractionActive = false;
       session.isRealPtyActive = false;
     });
 
-    test('v0.62 informational Git commands print correctly', () async {
+    test('v0.64 informational Git commands print correctly', () async {
       final perlStatus = await commandService.execute('git-perl-status');
       expect(perlStatus.output, contains('=== Git Perl Status ==='));
       expect(perlStatus.output, contains('Role: host build prerequisite'));
@@ -317,9 +318,16 @@ void main() {
 
       final nextSteps = await commandService.execute('git-build-next-steps');
       expect(nextSteps.output, contains('=== Git Build Next Steps ==='));
-      expect(nextSteps.output, contains('1. Git Bash build executed and succeeded using minimal-local flags.'));
+      expect(
+        nextSteps.output,
+        contains(
+          '1. Git Bash build executed and succeeded using minimal-local flags.',
+        ),
+      );
 
-      final buildReadiness = await commandService.execute('git-build-readiness');
+      final buildReadiness = await commandService.execute(
+        'git-build-readiness',
+      );
       expect(buildReadiness.output, contains('=== Git Build Readiness ==='));
       expect(buildReadiness.output, contains('Perl: READY'));
       expect(buildReadiness.output, contains('Overall: READY'));

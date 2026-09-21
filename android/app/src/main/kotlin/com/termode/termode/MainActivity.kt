@@ -318,6 +318,220 @@ class MainActivity: FlutterActivity() {
                         }
                     }
                 }
+                "getExecutablePaths" -> {
+                    val nativeLibraryDir = applicationInfo.nativeLibraryDir
+                    val gitExecutable = java.io.File(nativeLibraryDir, "libtermode_git_exec.so")
+                    val nodeExecutable = java.io.File(nativeLibraryDir, "libtermode_node_exec.so")
+                    result.success(
+                        mapOf(
+                            "nativeLibraryDir" to nativeLibraryDir,
+                            "gitExecutable" to gitExecutable.absolutePath,
+                            "gitExecutableExists" to gitExecutable.isFile,
+                            "gitExecutableCanExecute" to gitExecutable.canExecute(),
+                            "nodeExecutable" to nodeExecutable.absolutePath,
+                            "nodeExecutableExists" to nodeExecutable.isFile,
+                            "nodeExecutableCanExecute" to nodeExecutable.canExecute()
+                        )
+                    )
+                }
+                "executeBundledGit" -> {
+                    val arguments = call.argument<List<String>>("arguments") ?: emptyList()
+                    val networkSubcommands = setOf("clone", "fetch", "pull", "push", "remote", "submodule")
+                    val allowedLocalSubcommands = setOf(
+                        "--version", "-v", "--help", "-h", "help",
+                        "init", "status", "add", "commit", "log", "diff",
+                        "branch", "checkout", "switch", "config", "reset",
+                        "show", "rm", "mv", "restore", "clean", "tag", "merge", "stash"
+                    )
+
+                    val effectiveFirst = arguments.firstOrNull { !it.startsWith("-") }
+                        ?: arguments.firstOrNull()
+                        ?: "--version"
+
+                    if (networkSubcommands.contains(effectiveFirst)) {
+                        result.error(
+                            "DEFERRED_REMOTE_FEATURE",
+                            "Remote Git operations ($effectiveFirst) are deferred. v0.65 supports local Git workflows only.",
+                            null
+                        )
+                        return@setMethodCallHandler
+                    }
+
+                    if (!allowedLocalSubcommands.contains(effectiveFirst)) {
+                        result.error(
+                            "UNSUPPORTED_GIT_COMMAND",
+                            "v0.65 supports local Git operations only (init, status, add, commit, log, diff, branch, checkout, switch, config, reset, show, rm, mv).",
+                            null
+                        )
+                        return@setMethodCallHandler
+                    }
+                    thread {
+                        try {
+                            val gitExecutable = java.io.File(
+                                applicationInfo.nativeLibraryDir,
+                                "libtermode_git_exec.so"
+                            ).canonicalFile
+                            if (!gitExecutable.isFile) {
+                                throw java.io.FileNotFoundException(
+                                    "Bundled Git executable is missing: ${gitExecutable.absolutePath}"
+                                )
+                            }
+
+                            val filesRoot = filesDir.canonicalFile
+                            val homeDir = java.io.File(filesDir, "home").apply { mkdirs() }.canonicalFile
+                            val tmpDir = java.io.File(filesDir, "tmp").apply { mkdirs() }.canonicalFile
+                            val usrDir = java.io.File(filesDir, "usr").apply { mkdirs() }.canonicalFile
+                            val usrTmpDir = java.io.File(usrDir, "tmp").apply { mkdirs() }.canonicalFile
+                            val configDir = java.io.File(homeDir, "config").apply { mkdirs() }.canonicalFile
+                            val templateDir = java.io.File(usrDir, "share/git-core/templates").apply {
+                                mkdirs()
+                            }.canonicalFile
+                            val requestedWorkingDir = call.argument<String>("workingDirectory")
+                            val workingDir = if (requestedWorkingDir.isNullOrBlank()) {
+                                homeDir
+                            } else {
+                                val candidate = java.io.File(requestedWorkingDir).canonicalFile
+                                val insideFiles = candidate.path == filesRoot.path ||
+                                    candidate.path.startsWith(filesRoot.path + java.io.File.separator)
+                                if (!insideFiles || !candidate.isDirectory) {
+                                    throw SecurityException("Git working directory is outside Termode app storage")
+                                }
+                                candidate
+                            }
+
+                            val command = mutableListOf(gitExecutable.absolutePath)
+                            command.addAll(arguments)
+                            val process = ProcessBuilder(command).apply {
+                                directory(workingDir)
+                                environment().apply {
+                                    put("HOME", homeDir.absolutePath)
+                                    put("TERMODE_HOME", homeDir.absolutePath)
+                                    put("TERMODE_USR", usrDir.absolutePath)
+                                    put("TERMODE_PREFIX", usrDir.absolutePath)
+                                    put("TERMODE_BIN", java.io.File(usrDir, "bin").absolutePath)
+                                    put("TERMODE_TMPDIR", usrTmpDir.absolutePath)
+                                    put("TERMODE_CONFIG", configDir.absolutePath)
+                                    put("TMPDIR", tmpDir.absolutePath)
+                                    put("XDG_CONFIG_HOME", configDir.absolutePath)
+                                    put("GIT_CONFIG_NOSYSTEM", "1")
+                                    put("GIT_TEMPLATE_DIR", templateDir.absolutePath)
+                                    put(
+                                        "PATH",
+                                        "${java.io.File(usrDir, "bin").absolutePath}:" +
+                                            "/system/bin:/system/xbin:/vendor/bin:/product/bin"
+                                    )
+                                }
+                            }.start()
+                            val stdout = process.inputStream.bufferedReader().readText().trimEnd()
+                            val stderrText = process.errorStream.bufferedReader().readText().trimEnd()
+                            val finished = process.waitFor(10, TimeUnit.SECONDS)
+                            if (!finished) {
+                                process.destroyForcibly()
+                                throw java.util.concurrent.TimeoutException("Git command timed out")
+                            }
+                            Handler(Looper.getMainLooper()).post {
+                                result.success(
+                                    mapOf(
+                                        "stdout" to stdout,
+                                        "stderr" to stderrText,
+                                        "exitCode" to process.exitValue(),
+                                        "executablePath" to gitExecutable.absolutePath,
+                                        "workingDirectory" to workingDir.absolutePath
+                                    )
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Handler(Looper.getMainLooper()).post {
+                                result.error("GIT_EXECUTION_ERROR", e.message, null)
+                            }
+                        }
+                    }
+                }
+                "executeBundledNode" -> {
+                    val arguments = call.argument<List<String>>("arguments") ?: emptyList()
+                    val timeoutMs = (call.argument<Int>("timeoutMs") ?: 15000).toLong()
+                    thread {
+                        try {
+                            val nodeExecutable = java.io.File(
+                                applicationInfo.nativeLibraryDir,
+                                "libtermode_node_exec.so"
+                            ).canonicalFile
+                            if (!nodeExecutable.isFile) {
+                                throw java.io.FileNotFoundException(
+                                    "Bundled Node executable is missing: ${nodeExecutable.absolutePath}"
+                                )
+                            }
+
+                            val filesRoot = filesDir.canonicalFile
+                            val homeDir = java.io.File(filesDir, "home").apply { mkdirs() }.canonicalFile
+                            val tmpDir = java.io.File(filesDir, "tmp").apply { mkdirs() }.canonicalFile
+                            val usrDir = java.io.File(filesDir, "usr").apply { mkdirs() }.canonicalFile
+                            val usrTmpDir = java.io.File(usrDir, "tmp").apply { mkdirs() }.canonicalFile
+                            val configDir = java.io.File(homeDir, "config").apply { mkdirs() }.canonicalFile
+                            val requestedWorkingDir = call.argument<String>("workingDirectory")
+                            val workingDir = if (requestedWorkingDir.isNullOrBlank()) {
+                                homeDir
+                            } else {
+                                val candidate = java.io.File(requestedWorkingDir).canonicalFile
+                                val insideFiles = candidate.path == filesRoot.path ||
+                                    candidate.path.startsWith(filesRoot.path + java.io.File.separator)
+                                if (!insideFiles || !candidate.isDirectory) {
+                                    throw SecurityException("Node working directory is outside Termode app storage")
+                                }
+                                candidate
+                            }
+
+                            val nodeModulesLocal = java.io.File(workingDir, "node_modules").absolutePath
+                            val nodeModulesHome = java.io.File(homeDir, "node_modules").absolutePath
+                            val nodeModulesGlobal = java.io.File(usrDir, "lib/node_modules").absolutePath
+                            val nodePath = "$nodeModulesLocal:$nodeModulesHome:$nodeModulesGlobal"
+
+                            val command = mutableListOf(nodeExecutable.absolutePath)
+                            command.addAll(arguments)
+                            val process = ProcessBuilder(command).apply {
+                                directory(workingDir)
+                                environment().apply {
+                                    put("HOME", homeDir.absolutePath)
+                                    put("TERMODE_HOME", homeDir.absolutePath)
+                                    put("TERMODE_USR", usrDir.absolutePath)
+                                    put("TERMODE_PREFIX", usrDir.absolutePath)
+                                    put("TERMODE_BIN", java.io.File(usrDir, "bin").absolutePath)
+                                    put("TERMODE_TMPDIR", usrTmpDir.absolutePath)
+                                    put("TERMODE_CONFIG", configDir.absolutePath)
+                                    put("TMPDIR", tmpDir.absolutePath)
+                                    put("NODE_PATH", nodePath)
+                                    put(
+                                        "PATH",
+                                        "${java.io.File(usrDir, "bin").absolutePath}:" +
+                                            "/system/bin:/system/xbin:/vendor/bin:/product/bin"
+                                    )
+                                }
+                            }.start()
+                            val stdout = process.inputStream.bufferedReader().readText().trimEnd()
+                            val stderrText = process.errorStream.bufferedReader().readText().trimEnd()
+                            val finished = process.waitFor(timeoutMs, TimeUnit.MILLISECONDS)
+                            if (!finished) {
+                                process.destroyForcibly()
+                                throw java.util.concurrent.TimeoutException("Node command timed out after ${timeoutMs}ms")
+                            }
+                            Handler(Looper.getMainLooper()).post {
+                                result.success(
+                                    mapOf(
+                                        "stdout" to stdout,
+                                        "stderr" to stderrText,
+                                        "exitCode" to process.exitValue(),
+                                        "executablePath" to nodeExecutable.absolutePath,
+                                        "workingDirectory" to workingDir.absolutePath
+                                    )
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Handler(Looper.getMainLooper()).post {
+                                result.error("NODE_EXECUTION_ERROR", e.message, null)
+                            }
+                        }
+                    }
+                }
                 "getEnv" -> {
                     thread {
                         try {
@@ -1318,7 +1532,10 @@ class MainActivity: FlutterActivity() {
                                 "TERMODE_TMPDIR",
                                 "TERMODE_CACHE",
                                 "TERMODE_CONFIG",
-                                "TERMODE_PREFERRED_CWD"
+                                "TERMODE_PREFERRED_CWD",
+                                "GIT_CONFIG_NOSYSTEM",
+                                "GIT_TEMPLATE_DIR",
+                                "XDG_CONFIG_HOME"
                             ),
                             arrayOf(
                                 "termode:\$ ",
@@ -1329,7 +1546,10 @@ class MainActivity: FlutterActivity() {
                                 usrTmpDir.absolutePath,
                                 cacheDir.absolutePath,
                                 configDir.absolutePath,
-                                workingDir.absolutePath
+                                workingDir.absolutePath,
+                                "1",
+                                java.io.File(usrDir, "share/git-core/templates").absolutePath,
+                                configDir.absolutePath
                             ),
                             cols,
                             rows

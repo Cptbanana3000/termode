@@ -72,12 +72,18 @@ void main() {
 
       for (final output in [bare.output, help.output]) {
         expect(output, contains('Runtime Package Prototype'));
-        expect(output, contains('Prototype package: hello-bin'));
-        expect(output, contains('No Git, Node.js, npm, Python'));
+        expect(output, contains('Packages: hello-bin, git'));
+        expect(output, contains('Reviewed local-only Git'));
       }
       expect(available.output, contains('Prototype available now:'));
       expect(available.output, contains('hello-bin'));
-      expect(available.output, contains('Real Git/Node/npm/Python'));
+      expect(available.output, contains('Reviewed real tools:'));
+      expect(available.output, contains('git - Distributed version control'));
+      expect(available.output, contains('node - Node.js JavaScript runtime prototype'));
+      expect(
+        available.output,
+        contains('npm/Python packages remain planned'),
+      );
     });
 
     test('runtime-pkg info handles hello-bin and unknown packages', () async {
@@ -226,10 +232,7 @@ void main() {
       final status = await commandService.execute('runtime-install status');
       expect(status.output, contains('Mode: prototype installer available'));
       expect(status.output, contains('Prototype package: hello-bin'));
-      expect(
-        status.output,
-        contains('Next milestone: Git source and dependency preparation'),
-      );
+      expect(status.output, contains('Next milestone: v0.66 Node.js arm64 Prototype'));
 
       final list = await commandService.execute('runtime-install list');
       expect(list.output, contains('Prototype available now:'));
@@ -246,7 +249,10 @@ void main() {
         devDoctor.output,
         contains('Runtime package installer: prototype ready'),
       );
-      expect(devDoctor.output, contains('Git source prep: Git 2.44.0 selected'));
+      expect(
+        devDoctor.output,
+        contains('Git source prep: Git 2.44.0 selected'),
+      );
       expect(devDoctor.output, contains('Overall: PROTOTYPE READY'));
 
       final abi = await commandService.execute('runtime-abi');
@@ -306,7 +312,7 @@ void main() {
       expect(ready.output, contains('Ready for beta testing.'));
 
       final version = await commandService.execute('version');
-      expect(version.output, contains('Termode v0.62'));
+      expect(version.output, contains('Termode v0.64'));
 
       final notes = await commandService.execute('release-notes');
       expect(
@@ -315,10 +321,10 @@ void main() {
       );
 
       final bug = await commandService.execute('bug-report');
-      expect(bug.output, contains('Termode version: v0.62'));
+      expect(bug.output, contains('Termode version: v0.64'));
 
       final qa = await commandService.execute('qa-report');
-      expect(qa.output, contains('Termode v0.62'));
+      expect(qa.output, contains('Termode v0.64'));
     });
   });
 }

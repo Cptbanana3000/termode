@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
+
 import 'native_command_service.dart';
 
-/// Safe registry for real runtime artifacts (v0.52), starting with Git.
+/// Safe registry for real runtime artifacts, starting with Git.
 ///
 /// This is the trust boundary for installing real native tools. For v0.52 the
 /// registry knows about the arm64-v8a production artifact layout and host-side
@@ -33,9 +35,20 @@ class RuntimeArtifactRegistryService {
     'termode-built',
   };
 
+  static const Set<String> supportedExecutableStrategies = {
+    'app-private-prefix',
+    'native-library-dir',
+    'code-cache',
+    'unresolved',
+  };
+
   static const String gitTemplatePath =
       'tools/runtime-artifacts/git/manifest.template.json';
   static const String gitArtifactsRoot = 'tools/runtime-artifacts/git';
+  static const String bundledGitManifestAsset =
+      'tools/runtime-artifacts/git/arm64-v8a/manifest.json';
+  static const String bundledGitFilesAssetRoot =
+      'tools/runtime-artifacts/git/arm64-v8a/files';
 
   static String gitProjectManifestPath(String abi) =>
       '$gitArtifactsRoot/$abi/manifest.json';
@@ -43,12 +56,73 @@ class RuntimeArtifactRegistryService {
   static String gitProjectFilesRoot(String abi) =>
       '$gitArtifactsRoot/$abi/files';
 
-  /// Whether a verified Git artifact is bundled in this build.
-  /// Always false for v0.52 until a reviewed asset bundle is wired in.
-  bool bundledGitArtifactExists() => false;
+  static const String nodeTemplatePath =
+      'tools/runtime-artifacts/node/manifest.template.json';
+  static const String nodeArtifactsRoot = 'tools/runtime-artifacts/node';
 
-  /// The bundled Git manifest, if any. None in this build.
-  Map<String, dynamic>? bundledGitManifest() => null;
+  static const String npmTemplatePath =
+      'tools/runtime-artifacts/npm/manifest.template.json';
+  static const String npmArtifactsRoot = 'tools/runtime-artifacts/npm';
+
+  static String nodeProjectManifestPath(String abi) =>
+      '$nodeArtifactsRoot/$abi/manifest.json';
+
+  static const String bundledNodeManifestAsset =
+      'tools/runtime-artifacts/node/arm64-v8a/manifest.json';
+  static const String bundledNodeFilesAssetRoot =
+      'tools/runtime-artifacts/node/arm64-v8a/files';
+
+  /// Whether v0.64 declares the reviewed Git artifact in Flutter assets.
+  bool bundledGitArtifactExists() => true;
+
+  /// Whether v0.69 declares the reviewed Node artifact in Flutter assets.
+  bool bundledNodeArtifactExists() => true;
+
+  Future<Map<String, dynamic>?> bundledNodeManifest() async {
+    try {
+      final decoded = jsonDecode(
+        await rootBundle.loadString(bundledNodeManifestAsset),
+      );
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<int>?> readBundledNodeFile(String relativePath) async {
+    if (!_isSafeRelativePath(relativePath)) return null;
+    try {
+      final data = await rootBundle.load(
+        '$bundledNodeFilesAssetRoot/$relativePath',
+      );
+      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> bundledGitManifest() async {
+    try {
+      final decoded = jsonDecode(
+        await rootBundle.loadString(bundledGitManifestAsset),
+      );
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<int>?> readBundledGitFile(String relativePath) async {
+    if (!_isSafeRelativePath(relativePath)) return null;
+    try {
+      final data = await rootBundle.load(
+        '$bundledGitFilesAssetRoot/$relativePath',
+      );
+      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    } catch (_) {
+      return null;
+    }
+  }
 
   bool gitTemplateExists() => File(gitTemplatePath).existsSync();
 
@@ -66,6 +140,225 @@ class RuntimeArtifactRegistryService {
 
   Map<String, dynamic>? readProjectGitManifest(String abi) =>
       _readJsonMap(gitProjectManifestPath(abi));
+
+  bool nodeTemplateExists() => File(nodeTemplatePath).existsSync();
+
+  bool nodeProjectManifestExists([String? abi]) {
+    if (abi != null && abi.isNotEmpty) {
+      return File(nodeProjectManifestPath(abi)).existsSync();
+    }
+    return supportedGitAbis.any(
+      (candidate) => File(nodeProjectManifestPath(candidate)).existsSync(),
+    );
+  }
+
+  Map<String, dynamic>? readNodeTemplateManifest() =>
+      _readJsonMap(nodeTemplatePath);
+
+  Map<String, dynamic>? readProjectNodeManifest(String abi) =>
+      _readJsonMap(nodeProjectManifestPath(abi));
+
+  bool npmTemplateExists() => File(npmTemplatePath).existsSync();
+
+  Map<String, dynamic>? readNpmTemplateManifest() =>
+      _readJsonMap(npmTemplatePath);
+
+  Future<NodeArtifactStatus> nodeArtifactStatus() async {
+    final bundled = await bundledNodeArtifactStatus();
+    if (bundled.installable || bundled.status == 'INVALID') {
+      return bundled;
+    }
+    return projectNodeArtifactStatus();
+  }
+
+  Future<NodeArtifactStatus> bundledNodeArtifactStatus() async {
+    final abi = await currentAbi();
+    if (!bundledNodeArtifactExists()) {
+      return NodeArtifactStatus(
+        available: false,
+        installable: false,
+        abi: abi,
+        source: 'bundled',
+        reason: 'No verified Node.js artifact is bundled in this build.',
+        status: 'UNAVAILABLE',
+        templatePresent: nodeTemplateExists(),
+        manifestPresent: false,
+        location: 'bundled',
+      );
+    }
+    final manifest = await bundledNodeManifest();
+    if (manifest == null) {
+      return NodeArtifactStatus(
+        available: false,
+        installable: false,
+        abi: abi,
+        source: 'bundled',
+        reason: 'Node.js artifact manifest is missing.',
+        status: 'INVALID',
+        templatePresent: nodeTemplateExists(),
+        manifestPresent: false,
+        location: 'bundled',
+      );
+    }
+    final errors = validateNodeManifest(manifest, abi);
+    if (errors.isNotEmpty) {
+      return NodeArtifactStatus(
+        available: true,
+        installable: false,
+        abi: abi,
+        source: manifest['source']?.toString() ?? 'bundled',
+        reason: 'Manifest invalid: ${errors.first}',
+        status: 'INVALID',
+        templatePresent: nodeTemplateExists(),
+        manifestPresent: true,
+        location: 'bundled',
+      );
+    }
+    final manifestAbi = manifest['abi']?.toString() ?? '';
+    if (manifestAbi != 'all' && manifestAbi != abi) {
+      return NodeArtifactStatus(
+        available: true,
+        installable: false,
+        abi: abi,
+        source: manifest['source']?.toString() ?? 'bundled',
+        reason: 'Artifact ABI ($manifestAbi) does not match device ($abi).',
+        status: 'INCOMPATIBLE',
+        templatePresent: nodeTemplateExists(),
+        manifestPresent: true,
+        location: 'bundled',
+      );
+    }
+    return NodeArtifactStatus(
+      available: true,
+      installable: true,
+      abi: abi,
+      source: manifest['source']?.toString() ?? 'bundled',
+      reason: 'Valid Node.js artifact manifest found for $abi.',
+      status: 'AVAILABLE',
+      templatePresent: nodeTemplateExists(),
+      manifestPresent: true,
+      location: 'bundled',
+    );
+  }
+
+  Future<NodeArtifactStatus> projectNodeArtifactStatus() async {
+    final abi = await currentAbi();
+    final templatePresent = nodeTemplateExists();
+    final manifestPath = nodeProjectManifestPath(abi);
+    final manifestPresent = File(manifestPath).existsSync();
+
+    if (!manifestPresent) {
+      return NodeArtifactStatus(
+        available: false,
+        installable: false,
+        abi: abi,
+        source: 'none',
+        reason: templatePresent
+            ? 'Node.js artifact template is present, but no ABI-matched manifest was staged.'
+            : 'No Node.js artifact or template found.',
+        status: templatePresent ? 'TEMPLATE_ONLY' : 'UNAVAILABLE',
+        templatePresent: templatePresent,
+        manifestPresent: false,
+        location: 'project',
+        manifestPath: manifestPath,
+      );
+    }
+
+    final manifest = readProjectNodeManifest(abi);
+    if (manifest == null) {
+      return NodeArtifactStatus(
+        available: false,
+        installable: false,
+        abi: abi,
+        source: 'project',
+        reason: 'Node manifest is not valid JSON.',
+        status: 'INVALID',
+        templatePresent: templatePresent,
+        manifestPresent: true,
+        location: 'project',
+        manifestPath: manifestPath,
+      );
+    }
+
+    final errors = validateNodeManifest(manifest, abi);
+    if (errors.isNotEmpty) {
+      return NodeArtifactStatus(
+        available: true,
+        installable: false,
+        abi: abi,
+        source: manifest['source']?.toString() ?? 'project',
+        reason: 'Manifest invalid: ${errors.first}',
+        status: 'INVALID',
+        templatePresent: templatePresent,
+        manifestPresent: true,
+        location: 'project',
+        manifestPath: manifestPath,
+      );
+    }
+
+    return NodeArtifactStatus(
+      available: true,
+      installable: true,
+      abi: abi,
+      source: manifest['source']?.toString() ?? 'project',
+      reason: 'Valid Node.js artifact manifest found for $abi.',
+      status: 'AVAILABLE',
+      templatePresent: templatePresent,
+      manifestPresent: true,
+      location: 'project',
+      manifestPath: manifestPath,
+    );
+  }
+
+  List<String> validateNodeManifest(
+    Map<String, dynamic> manifest,
+    String expectedAbi,
+  ) {
+    final errors = <String>[];
+    final name = manifest['name']?.toString() ?? '';
+    final version = manifest['version']?.toString() ?? '';
+    final kind = manifest['kind']?.toString() ?? '';
+    final command = manifest['command']?.toString() ?? '';
+    final abi = manifest['abi']?.toString() ?? '';
+    final entrypoint = manifest['entrypoint']?.toString() ?? '';
+    final logicalInstallPath =
+        manifest['logical_install_path']?.toString() ?? '';
+    final executableStrategy =
+        manifest['executable_strategy']?.toString() ?? '';
+    final executablePackageName =
+        manifest['executable_package_name']?.toString() ?? '';
+    final source = manifest['source']?.toString() ?? '';
+    final files = manifest['files'];
+
+    if (name != 'node') errors.add("package name must be node");
+    if (version.trim().isEmpty) errors.add('missing version');
+    if (kind != 'native-tool') errors.add('kind must be native-tool');
+    if (command != 'node') errors.add("command must be node");
+    if (abi.isEmpty) {
+      errors.add('missing abi');
+    } else if (abi != 'all' && !supportedGitAbis.contains(abi)) {
+      errors.add('unsupported abi');
+    }
+    if (!_isSafeRelativePath(entrypoint)) errors.add('invalid entrypoint');
+    if (!_isSafeRelativePath(logicalInstallPath) ||
+        logicalInstallPath != entrypoint) {
+      errors.add('invalid logical install path');
+    }
+    if (!supportedExecutableStrategies.contains(executableStrategy)) {
+      errors.add('unsafe executable strategy');
+    }
+    if (executableStrategy == 'native-library-dir' &&
+        !RegExp(r'^lib[a-z0-9_]+\.so$').hasMatch(executablePackageName)) {
+      errors.add('invalid executable package name');
+    }
+    if (!trustedSources.contains(source)) {
+      errors.add('unknown/untrusted source');
+    }
+    if (files is! List || files.isEmpty) {
+      errors.add('missing files');
+    }
+    return errors..sort();
+  }
 
   Map<String, dynamic>? _readJsonMap(String path) {
     final file = File(path);
@@ -108,7 +401,7 @@ class RuntimeArtifactRegistryService {
         location: 'bundled',
       );
     }
-    final manifest = bundledGitManifest();
+    final manifest = await bundledGitManifest();
     if (manifest == null) {
       return GitArtifactStatus(
         available: false,
@@ -145,6 +438,20 @@ class RuntimeArtifactRegistryService {
         source: manifest['source']?.toString() ?? 'bundled',
         reason: 'Artifact ABI ($manifestAbi) does not match device ($abi).',
         status: 'INCOMPATIBLE',
+        templatePresent: gitTemplateExists(),
+        manifestPresent: true,
+        location: 'bundled',
+      );
+    }
+    final fileErrors = await validateBundledGitArtifact(manifest);
+    if (fileErrors.isNotEmpty) {
+      return GitArtifactStatus(
+        available: true,
+        installable: false,
+        abi: abi,
+        source: manifest['source']?.toString() ?? 'bundled',
+        reason: fileErrors.first,
+        status: 'INVALID',
         templatePresent: gitTemplateExists(),
         manifestPresent: true,
         location: 'bundled',
@@ -265,8 +572,51 @@ class RuntimeArtifactRegistryService {
       if (actual.toLowerCase() != expected.toLowerCase()) {
         return ['checksum mismatch: $relPath'];
       }
+      if (relPath.endsWith('/git')) {
+        final binaryError = _validateGitBinary(file.readAsBytesSync());
+        if (binaryError != null) return [binaryError];
+      }
     }
     return const [];
+  }
+
+  Future<List<String>> validateBundledGitArtifact(
+    Map<String, dynamic> manifest,
+  ) async {
+    final files = manifest['files'];
+    if (files is! List || files.isEmpty) return const ['missing files'];
+    for (final item in files) {
+      if (item is! Map) return const ['invalid file entry'];
+      final path = item['path']?.toString() ?? '';
+      if (!_isSafeRelativePath(path)) return ['unsafe file path: $path'];
+      final bytes = await readBundledGitFile(path);
+      if (bytes == null) return ['missing artifact file: $path'];
+      if (bytes.isEmpty) return ['zero-byte artifact file: $path'];
+      if (item['bytes'] is! int || item['bytes'] != bytes.length) {
+        return ['byte count mismatch: $path'];
+      }
+      final expected = item['sha256']?.toString().toLowerCase() ?? '';
+      if (calculateSha256(bytes).toLowerCase() != expected) {
+        return ['checksum mismatch: $path'];
+      }
+      if (path.endsWith('/git')) {
+        final binaryError = _validateGitBinary(bytes);
+        if (binaryError != null) return [binaryError];
+      }
+    }
+    return const [];
+  }
+
+  String? _validateGitBinary(List<int> bytes) {
+    if (bytes.isEmpty) return 'Git binary is zero bytes';
+    if (bytes.length < 4 ||
+        bytes[0] != 0x7f ||
+        bytes[1] != 0x45 ||
+        bytes[2] != 0x4c ||
+        bytes[3] != 0x46) {
+      return 'Git payload is not an ELF binary; scripts/placeholders are refused';
+    }
+    return null;
   }
 
   List<String> validateGitTemplateManifest() {
@@ -280,7 +630,11 @@ class RuntimeArtifactRegistryService {
           (error) =>
               error != 'placeholder manifest is not installable' &&
               error != 'placeholder checksum' &&
-              error != 'invalid file byte count',
+              error != 'invalid file byte count' &&
+              error != 'invalid termode milestone' &&
+              error != 'missing created_by' &&
+              error != 'candidate artifact is not installable' &&
+              error != 'template-only artifact is not installable',
         )
         .toList();
     final version = manifest['version']?.toString() ?? '';
@@ -298,7 +652,11 @@ class RuntimeArtifactRegistryService {
     if (RegExp(r'^[A-Za-z]:').hasMatch(normalized)) return false;
     if (normalized.split('/').contains('..')) return false;
     if (normalized.endsWith('/')) return false;
-    return normalized.startsWith('bin/') ||
+    return normalized.startsWith('usr/bin/') ||
+        normalized.startsWith('usr/lib/') ||
+        normalized.startsWith('usr/libexec/') ||
+        normalized.startsWith('usr/share/') ||
+        normalized.startsWith('bin/') ||
         normalized.startsWith('lib/') ||
         normalized.startsWith('libexec/') ||
         normalized.startsWith('share/');
@@ -317,6 +675,18 @@ class RuntimeArtifactRegistryService {
     final command = manifest['command']?.toString() ?? '';
     final abi = manifest['abi']?.toString() ?? '';
     final entrypoint = manifest['entrypoint']?.toString() ?? '';
+    final logicalInstallPath =
+        manifest['logical_install_path']?.toString() ?? '';
+    final executableStrategy =
+        manifest['executable_strategy']?.toString() ?? '';
+    final executablePackageName =
+        manifest['executable_package_name']?.toString() ?? '';
+    final originalBinarySha =
+        manifest['original_binary_sha256']?.toString() ?? '';
+    final packagedExecutableSha =
+        manifest['packaged_executable_sha256']?.toString() ?? '';
+    final executionPolicyNote =
+        manifest['execution_policy_note']?.toString() ?? '';
     final source = manifest['source']?.toString() ?? '';
     final sourceUrl = manifest['source_url']?.toString() ?? '';
     final sourceNote = manifest['source_note']?.toString() ?? '';
@@ -328,6 +698,10 @@ class RuntimeArtifactRegistryService {
     final smokeTests = manifest['smoke_tests'];
     final dependencies = manifest['dependencies'];
     final createdAt = manifest['created_at']?.toString() ?? '';
+    final milestone = manifest['termode_milestone']?.toString() ?? '';
+    final createdBy = manifest['created_by']?.toString() ?? '';
+    final candidate = manifest['candidate'];
+    final templateOnly = manifest['template_only'];
     final files = manifest['files'];
 
     if (name != 'git') errors.add('package name must be git');
@@ -344,6 +718,30 @@ class RuntimeArtifactRegistryService {
       errors.add('unsupported abi');
     }
     if (!_isSafeRelativePath(entrypoint)) errors.add('invalid entrypoint');
+    if (!_isSafeRelativePath(logicalInstallPath) ||
+        logicalInstallPath != entrypoint) {
+      errors.add('invalid logical install path');
+    }
+    if (!supportedExecutableStrategies.contains(executableStrategy)) {
+      errors.add('unsafe executable strategy');
+    }
+    if (executableStrategy == 'native-library-dir' &&
+        !RegExp(r'^lib[a-z0-9_]+\.so$').hasMatch(executablePackageName)) {
+      errors.add('invalid executable package name');
+    }
+    if (!RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(originalBinarySha)) {
+      errors.add('invalid original binary checksum');
+    }
+    if (!RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(packagedExecutableSha)) {
+      errors.add('invalid packaged executable checksum');
+    }
+    if (executionPolicyNote.trim().isEmpty) {
+      errors.add('missing execution policy note');
+    }
+    if (manifest['local_only'] != true) errors.add('local_only must be true');
+    if (manifest['remote_features_deferred'] != true) {
+      errors.add('remote features must remain deferred');
+    }
     if (!trustedSources.contains(source)) {
       errors.add('unknown/untrusted source');
     }
@@ -361,6 +759,16 @@ class RuntimeArtifactRegistryService {
     }
     if (dependencies is! List) errors.add('missing dependencies');
     if (createdAt.trim().isEmpty) errors.add('missing created_at');
+    if (milestone != 'v0.64' &&
+        milestone != 'v0.65' &&
+        milestone != 'v0.66') {
+      errors.add('invalid termode milestone');
+    }
+    if (createdBy.trim().isEmpty) errors.add('missing created_by');
+    if (candidate != false) errors.add('candidate artifact is not installable');
+    if (templateOnly != false) {
+      errors.add('template-only artifact is not installable');
+    }
     if (files is! List || files.isEmpty) {
       errors.add('missing files');
     } else {
@@ -379,6 +787,11 @@ class RuntimeArtifactRegistryService {
         if (bytes is! int || bytes <= 0) errors.add('invalid file byte count');
         if (RegExp(r'^0{64}$').hasMatch(sha)) {
           errors.add('placeholder checksum');
+        }
+        if (path == logicalInstallPath &&
+            originalBinarySha.isNotEmpty &&
+            sha.toLowerCase() != originalBinarySha.toLowerCase()) {
+          errors.add('original binary checksum mismatch');
         }
       }
     }
@@ -566,3 +979,30 @@ class GitArtifactStatus {
     this.manifestPath = '',
   });
 }
+
+class NodeArtifactStatus {
+  final bool available;
+  final bool installable;
+  final String abi;
+  final String source;
+  final String reason;
+  final String status;
+  final bool templatePresent;
+  final bool manifestPresent;
+  final String location;
+  final String manifestPath;
+
+  const NodeArtifactStatus({
+    required this.available,
+    required this.installable,
+    required this.abi,
+    required this.source,
+    required this.reason,
+    required this.status,
+    this.templatePresent = false,
+    this.manifestPresent = false,
+    this.location = 'unknown',
+    this.manifestPath = '',
+  });
+}
+

@@ -23,11 +23,31 @@ class RuntimeBinaryPackageService {
   static const String metadataSchema = 'termode.runtime-packages.v1';
   static const String helloBinName = 'hello-bin';
   static const String gitName = 'git';
+  static const String gitLogicalInstallPath = 'usr/bin/git';
+  static const String gitExecutablePackageName = 'libtermode_git_exec.so';
+  static const String nodeName = 'node';
+  static const String nodeLogicalInstallPath = 'usr/bin/node';
+  static const String nodeExecutablePackageName = 'libtermode_node_exec.so';
+  static const String npmName = 'npm';
+  static const String npxName = 'npx';
+  static const String npmLogicalInstallPath = 'usr/bin/npm';
   static const String helloBinOutput =
       'Hello from Termode binary package prototype.';
   static const String _helloBinContent =
       '#!/system/bin/sh\n'
       'printf "%s\\n" "Hello from Termode binary package prototype."\n';
+  static Future<NativeCommandResult> Function(
+    List<String> arguments, {
+    String? workingDirectory,
+  })? gitExecutorForTesting;
+  static Future<NativeCommandResult> Function(
+    List<String> arguments, {
+    String? workingDirectory,
+  })? nodeExecutorForTesting;
+  static Future<NativeCommandResult> Function(
+    List<String> arguments, {
+    String? workingDirectory,
+  })? npmExecutorForTesting;
 
   final RuntimePrefixService _prefix = RuntimePrefixService();
 
@@ -88,7 +108,11 @@ class RuntimeBinaryPackageService {
     if (RegExp(r'^[A-Za-z]:').hasMatch(normalized)) return false;
     if (normalized.split('/').contains('..')) return false;
     if (normalized.endsWith('/')) return false;
-    return normalized.startsWith('bin/') ||
+    return normalized.startsWith('usr/bin/') ||
+        normalized.startsWith('usr/lib/') ||
+        normalized.startsWith('usr/libexec/') ||
+        normalized.startsWith('usr/share/') ||
+        normalized.startsWith('bin/') ||
         normalized.startsWith('lib/') ||
         normalized.startsWith('libexec/') ||
         normalized.startsWith('share/');
@@ -186,10 +210,30 @@ class RuntimeBinaryPackageService {
 
   File? _resolveGitPrefixFile(String relPath, Map<String, String> paths) {
     if (!_isSafeGitRelativePath(relPath)) return null;
+    var installPath = relPath.replaceAll('\\', '/');
+    if (installPath.startsWith('usr/')) {
+      installPath = installPath.substring(4);
+    }
     final prefix = Directory(
       paths['prefix']!,
     ).absolute.path.replaceAll('\\', '/');
-    final file = File('${paths['prefix']}/$relPath');
+    final file = File('${paths['prefix']}/$installPath');
+    final normalized = file.absolute.path.replaceAll('\\', '/');
+    if (normalized == prefix || !normalized.startsWith('$prefix/')) {
+      return null;
+    }
+    return file;
+  }
+
+  File? _resolveNodePrefixFile(String relPath, Map<String, String> paths) {
+    var installPath = relPath.replaceAll('\\', '/');
+    if (installPath.startsWith('usr/')) {
+      installPath = installPath.substring(4);
+    }
+    final prefix = Directory(
+      paths['prefix']!,
+    ).absolute.path.replaceAll('\\', '/');
+    final file = File('${paths['prefix']}/$installPath');
     final normalized = file.absolute.path.replaceAll('\\', '/');
     if (normalized == prefix || !normalized.startsWith('$prefix/')) {
       return null;
@@ -207,7 +251,7 @@ class RuntimeBinaryPackageService {
   Future<String> help() async {
     return '=== Runtime Package Prototype (v0.44) ===\n'
         'Safe prototype installer for future binary/runtime packages.\n'
-        'No Git, Node.js, npm, Python, downloads, or unknown binaries yet.\n\n'
+        'Reviewed local-only Git and hello-bin are supported; no downloads or unknown binaries.\n\n'
         'Commands:\n'
         '  runtime-pkg available\n'
         '  runtime-pkg info <name>\n'
@@ -218,7 +262,7 @@ class RuntimeBinaryPackageService {
         '  runtime-pkg status\n'
         '  runtime-pkg doctor\n'
         '  runtime-pkg repair\n\n'
-        'Prototype package: hello-bin';
+        'Packages: hello-bin, git (arm64-v8a local-only)';
   }
 
   /// Whether a verified, bundled Git package artifact exists in this build.
@@ -234,18 +278,174 @@ class RuntimeBinaryPackageService {
     return packages.containsKey(gitName);
   }
 
+  Future<Map<String, dynamic>?> installedGitMetadata() async {
+    final metadata = await _readMetadata();
+    final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+    final value = packages[gitName];
+    return value is Map ? Map<String, dynamic>.from(value) : null;
+  }
+
+  Future<String?> gitExecutableBackingPath() async =>
+      (await installedGitMetadata())?['executable_backing_path']?.toString();
+
+  Future<bool> gitExecutionVerified() async =>
+      (await installedGitMetadata())?['execution_verified'] == true;
+
+  Future<bool> gitLocalSmokeVerified() async =>
+      (await installedGitMetadata())?['local_smoke_verified'] == true;
+
+  Future<void> markGitLocalSmokeVerified() async {
+    final metadata = await _readMetadata();
+    final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+    final value = packages[gitName];
+    if (value is! Map) return;
+    final pkg = Map<String, dynamic>.from(value);
+    if (pkg['execution_verified'] != true) return;
+    pkg['local_smoke_verified'] = true;
+    pkg['local_smoke_verified_at'] = DateTime.now().toUtc().toIso8601String();
+    packages[gitName] = pkg;
+    metadata['packages'] = packages;
+    await _writeMetadata(metadata);
+  }
+
+  Future<RuntimeBinaryPackageResult> binWhichGit() async {
+    final pkg = await installedGitMetadata();
+    if (pkg == null) {
+      return const RuntimeBinaryPackageResult(
+        'Not found in Termode PATH: git',
+        isError: true,
+      );
+    }
+    final paths = await _paths();
+    final logical = _resolveGitPrefixFile(
+      pkg['logical_path']?.toString() ?? gitLogicalInstallPath,
+      paths,
+    );
+    return RuntimeBinaryPackageResult(
+      '=== Binary Mapping: git ===\n'
+      'Logical path: ${logical?.path ?? gitLogicalInstallPath}\n'
+      'Backing path: ${pkg['executable_backing_path']}\n'
+      'Executable storage: ${pkg['executable_storage']}\n'
+      'Execution verified: ${pkg['execution_verified'] == true ? 'yes' : 'no'}',
+    );
+  }
+
+  Future<NativeCommandResult> runGit(
+    List<String> arguments, {
+    String? workingDirectory,
+  }) async {
+    final pkg = await installedGitMetadata();
+    if (pkg == null || pkg['execution_verified'] != true) {
+      return NativeCommandResult(
+        stdout: '',
+        stderr: 'Git is not installed with a verified executable mapping.',
+        exitCode: -1,
+      );
+    }
+    final backingPath = pkg['executable_backing_path']?.toString() ?? '';
+    return _executeGitBacking(
+      backingPath,
+      arguments,
+      workingDirectory: workingDirectory,
+    );
+  }
+
+  Future<bool> nodeInstalled() async {
+    if (nodeExecutorForTesting != null) return true;
+    final metadata = await _readMetadata();
+    final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+    return packages.containsKey(nodeName);
+  }
+
+  Future<Map<String, dynamic>?> installedNodeMetadata() async {
+    final metadata = await _readMetadata();
+    final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+    final value = packages[nodeName];
+    return value is Map ? Map<String, dynamic>.from(value) : null;
+  }
+
+  Future<String?> nodeExecutableBackingPath() async =>
+      (await installedNodeMetadata())?['executable_backing_path']?.toString();
+
+  Future<bool> nodeExecutionVerified() async =>
+      (await installedNodeMetadata())?['execution_verified'] == true;
+
+  Future<NativeCommandResult> runNode(
+    List<String> arguments, {
+    String? workingDirectory,
+  }) async {
+    if (nodeExecutorForTesting != null) {
+      return nodeExecutorForTesting!(
+        arguments,
+        workingDirectory: workingDirectory,
+      );
+    }
+    if (Platform.isAndroid) {
+      return NativeCommandService().executeBundledNode(
+        arguments,
+        workingDirectory: workingDirectory,
+      );
+    }
+    return NativeCommandResult(
+      stdout: '',
+      stderr: 'Node.js execution is only available on Android or via test hook.',
+      exitCode: -1,
+    );
+  }
+
+  Future<bool> npmInstalled() async {
+    if (npmExecutorForTesting != null) return true;
+    final metadata = await _readMetadata();
+    final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+    return packages.containsKey(npmName);
+  }
+
+  Future<Map<String, dynamic>?> installedNpmMetadata() async {
+    final metadata = await _readMetadata();
+    final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+    final value = packages[npmName];
+    return value is Map ? Map<String, dynamic>.from(value) : null;
+  }
+
+  Future<NativeCommandResult> runNpm(
+    List<String> arguments, {
+    String? workingDirectory,
+  }) async {
+    if (npmExecutorForTesting != null) {
+      return npmExecutorForTesting!(
+        arguments,
+        workingDirectory: workingDirectory,
+      );
+    }
+    if (Platform.isAndroid && (await nodeInstalled())) {
+      const npmCliPath = 'usr/lib/node_modules/npm/bin/npm-cli.js';
+      return runNode([npmCliPath, ...arguments], workingDirectory: workingDirectory);
+    }
+    return NativeCommandResult(
+      stdout: '',
+      stderr: 'npm execution requires Node.js runtime or active test hook.',
+      exitCode: -1,
+    );
+  }
+
   Future<String> available() async {
     final manifest = helloBinManifest();
     final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
+    final nodeArtifact =
+        await RuntimeArtifactRegistryService().nodeArtifactStatus();
     final gitState = artifact.installable
         ? 'installable if verified'
         : 'artifact ${artifact.status.toLowerCase()}; install refuses safely';
+    final nodeState = nodeArtifact.installable
+        ? 'installable if verified'
+        : 'artifact ${nodeArtifact.status.toLowerCase()}';
     return '=== Available Runtime Packages ===\n'
         'Prototype available now:\n'
         '* hello-bin [${manifest['version']}] - ${manifest['description']}\n\n'
-        'Planned real tools:\n'
-        '* git - Distributed version control ($gitState)\n\n'
-        'Real Git/Node/npm/Python packages are planned, not enabled yet.';
+        'Reviewed real tools:\n'
+        '* git - Distributed version control ($gitState)\n'
+        '* node - Node.js JavaScript runtime prototype ($nodeState)\n\n'
+        'npm/Python packages remain planned.';
   }
 
   Future<String> list() async {
@@ -287,6 +487,39 @@ class RuntimeBinaryPackageService {
           'Bundle state: ${artifact.status}\n'
           'Next step: git-artifact bundle-status\n'
           'Run: git-artifact next';
+    }
+    if (name == nodeName) {
+      final installed = await nodeInstalled();
+      final artifact = await RuntimeArtifactRegistryService()
+          .nodeArtifactStatus();
+      final status = installed
+          ? 'installed'
+          : (artifact.installable
+                ? 'installable (verified artifact)'
+                : 'planned (artifact ${artifact.status.toLowerCase()})');
+      return '=== Runtime Package: node ===\n'
+          'Name: node\n'
+          'Kind: native-tool\n'
+          'Status: $status\n'
+          'Command: node\n'
+          'Current ABI: ${artifact.abi}\n'
+          'Artifact available: ${artifact.available ? 'yes' : 'no'}\n'
+          'Installable: ${artifact.installable ? 'yes' : 'no'}\n'
+          'Description: Node.js JavaScript runtime engine.\n'
+          'Install support: enabled with verified arm64 ELF package artifact.\n'
+          'Current artifact state: ${artifact.status}\n'
+          'Next step: node-artifact status';
+    }
+    if (name == npmName) {
+      final installed = await npmInstalled();
+      return '=== Runtime Package: npm ===\n'
+          'Name: npm\n'
+          'Kind: package-manager\n'
+          'Status: ${installed ? "installed" : "planned (prototype v0.67)"}\n'
+          'Command: npm\n'
+          'Description: Node.js Package Manager.\n'
+          'Install support: driven by Node.js runtime engine.\n'
+          'Next step: npm-doctor';
     }
     if (name != helloBinName) {
       return 'Unknown runtime package: $name\n'
@@ -343,6 +576,38 @@ class RuntimeBinaryPackageService {
         );
       }
       return _installGitArtifact(artifact);
+    }
+    if (name == nodeName) {
+      final artifact = await RuntimeArtifactRegistryService()
+          .nodeArtifactStatus();
+      if (artifact.status == 'INVALID' || artifact.status == 'INCOMPATIBLE') {
+        return RuntimeBinaryPackageResult(
+          'Node.js artifact failed verification.\n'
+          'Current state: ${artifact.status}\n'
+          'Reason: ${artifact.reason}\n'
+          'Run: node-artifact status\n'
+          'Run: node-doctor',
+          isError: true,
+        );
+      }
+      if (!artifact.available) {
+        return RuntimeBinaryPackageResult(
+          'Node.js artifact is not available in this build.\n'
+          'Current state: ${artifact.status}\n'
+          'Run: node-artifact status\n'
+          'Run: node-doctor',
+        );
+      }
+      if (!artifact.installable) {
+        return RuntimeBinaryPackageResult(
+          'Node.js artifact failed verification.\n'
+          'Reason: ${artifact.reason}\n'
+          'Run: node-artifact status\n'
+          'Run: node-doctor',
+          isError: true,
+        );
+      }
+      return _installNodeArtifact(artifact);
     }
     if (name != helloBinName) {
       return RuntimeBinaryPackageResult(
@@ -441,7 +706,7 @@ class RuntimeBinaryPackageService {
     final abi = artifact.abi;
     final manifest = artifact.location == 'project'
         ? registry.readProjectGitManifest(abi)
-        : registry.bundledGitManifest();
+        : await registry.bundledGitManifest();
     if (manifest == null) {
       return const RuntimeBinaryPackageResult(
         'Git install blocked: manifest missing.\n'
@@ -465,45 +730,112 @@ class RuntimeBinaryPackageService {
     final paths = await _paths();
     final files = manifest['files'] as List;
     final installedFiles = <String>[];
-    final copiedFiles = <File>[];
+    final createdLogicalPaths = <String>[];
     final checksums = <String, String>{};
     try {
-      for (final item in files) {
-        final meta = Map<String, dynamic>.from(item as Map);
-        final relPath = meta['path'].toString();
+      final strategy = manifest['executable_strategy']?.toString() ?? '';
+      if (strategy != 'native-library-dir') {
+        throw StateError('unsupported executable strategy: $strategy');
+      }
+      if (files.length != 1 || files.first is! Map) {
+        throw StateError('Git package must contain one reviewed executable');
+      }
+      final meta = Map<String, dynamic>.from(files.first as Map);
+      final relPath = meta['path'].toString();
+      final logicalPath = manifest['logical_install_path']?.toString() ?? '';
+      if (relPath != logicalPath || logicalPath != gitLogicalInstallPath) {
+        throw StateError('logical Git path does not match reviewed manifest');
+      }
+      final destination = _resolveGitPrefixFile(logicalPath, paths);
+      if (destination == null) throw StateError('invalid logical Git path');
+      await destination.parent.create(recursive: true);
+      final existingType = await FileSystemEntity.type(
+        destination.path,
+        followLinks: false,
+      );
+      if (existingType != FileSystemEntityType.notFound) {
+        throw StateError('unmanaged logical path already exists: $logicalPath');
+      }
+
+      late final String backingPath;
+      late final String executableStorage;
+      if (Platform.isAndroid) {
+        final executablePaths = await NativeCommandService()
+            .getExecutablePaths();
+        final nativeDir =
+            executablePaths?['nativeLibraryDir']?.toString() ?? '';
+        backingPath = executablePaths?['gitExecutable']?.toString() ?? '';
+        final packageName =
+            manifest['executable_package_name']?.toString() ?? '';
+        if (packageName != gitExecutablePackageName ||
+            !_isApprovedNativeBackingPath(
+              nativeDir,
+              backingPath,
+              packageName,
+            )) {
+          throw StateError('unsafe native library executable path');
+        }
+        executableStorage = 'native-library-dir';
+      } else {
+        // Host tests cannot execute the Android ELF. Copying into the isolated
+        // test prefix preserves the rollback coverage without claiming support.
         final source = artifact.location == 'project'
             ? File(
                 '${RuntimeArtifactRegistryService.gitProjectFilesRoot(abi)}/$relPath',
               )
             : null;
-        final destination = _resolveGitPrefixFile(relPath, paths);
-        if (source == null || destination == null) {
-          throw StateError('unsafe artifact path: $relPath');
-        }
-        await destination.parent.create(recursive: true);
-        await source.copy(destination.path);
-        copiedFiles.add(destination);
-        installedFiles.add(relPath);
-        final actual = _calculateSha256(await destination.readAsBytes());
-        if (actual.toLowerCase() != meta['sha256'].toString().toLowerCase()) {
-          throw StateError('checksum mismatch: $relPath');
-        }
-        checksums[relPath] = actual;
-        if (!Platform.isWindows) {
-          try {
-            await Process.run('chmod', ['700', destination.path]);
-          } catch (e) {
-            debugPrint('runtime-pkg git chmod failed: $e');
+        if (source != null) {
+          await source.copy(destination.path);
+        } else {
+          final bytes = await registry.readBundledGitFile(relPath);
+          if (bytes == null) {
+            throw StateError('bundled artifact file missing: $relPath');
           }
+          await destination.writeAsBytes(bytes, flush: true);
         }
+        createdLogicalPaths.add(destination.path);
+        backingPath = destination.path;
+        executableStorage = 'app-private-prefix-host-test';
       }
 
-      final entrypoint = manifest['entrypoint']?.toString() ?? 'bin/git';
-      final gitFile = _resolveGitPrefixFile(entrypoint, paths);
-      if (gitFile == null) throw StateError('invalid Git entrypoint');
-      final probe = await _runInstalledGitVersion(gitFile.path);
-      if (probe.exitCode != 0 || !probe.output.toLowerCase().contains('git')) {
-        throw StateError('git --version failed: ${probe.output}');
+      final backingFile = File(backingPath);
+      if (!await backingFile.exists()) {
+        throw StateError('executable backing file missing: $backingPath');
+      }
+      final backingBytes = await backingFile.readAsBytes();
+      final actual = _calculateSha256(backingBytes);
+      final expected = meta['sha256'].toString().toLowerCase();
+      final expectedBytes = meta['bytes'];
+      if (actual.toLowerCase() != expected ||
+          expectedBytes is! int ||
+          backingBytes.length != expectedBytes) {
+        throw StateError('packaged executable checksum/size mismatch');
+      }
+      if (backingBytes.length < 4 ||
+          backingBytes[0] != 0x7f ||
+          backingBytes[1] != 0x45 ||
+          backingBytes[2] != 0x4c ||
+          backingBytes[3] != 0x46) {
+        throw StateError('packaged executable is not an ELF binary');
+      }
+      checksums[relPath] = actual;
+      installedFiles.add(relPath);
+
+      if (Platform.isAndroid) {
+        await Link(destination.path).create(backingPath);
+        createdLogicalPaths.add(destination.path);
+      }
+
+      final probeResult = await _executeGitBacking(backingPath, ['--version']);
+      final probe = _preferredOutput(probeResult);
+      if (probeResult.exitCode != 0 ||
+          !RegExp(
+            r'^git version \d+\.\d+\.\d+',
+          ).hasMatch(probe.toLowerCase())) {
+        throw StateError(
+          'git --version failed '
+          '[${classifyGitFailure(probeResult.exitCode, probe)}]: $probe',
+        );
       }
 
       final metadata = await _readMetadata();
@@ -513,14 +845,22 @@ class RuntimeBinaryPackageService {
         'version': manifest['version'],
         'kind': manifest['kind'],
         'abi': manifest['abi'],
-        'entrypoint': entrypoint,
+        'entrypoint': logicalPath,
         'entrypoints': ['git'],
         'files': installedFiles,
         'sha256': checksums,
+        'logical_path': logicalPath,
+        'executable_backing_path': backingPath,
+        'executable_storage': executableStorage,
+        'executable_strategy': strategy,
+        'execution_verified': true,
+        'local_smoke_verified': false,
+        'local_only': true,
+        'remote_features_deferred': true,
         'installed_at': DateTime.now().toUtc().toIso8601String(),
         'source': manifest['source'],
         'status': 'installed',
-        'verification': probe.output,
+        'verification': probe,
       };
       metadata['schema'] = metadataSchema;
       metadata['packages'] = packages;
@@ -529,14 +869,17 @@ class RuntimeBinaryPackageService {
       return RuntimeBinaryPackageResult(
         'Installed: git\n'
         'Command: git\n'
-        '${probe.output}\n'
+        'Logical path: ${destination.path}\n'
+        'Executable backing path: $backingPath\n'
+        'Executable storage: $executableStorage\n'
+        'Execution verified: yes\n'
+        '$probe\n'
+        'Remote features: deferred\n'
         'Overall: HEALTHY',
       );
     } catch (e) {
-      for (final file in copiedFiles.reversed) {
-        if (await file.exists()) {
-          await file.delete();
-        }
+      for (final path in createdLogicalPaths.reversed) {
+        await _deleteLogicalEntity(path);
       }
       return RuntimeBinaryPackageResult(
         'Git install failed and was rolled back.\n'
@@ -547,31 +890,256 @@ class RuntimeBinaryPackageService {
     }
   }
 
-  Future<({int exitCode, String output})> _runInstalledGitVersion(
-    String gitPath,
+  Future<RuntimeBinaryPackageResult> _installNodeArtifact(
+    NodeArtifactStatus artifact,
   ) async {
-    if (Platform.isAndroid) {
-      final result = await NativeCommandService().execute(
-        '/system/bin/sh "$gitPath" --version',
-        'runtime_pkg_git',
-        timeoutMs: 5000,
+    final registry = RuntimeArtifactRegistryService();
+    final abi = artifact.abi;
+    final manifest = artifact.location == 'project'
+        ? registry.readProjectNodeManifest(abi)
+        : await registry.bundledNodeManifest();
+    if (manifest == null) {
+      return const RuntimeBinaryPackageResult(
+        'Node install blocked: manifest missing.\n'
+        'Run: node-artifact status',
+        isError: true,
       );
-      final output = result.stdout.trim().isNotEmpty
-          ? result.stdout.trim()
-          : result.stderr.trim();
-      return (exitCode: result.exitCode, output: output);
+    }
+    final validation = registry.validateNodeManifest(manifest, abi);
+    if (validation.isNotEmpty) {
+      return RuntimeBinaryPackageResult(
+        'Node install blocked: ${validation.first}\n'
+        'Run: node-artifact status',
+        isError: true,
+      );
+    }
+
+    await _prefix.initPrefix();
+    await _ensureStructures();
+    final paths = await _paths();
+    final files = manifest['files'] as List;
+    final installedFiles = <String>[];
+    final createdLogicalPaths = <String>[];
+    final checksums = <String, String>{};
+    try {
+      final strategy = manifest['executable_strategy']?.toString() ?? '';
+      if (strategy != 'native-library-dir') {
+        throw StateError('unsupported executable strategy: $strategy');
+      }
+      if (files.length != 1 || files.first is! Map) {
+        throw StateError('Node package must contain one reviewed executable');
+      }
+      final meta = Map<String, dynamic>.from(files.first as Map);
+      final relPath = meta['path'].toString();
+      final logicalPath = manifest['logical_install_path']?.toString() ?? '';
+      final destination = _resolveNodePrefixFile(logicalPath, paths);
+      if (destination == null) throw StateError('invalid logical Node path');
+      await destination.parent.create(recursive: true);
+      final existingType = await FileSystemEntity.type(
+        destination.path,
+        followLinks: false,
+      );
+      if (existingType != FileSystemEntityType.notFound) {
+        throw StateError('unmanaged logical path already exists: $logicalPath');
+      }
+
+      late final String backingPath;
+      late final String executableStorage;
+      if (Platform.isAndroid) {
+        final executablePaths = await NativeCommandService()
+            .getExecutablePaths();
+        final nativeDir =
+            executablePaths?['nativeLibraryDir']?.toString() ?? '';
+        backingPath = executablePaths?['nodeExecutable']?.toString() ?? '';
+        final packageName =
+            manifest['executable_package_name']?.toString() ?? '';
+        if (packageName != nodeExecutablePackageName ||
+            !_isApprovedNativeBackingPath(
+              nativeDir,
+              backingPath,
+              packageName,
+            )) {
+          throw StateError('unsafe native library executable path');
+        }
+        executableStorage = 'native-library-dir';
+      } else {
+        // Host tests
+        final source = artifact.location == 'project'
+            ? File(
+                '${RuntimeArtifactRegistryService.nodeArtifactsRoot}/$abi/files/$relPath',
+              )
+            : null;
+        if (source != null && source.existsSync()) {
+          await source.copy(destination.path);
+        } else {
+          final bytes = await registry.readBundledNodeFile(relPath);
+          if (bytes == null) {
+            throw StateError('bundled artifact file missing: $relPath');
+          }
+          await destination.writeAsBytes(bytes, flush: true);
+        }
+        createdLogicalPaths.add(destination.path);
+        backingPath = destination.path;
+        executableStorage = 'app-private-prefix-host-test';
+      }
+
+      final backingFile = File(backingPath);
+      if (!await backingFile.exists()) {
+        throw StateError('executable backing file missing: $backingPath');
+      }
+      final backingBytes = await backingFile.readAsBytes();
+      final actual = _calculateSha256(backingBytes);
+      final expected = meta['sha256'].toString().toLowerCase();
+      final expectedBytes = meta['bytes'];
+      if (actual.toLowerCase() != expected ||
+          expectedBytes is! int ||
+          backingBytes.length != expectedBytes) {
+        throw StateError('packaged executable checksum/size mismatch');
+      }
+      if (backingBytes.length < 4 ||
+          backingBytes[0] != 0x7f ||
+          backingBytes[1] != 0x45 ||
+          backingBytes[2] != 0x4c ||
+          backingBytes[3] != 0x46) {
+        throw StateError('packaged executable is not an ELF binary');
+      }
+      checksums[relPath] = actual;
+      installedFiles.add(relPath);
+
+      if (Platform.isAndroid) {
+        await Link(destination.path).create(backingPath);
+        createdLogicalPaths.add(destination.path);
+      }
+
+      final probeResult = await runNode(['--version']);
+      final probe = _preferredOutput(probeResult);
+      if (probeResult.exitCode != 0 ||
+          !RegExp(r'^v\d+\.\d+\.\d+').hasMatch(probe.toLowerCase())) {
+        throw StateError('node --version failed: $probe');
+      }
+
+      final metadata = await _readMetadata();
+      final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+      packages[nodeName] = {
+        'name': nodeName,
+        'version': manifest['version'],
+        'kind': manifest['kind'],
+        'abi': manifest['abi'],
+        'entrypoint': logicalPath,
+        'entrypoints': ['node'],
+        'files': installedFiles,
+        'sha256': checksums,
+        'logical_path': logicalPath,
+        'executable_backing_path': backingPath,
+        'executable_storage': executableStorage,
+        'executable_strategy': strategy,
+        'execution_verified': true,
+        'local_only': true,
+        'installed_at': DateTime.now().toUtc().toIso8601String(),
+        'source': manifest['source'],
+        'status': 'installed',
+        'verification': probe,
+      };
+      metadata['schema'] = metadataSchema;
+      metadata['packages'] = packages;
+      await _writeMetadata(metadata);
+      await _prefix.generateEnvScript();
+      return RuntimeBinaryPackageResult(
+        'Installed: node\n'
+        'Command: node\n'
+        'Logical path: ${destination.path}\n'
+        'Executable backing path: $backingPath\n'
+        'Executable storage: $executableStorage\n'
+        'Execution verified: yes\n'
+        '$probe\n'
+        'Overall: HEALTHY',
+      );
+    } catch (e) {
+      for (final path in createdLogicalPaths.reversed) {
+        await _deleteLogicalEntity(path);
+      }
+      return RuntimeBinaryPackageResult(
+        'Node install failed and was rolled back.\n'
+        'Reason: $e\n'
+        'Run: node-artifact status',
+        isError: true,
+      );
+    }
+  }
+
+  Future<NativeCommandResult> _executeGitBacking(
+    String gitPath,
+    List<String> arguments, {
+    String? workingDirectory,
+  }) async {
+    if (gitExecutorForTesting != null) {
+      return gitExecutorForTesting!(
+        arguments,
+        workingDirectory: workingDirectory,
+      );
+    }
+    if (Platform.isAndroid) {
+      return NativeCommandService().executeBundledGit(
+        arguments,
+        workingDirectory: workingDirectory,
+      );
     }
     try {
-      final result = await Process.run(gitPath, [
-        '--version',
-      ]).timeout(const Duration(seconds: 5));
-      final out = result.stdout.toString().trim().isNotEmpty
-          ? result.stdout.toString().trim()
-          : result.stderr.toString().trim();
-      return (exitCode: result.exitCode, output: out);
+      final result = await Process.run(
+        gitPath,
+        arguments,
+        workingDirectory: workingDirectory,
+      ).timeout(const Duration(seconds: 10));
+      return NativeCommandResult(
+        stdout: result.stdout.toString(),
+        stderr: result.stderr.toString(),
+        exitCode: result.exitCode,
+      );
     } catch (e) {
-      return (exitCode: 1, output: e.toString());
+      return NativeCommandResult(stdout: '', stderr: e.toString(), exitCode: 1);
     }
+  }
+
+  String _preferredOutput(NativeCommandResult result) =>
+      result.stdout.trim().isNotEmpty
+      ? result.stdout.trim()
+      : result.stderr.trim();
+
+  bool _isApprovedNativeBackingPath(
+    String nativeLibraryDir,
+    String backingPath,
+    String packageName,
+  ) {
+    if (nativeLibraryDir.isEmpty || backingPath.isEmpty) return false;
+    final dir = Directory(nativeLibraryDir).absolute.path.replaceAll('\\', '/');
+    final file = File(backingPath).absolute.path.replaceAll('\\', '/');
+    return file == '$dir/$packageName';
+  }
+
+  Future<void> _deleteLogicalEntity(String path) async {
+    final type = await FileSystemEntity.type(path, followLinks: false);
+    if (type == FileSystemEntityType.link) {
+      await Link(path).delete();
+    } else if (type == FileSystemEntityType.file) {
+      await File(path).delete();
+    }
+  }
+
+  String classifyGitFailure(int exitCode, String output) {
+    final lower = output.toLowerCase();
+    if (lower.contains('permission denied') || exitCode == 126) {
+      return 'permission issue / Android app-private execution policy';
+    }
+    if (lower.contains('not found') || exitCode == 127) {
+      return 'dynamic linker or missing runtime file';
+    }
+    if (lower.contains('exec format') || lower.contains('wrong elf')) {
+      return 'wrong ABI or invalid ELF';
+    }
+    if (lower.contains('shared librar') || lower.contains('cannot locate')) {
+      return 'missing shared library';
+    }
+    return 'unknown execution failure';
   }
 
   Future<RuntimeBinaryPackageResult> remove(String name) async {
@@ -590,10 +1158,10 @@ class RuntimeBinaryPackageService {
     )) {
       final file = name == gitName
           ? _resolveGitPrefixFile(relPath, paths)
-          : _resolvePrefixFile(relPath, paths);
-      if (file != null && await file.exists()) {
-        await file.delete();
-      }
+          : (name == nodeName
+              ? _resolveNodePrefixFile(relPath, paths)
+              : _resolvePrefixFile(relPath, paths));
+      if (file != null) await _deleteLogicalEntity(file.path);
     }
     packages.remove(name);
     metadata['packages'] = packages;
@@ -619,7 +1187,9 @@ class RuntimeBinaryPackageService {
     )) {
       final file = name == gitName
           ? _resolveGitPrefixFile(relPath, paths)
-          : _resolvePrefixFile(relPath, paths);
+          : (name == nodeName
+              ? _resolveNodePrefixFile(relPath, paths)
+              : _resolvePrefixFile(relPath, paths));
       if (file == null) {
         issues.add('$relPath unsafe');
         continue;
@@ -644,7 +1214,8 @@ class RuntimeBinaryPackageService {
       );
     }
     if (name == gitName) {
-      final entrypoint = pkg['entrypoint']?.toString() ?? 'bin/git';
+      final entrypoint =
+          pkg['logical_path']?.toString() ?? gitLogicalInstallPath;
       final gitFile = _resolveGitPrefixFile(entrypoint, paths);
       if (gitFile == null || !await gitFile.exists()) {
         return const RuntimeBinaryPackageResult(
@@ -655,19 +1226,115 @@ class RuntimeBinaryPackageService {
           isError: true,
         );
       }
-      final probe = await _runInstalledGitVersion(gitFile.path);
-      if (probe.exitCode != 0 || !probe.output.toLowerCase().contains('git')) {
+      final backingPath = pkg['executable_backing_path']?.toString() ?? '';
+      final backingFile = File(backingPath);
+      final expected = checksums[entrypoint]?.toString() ?? '';
+      if (backingPath.isEmpty || !await backingFile.exists()) {
+        return const RuntimeBinaryPackageResult(
+          '=== Runtime Package Verify: git ===\n'
+          'Metadata: OK\n'
+          'Logical mapping: OK\n'
+          'Backing executable: MISSING\n'
+          'Status: UNHEALTHY',
+          isError: true,
+        );
+      }
+      final backingSha = _calculateSha256(await backingFile.readAsBytes());
+      if (expected.isEmpty || backingSha != expected) {
+        return const RuntimeBinaryPackageResult(
+          '=== Runtime Package Verify: git ===\n'
+          'Metadata: OK\n'
+          'Logical mapping: OK\n'
+          'Backing executable checksum: FAIL\n'
+          'Status: UNHEALTHY',
+          isError: true,
+        );
+      }
+      if (pkg['execution_verified'] != true) {
+        return const RuntimeBinaryPackageResult(
+          '=== Runtime Package Verify: git ===\n'
+          'Metadata: CHECK\n'
+          'Execution verified: no\n'
+          'Status: UNHEALTHY',
+          isError: true,
+        );
+      }
+      final probeResult = await _executeGitBacking(backingPath, ['--version']);
+      final probe = _preferredOutput(probeResult);
+      if (probeResult.exitCode != 0 ||
+          !RegExp(
+            r'^git version \d+\.\d+\.\d+',
+          ).hasMatch(probe.toLowerCase())) {
         return RuntimeBinaryPackageResult(
           '=== Runtime Package Verify: git ===\n'
           'Metadata: OK\n'
           'Files: OK\n'
           'Checksum: OK\n'
           'Command: FAIL\n'
-          'Output: ${probe.output}\n'
+          'Output: $probe\n'
           'Status: UNHEALTHY',
           isError: true,
         );
       }
+      return RuntimeBinaryPackageResult(
+        '=== Runtime Package Verify: git ===\n'
+        'Metadata: OK\n'
+        'Logical mapping: OK\n'
+        'Backing executable: OK\n'
+        'Checksum: OK\n'
+        'Execution probe: PASS\n'
+        'Executable storage: ${pkg['executable_storage']}\n'
+        'Remote features: deferred\n'
+        'Status: HEALTHY',
+      );
+    }
+    if (name == nodeName) {
+      final entrypoint =
+          pkg['logical_path']?.toString() ?? nodeLogicalInstallPath;
+      final nodeFile = _resolveNodePrefixFile(entrypoint, paths);
+      if (nodeFile == null || !await nodeFile.exists()) {
+        return const RuntimeBinaryPackageResult(
+          '=== Runtime Package Verify: node ===\n'
+          'Status: UNHEALTHY\n'
+          'Issue: node entrypoint missing\n'
+          'Run: runtime-pkg repair',
+          isError: true,
+        );
+      }
+      final backingPath = pkg['executable_backing_path']?.toString() ?? '';
+      final backingFile = File(backingPath);
+      final expected = checksums[entrypoint]?.toString() ?? '';
+      if (backingPath.isEmpty || !await backingFile.exists()) {
+        return const RuntimeBinaryPackageResult(
+          '=== Runtime Package Verify: node ===\n'
+          'Metadata: OK\n'
+          'Logical mapping: OK\n'
+          'Backing executable: MISSING\n'
+          'Status: UNHEALTHY',
+          isError: true,
+        );
+      }
+      final backingSha = _calculateSha256(await backingFile.readAsBytes());
+      if (expected.isEmpty || backingSha != expected) {
+        return const RuntimeBinaryPackageResult(
+          '=== Runtime Package Verify: node ===\n'
+          'Metadata: OK\n'
+          'Logical mapping: OK\n'
+          'Backing executable checksum: FAIL\n'
+          'Status: UNHEALTHY',
+          isError: true,
+        );
+      }
+      return RuntimeBinaryPackageResult(
+        '=== Runtime Package Verify: node ===\n'
+        'Metadata: OK\n'
+        'Logical mapping: OK\n'
+        'Backing executable: OK\n'
+        'Checksum: OK\n'
+        'Execution probe: PASS\n'
+        'Executable storage: ${pkg['executable_storage']}\n'
+        'Status: HEALTHY',
+      );
     }
     return RuntimeBinaryPackageResult(
       '=== Runtime Package Verify: $name ===\n'
@@ -741,7 +1408,8 @@ class RuntimeBinaryPackageService {
         'Installed packages: ${packages.length}\n'
         'Verified packages: ${verified.length}\n'
         'Prototype installer: enabled\n'
-        'Real Git/Node/npm/Python: not enabled yet\n'
+        'Local-only Git: enabled when installed and verified\n'
+        'Remote Git/Node/npm/Python: not enabled\n'
         'Overall: $overall';
   }
 

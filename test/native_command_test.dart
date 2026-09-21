@@ -124,6 +124,22 @@ void main() {
               'PATH': '/data/user/0/com.termode.termode/files/usr/bin:/system/bin:/system/xbin:/vendor/bin:/product/bin',
               'workingDirectory': '/data/user/0/com.termode.termode/files/home',
             };
+          } else if (methodCall.method == 'getExecutablePaths') {
+            return {
+              'nativeLibraryDir': '/data/app/example/lib/arm64',
+              'bundledGit':
+                  '/data/app/example/lib/arm64/libtermode_git_exec.so',
+            };
+          } else if (methodCall.method == 'executeBundledGit') {
+            final arguments = Map<String, dynamic>.from(
+              methodCall.arguments as Map,
+            );
+            return {
+              'stdout':
+                  '${arguments['arguments']} @ ${arguments['workingDirectory']}',
+              'stderr': '',
+              'exitCode': 0,
+            };
           }
           return null;
         },
@@ -144,6 +160,32 @@ void main() {
       expect(result.exitCode, 0);
       expect(result.stdout, contains('drwxr-xr-x'));
       expect(result.stderr, isEmpty);
+    });
+
+    test('reports Android executable backing paths', () async {
+      final paths = await NativeCommandService().getExecutablePaths();
+
+      expect(paths, isNotNull);
+      expect(paths!['nativeLibraryDir'], '/data/app/example/lib/arm64');
+      expect(
+        paths['bundledGit'],
+        '/data/app/example/lib/arm64/libtermode_git_exec.so',
+      );
+    });
+
+    test('executes bundled Git through the constrained adapter', () async {
+      final result = await NativeCommandService().executeBundledGit(
+        const ['status'],
+        workingDirectory: '/data/user/0/com.termode.termode/files/usr/tmp/repo',
+      );
+
+      expect(result.exitCode, 0);
+      expect(result.stderr, isEmpty);
+      expect(result.stdout, contains('[status]'));
+      expect(
+        result.stdout,
+        contains('/data/user/0/com.termode.termode/files/usr/tmp/repo'),
+      );
     });
 
     test('Execute failing native command', () async {

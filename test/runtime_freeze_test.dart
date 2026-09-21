@@ -92,7 +92,7 @@ void main() {
 
       expect(result.output, contains('Node.js/npm are not included yet'));
       expect(result.output, contains('Python is not included yet'));
-      expect(result.output, contains('Git has a pipeline'));
+      expect(result.output, contains('Git is local-only'));
       expect(
         result.output,
         contains('Runtime package installer is prototype-only'),
@@ -116,15 +116,15 @@ void main() {
     test('runtime-freeze next output', () async {
       final result = await commandService.execute('runtime-freeze next');
 
-      expect(
-        result.output,
-        contains('v0.63 Git Artifact Packaging / Install QA'),
-      );
+      expect(result.output, contains('v0.66 Node.js arm64 Prototype'));
       expect(
         result.output,
         contains('package/stage the compiled Git arm64 binary'),
       );
-      expect(result.output, contains('implement on-device installation and QA validation'));
+      expect(
+        result.output,
+        contains('implement on-device installation and QA validation'),
+      );
       expect(result.output, contains('keep Node/npm/Python planned'));
       expect(result.output, contains('runtime expansion is planned'));
     });

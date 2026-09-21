@@ -6,8 +6,7 @@ import 'runtime_binary_package_service.dart';
 /// This service never downloads, compiles, installs, or executes an artifact.
 class GitBuildService {
   static const selectedGitVersion = '2.44.0';
-  static const sourceArchivePath =
-      'tools/git-build/sources/git-2.44.0.tar.xz';
+  static const sourceArchivePath = 'tools/git-build/sources/git-2.44.0.tar.xz';
   static const sourceTreePath = 'tools/git-build/sources/git-2.44.0/';
   static const dependencyMode = 'minimal-local-git';
   static const minimalTarget = 'git --version, git init, git status';
@@ -15,11 +14,14 @@ class GitBuildService {
   Future<String> status() async {
     final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
     final installed = await RuntimeBinaryPackageService().gitInstalled();
+    final execution = await RuntimeBinaryPackageService()
+        .gitExecutionVerified();
+    final smoke = await RuntimeBinaryPackageService().gitLocalSmokeVerified();
     return '=== Git Build Status ===\n'
         'Target ABI: arm64-v8a\n'
         'Selected Git version: $selectedGitVersion\n'
-        'Phase: v0.62 Git Bash Build Fixes\n'
-        'Selected path: Path A (Minimal local build completes successfully)\n'
+        'Phase: v0.64 Git On-Device Execution Fixes\n'
+        'Selected path: A (native-library-dir execution)\n'
         'Build pipeline: executed\n'
         'Android SDK/NDK: available\n'
         'Perl: found (v5.42.2)\n'
@@ -32,8 +34,10 @@ class GitBuildService {
         'Build attempt: succeeded under Git Bash (minimal-local)\n'
         'Artifact: ${artifact.status.toLowerCase()}\n'
         'Git installed: ${installed ? 'yes' : 'no'}\n'
+        'Execution verified: ${execution ? 'yes' : 'no'}\n'
+        'Local smoke verified: ${smoke ? 'yes' : 'no'}\n'
         'Host detector: tools/git-build/check_build_env.dart\n'
-        'Overall: SUCCESS (binary compiled; packaging deferred to v0.63)';
+        'Overall: SUCCESS (binary compiled and runtime artifact packaged)';
   }
 
   String plan() {
@@ -69,18 +73,29 @@ class GitBuildService {
 
   Future<String> next() async {
     final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
+    final pkg = RuntimeBinaryPackageService();
+    final installed = await pkg.gitInstalled();
+    final smoke = await pkg.gitLocalSmokeVerified();
+    if (smoke) {
+      return '=== Git Build Next ===\n'
+          'Artifact: AVAILABLE\n'
+          'Git installed: yes\n'
+          'Local smoke test: PASS\n'
+          'Next milestone: v0.66 Node.js arm64 Prototype.';
+    }
     if (artifact.available && artifact.installable) {
       return '=== Git Build Next ===\n'
           'Artifact: AVAILABLE\n'
-          'Next: run git-artifact bundle-check, then runtime-pkg install git.\n'
+          'Git installed: ${installed ? 'yes' : 'no'}\n'
+          'Next: ${installed ? 'run git-smoke-test' : 'run git-artifact bundle-check, then runtime-pkg install git'}.\n'
           'After install: git-version, git-exec-probe, git-smoke-test.';
     }
     return '=== Git Build Next ===\n'
         'Artifact: ${artifact.status}\n'
         'Selected Git version: $selectedGitVersion\n'
-        'Next: Packaging and staging runtime assets in next milestone.\n'
+        'Next: Restore the reviewed v0.64 package inputs before proceeding.\n'
         'Logs: tools/git-build/logs/git-arm64-build.log\n'
-        'Next milestone: v0.63 Git Artifact Packaging / Install QA.';
+        'Next milestone after restoration: v0.65 Local Git UX Polish.';
   }
 
   String sourceStatus() {
@@ -145,9 +160,9 @@ class GitBuildService {
 
   Future<String> blockers() async {
     return '=== Git Build Blockers ===\n'
-        '* Windows shell/path build issues (Unix Makefile relies on shell features)\n'
-        '* Git build output missing\n'
-        'These are development blockers, not beta-fatal app errors.';
+        '* No local Git blockers remain for the tested arm64 device\n'
+        '* Remote transports remain intentionally deferred\n'
+        'Overall: CLEAR FOR LOCAL-ONLY GIT';
   }
 
   String perlStatus() {
@@ -166,8 +181,8 @@ class GitBuildService {
         'Expected tree: $sourceTreePath\n'
         'License: GPL-2.0-only must be recorded\n'
         'Checksum: matched\n'
-        'Git available: no\n'
-        'Note: Git remains unavailable until a validated artifact exists and git --version works.';
+        'Git artifact available: yes\n'
+        'Note: install with runtime-pkg; local support requires the verified smoke test.';
   }
 
   String sourceChecklist() {
@@ -197,8 +212,8 @@ class GitBuildService {
     return '=== Git Build Next Steps ===\n'
         '1. Git Bash build executed and succeeded using minimal-local flags.\n'
         '2. Staged real compiled Git binary at tools/git-build/output/arm64-v8a/git/bin/git.\n'
-        '3. Next milestone: v0.63 Git Artifact Packaging / Install QA.\n'
-        'No runtime package staged yet. Git remains unavailable on Android device.';
+        '3. Runtime artifact is staged and bundled for v0.64.\n'
+        '4. Android native-library execution and local-only smoke test passed.';
   }
 
   String buildReadiness() {
@@ -209,7 +224,8 @@ class GitBuildService {
         'NDK: READY\n'
         'Perl: READY\n'
         'Overall: READY\n'
-        'Next: run Git Bash preflight on host to verify shell tools.';
+        'Artifact: READY\n'
+        'Next: v0.66 Node.js arm64 Prototype.';
   }
 
   String hostStrategy() {
@@ -220,6 +236,6 @@ class GitBuildService {
         'WSL: found\n'
         'Selected strategy: git-bash\n'
         'Reason: Git Bash is available and provides POSIX shell tools required by Git Makefile.\n'
-        'Next: stage packaging and install in next milestone (v0.63).';
+        'Next: v0.66 Node.js arm64 Prototype.';
   }
 }

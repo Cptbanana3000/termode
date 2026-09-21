@@ -1,0 +1,42 @@
+{
+  "name": "node",
+  "version": "0.0.0-template",
+  "termode_milestone": "v0.66",
+  "created_by": "Termode artifact template",
+  "candidate": true,
+  "template_only": true,
+  "kind": "native-tool",
+  "abi": "arm64-v8a",
+  "command": "node",
+  "entrypoint": "bin/node",
+  "logical_install_path": "bin/node",
+  "executable_strategy": "native-library-dir",
+  "executable_package_name": "libtermode_node_exec.so",
+  "original_binary_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "packaged_executable_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "execution_policy_note": "v0.66 Node.js prototype template; executable dispatched through native-library-dir libtermode_node_exec.so.",
+  "local_only": true,
+  "remote_features_deferred": true,
+  "files": [
+    {
+      "path": "bin/node",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "bytes": 0
+    }
+  ],
+  "sha256": {
+    "bin/node": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "source": "termode-built",
+  "source_url": "https://example.invalid/termode-node-build-source",
+  "build_method": "template-only; replace with reproducible Termode nodejs-mobile build notes",
+  "license": "Node.js MIT license metadata required before bundling",
+  "trusted_by": "Termode",
+  "verification_command": "node --version",
+  "smoke_tests": [
+    "node --version",
+    "node -e \"console.log('hello termode node')\""
+  ],
+  "dependencies": [],
+  "created_at": "TEMPLATE_ONLY"
+}

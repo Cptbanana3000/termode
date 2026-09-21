@@ -1,0 +1,43 @@
+{
+  "name": "npm",
+  "version": "0.0.0-template",
+  "termode_milestone": "v0.67",
+  "created_by": "Termode artifact template",
+  "candidate": true,
+  "template_only": true,
+  "kind": "js-cli-package",
+  "abi": "universal",
+  "command": "npm",
+  "entrypoint": "bin/npm-cli.js",
+  "logical_install_path": "bin/npm",
+  "executable_strategy": "node-driver",
+  "executable_package_name": "npm-cli.js",
+  "original_binary_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "packaged_executable_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "execution_policy_note": "v0.67 npm package management prototype; executes through Node.js driver runner.",
+  "local_only": true,
+  "remote_features_deferred": true,
+  "files": [
+    {
+      "path": "bin/npm-cli.js",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "bytes": 0
+    }
+  ],
+  "sha256": {
+    "bin/npm-cli.js": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "source": "npm-official-dist",
+  "source_url": "https://registry.npmjs.org/npm/-/npm-template.tgz",
+  "build_method": "template-only; bundled node_modules/npm distribution driven by Termode Node.js runtime",
+  "license": "npm Artistic License 2.0",
+  "trusted_by": "Termode",
+  "verification_command": "npm --version",
+  "smoke_tests": [
+    "npm --version",
+    "npm init -y",
+    "npm ls"
+  ],
+  "dependencies": ["node"],
+  "created_at": "TEMPLATE_ONLY"
+}

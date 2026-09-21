@@ -1,5 +1,7 @@
 # Git Minimal Local Build Strategy - Termode v0.62
 
+v0.63 packages this exact minimal-local ELF. Remote features remain deferred.
+
 To bypass the build blocker for OpenSSL and provide a working Git client on Android, we target a minimal local-only build mode.
 
 ## Scope of first target (Local Git)

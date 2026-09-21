@@ -27,6 +27,8 @@ import 'runtime_prefix_service.dart';
 import 'runtime_artifact_registry_service.dart';
 import 'runtime_binary_package_service.dart';
 import 'git_build_service.dart';
+import 'npm_package_service.dart';
+import 'dev_stack_service.dart';
 
 class CommandResult {
   final String output;
@@ -227,7 +229,8 @@ class CommandService {
   String _betaKnownLimitsOutput() {
     return '=== Beta Known Limits ===\n'
         '* Node.js/npm are not included yet.\n'
-        '* Python/Git are not included yet.\n'
+        '* Python is not included yet.\n'
+        '* Git is local-only; remotes, curl, OpenSSL, SSH, LFS, and submodules are deferred.\n'
         '* Runtime package installer is prototype-only.\n'
         '* Native binary packages are planned, not enabled.\n'
         '* QuickJS/Duktape are probe surfaces only.\n'
@@ -239,8 +242,8 @@ class CommandService {
   String _betaNextOutput() {
     return '=== Beta Next ===\n'
         'Recommended next milestone:\n'
-        'v0.63 Git Artifact Packaging / Install QA\n\n'
-        'Reason: v0.62 resolved compile issues with missing headers and thread cancellation under Git Bash, successfully compiling a real arm64 Git binary using a minimal local build strategy. The next milestone is to package this binary and implement on-device installation and QA validation.';
+        'v0.66 Node.js arm64 Prototype\n\n'
+        'Reason: v0.65 verified real Git local workflows end-to-end on Android device.';
   }
 
   /// Computes beta-candidate readiness. Intentional limitations (frozen
@@ -288,7 +291,7 @@ class CommandService {
     final prefixReady = await RuntimePrefixService().isInitialized();
     String label(String s) => s == 'UNHEALTHY' ? 'UNHEALTHY' : 'OK';
     return '=== Termode Beta Candidate ===\n'
-        'Version: v0.62\n'
+        'Version: v0.64\n'
         'Core shell: OK\n'
         'Packages: ${label(r.packages)}\n'
         'Workspaces: ${label(r.workspaces)}\n'
@@ -300,7 +303,7 @@ class CommandService {
         'Runtime package installer: prototype ready\n'
         'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
         'Git inputs: Git/zlib staged; build-inputs.json present; Perl ready; host strategy selected\n'
-        'Git: compiled successfully (arm64 binary available, packaging deferred)\n'
+        'Git: real arm64 package available; native-library execution verified on-device\n'
         'Toolchains: planned (not installed)\n'
         'Known limitations: yes\n'
         'Overall: ${r.ready ? 'BETA CANDIDATE' : 'NEEDS FIXES'}';
@@ -330,7 +333,7 @@ class CommandService {
   }
 
   String _betaCandidateNotesOutput() {
-    return '=== Termode v0.62 Beta Candidate ===\n'
+    return '=== Termode v0.64 Beta Candidate ===\n'
         'Termode is a standalone Android terminal with a REAL PTY shell.\n\n'
         'Highlights:\n'
         '* REAL PTY shell with host command interception\n'
@@ -341,10 +344,9 @@ class CommandService {
         '* settings/theme/status readouts and safe visual reset\n'
         '* preview/localhost diagnostics\n'
         '* prototype runtime package installer with hello-bin\n'
-        '* Git minimal-local arm64 build succeeded under Git Bash\n'
+        '* Git 2.44.0 runs from Android nativeLibraryDir; init/status passed\n'
         '* QA/beta/onboarding tooling and doctors\n\n'
-        'Runtime remains frozen beyond the prototype installer. Git has a\n'
-        'trusted NDK build path and pinned Git ${GitBuildService.selectedGitVersion} target, successfully compiled under Git Bash, but runtime packaging and on-device installation are deferred to v0.63; Node/npm/Python are not included.\n'
+        'Git is local-only and installed through runtime-pkg with a verified APK-owned executable. Remote Git, curl/OpenSSL, Node/npm, and Python are not included.\n'
         'Run beta-candidate limits.';
   }
 
@@ -352,19 +354,19 @@ class CommandService {
     return '=== Beta Candidate Limits ===\n'
         '* Node.js/npm are not included (planned, not installed).\n'
         '* Python is not included (planned, not installed).\n'
-        '* Git has an artifact pipeline, but no verified artifact is bundled yet.\n'
+        '* Git is local-only; remote transports and advanced helpers are deferred.\n'
         '* Runtime package installer is prototype-only.\n'
-        '* Native binary packages are planned, not enabled yet.\n'
+        '* Native package support currently covers the reviewed arm64 Git payload only.\n'
         '* QuickJS/Duktape are deferred.\n'
         '* Real toolchain installs are planned, not implemented (see runtime-install).\n'
-        '* Direct app-bin execution may be blocked by Android.\n'
+        '* Writable app-bin native execution is blocked by Android; Git uses an immutable native-library backing file.\n'
         '* Storage features need folder linking.\n'
         '* Beta software; bugs expected.';
   }
 
   String _betaCandidateHelpOutput() {
     return '=== Termode Beta Candidate ===\n'
-        'Termode v0.62 is a terminal-foundation beta (Git Bash build stage).\n\n'
+        'Termode v0.64 is a terminal-foundation beta with verified local-only Git.\n\n'
         'Subcommands:\n'
         '  beta-candidate status     - Show beta candidate readiness summary\n'
         '  beta-candidate checklist  - Show the beta candidate checklist\n'
@@ -439,7 +441,7 @@ class CommandService {
     ]);
     final coreLabel = coreSystems == 'HEALTHY' ? 'OK' : coreSystems;
     return '=== Release Candidate Status ===\n'
-        'Version: v0.62\n'
+        'Version: v0.64\n'
         'Beta candidate: yes\n'
         'Core systems: $coreLabel\n'
         'Known limitations: intentional\n'
@@ -527,7 +529,7 @@ class CommandService {
     return '=== Toolchain Status ===\n'
         'Runtime package installer: prototype ready\n'
         'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
-        'Git: artifact not installed\n'
+        'Git: verified local-only arm64 package available\n'
         'Node.js: planned\n'
         'npm: planned\n'
         'Python: planned\n'
@@ -545,7 +547,7 @@ class CommandService {
     return sb.toString();
   }
 
-  String _toolchainInfoOutput(String name) {
+  Future<String> _toolchainInfoOutput(String name) async {
     final key = name.toLowerCase();
     final tc = _plannedToolchains[key];
     if (tc == null) {
@@ -563,13 +565,14 @@ class CommandService {
       sb.writeln('npm note: npm will need package/cache handling');
     }
     if (key == 'git') {
-      sb.writeln('Installed: no');
-      sb.writeln('Artifact: required (verified, ABI-matched)');
-      sb.writeln('Phase: source/dependency preparation');
+      final installed = await RuntimeBinaryPackageService().gitInstalled();
+      sb.writeln('Installed: ${installed ? 'yes' : 'no'}');
+      sb.writeln('Artifact: AVAILABLE (verified, ABI-matched)');
+      sb.writeln('Phase: local-only execution verified');
       sb.writeln('Selected Git version: ${GitBuildService.selectedGitVersion}');
       sb.writeln('SDK/NDK: available from v0.51 host check');
-      sb.writeln('Trusted source/dependencies: missing');
-      sb.writeln('Perl: missing from recorded host environment');
+      sb.writeln('Trusted source/dependencies: verified');
+      sb.writeln('Perl: host build prerequisite resolved');
       sb.writeln('Build docs: docs/GIT_ARM64_ARTIFACT_PIPELINE.md');
       sb.writeln('Acquisition docs: docs/GIT_SOURCE_ACQUISITION.md');
       sb.writeln('Run: git-source-status / git-deps-status');
@@ -611,8 +614,8 @@ class CommandService {
     return '=== Toolchain Doctor ===\n'
         'Runtime package installer: prototype ready\n'
         'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
-        'SDK/NDK: available; source/dependencies/Perl/build-inputs: missing\n'
-        'Git: artifact not installed\n'
+        'Git build inputs: source/zlib/Perl/NDK verified\n'
+        'Git: verified local-only arm64 package available\n'
         'Node.js: planned (not installed)\n'
         'npm: planned (not installed)\n'
         'Python: planned (not installed)\n'
@@ -622,14 +625,14 @@ class CommandService {
         'PATH overlay: ${initialized ? 'ready' : 'limited'}\n'
         'Env: ${initialized ? 'ready' : 'limited'}\n'
         'Bin dir: ${initialized ? 'ready' : 'limited'}\n'
-        'Note: missing toolchains are expected; hello-bin is the only enabled prototype.\n'
+        'Note: Git and hello-bin are enabled; other toolchains remain planned.\n'
         'Overall: PROTOTYPE READY';
   }
 
   String _runtimeInstallHelpOutput() {
     return '=== Runtime Install (prototype) ===\n'
-        'Prototype installer is available for hello-bin.\n'
-        'Real Git/Node/npm/Python installs are not enabled yet.\n'
+        'Installer is available for hello-bin and the reviewed local-only Git package.\n'
+        'Node/npm/Python installs are not enabled yet.\n'
         'Nothing is downloaded and no unknown binary is executed.\n\n'
         'Subcommands:\n'
         '  runtime-install list          - List prototype and planned runtimes\n'
@@ -699,24 +702,28 @@ class CommandService {
 
   Future<String> _runtimeInstallStatusOutput() async {
     final initialized = await RuntimePrefixService().isInitialized();
-    final gitInstalled = await RuntimeBinaryPackageService().gitInstalled();
+    final pkg = RuntimeBinaryPackageService();
+    final gitInstalled = await pkg.gitInstalled();
+    final gitExecution = await pkg.gitExecutionVerified();
+    final gitSmoke = await pkg.gitLocalSmokeVerified();
     final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
     return '=== Runtime Install Status ===\n'
         'Mode: prototype installer available\n'
         'Binary package installer prototype: ready\n'
         'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
-        'SDK/NDK: available; source/dependencies/Perl/build-inputs: missing\n'
+        'Git build inputs: source/zlib/Perl/NDK verified\n'
         'Git artifact: ${artifact.status}\n'
         'Real Git installed: ${gitInstalled ? 'yes' : 'no'}\n'
-        'Git execution: ${gitInstalled ? 'needs verification' : 'not verified'}\n'
-        'Git workspace QA: not ready\n'
-        'Real Git/Node/Python installs: not enabled yet\n'
+        'Git execution: ${gitExecution ? 'verified' : 'not verified'}\n'
+        'Git workspace QA: ${gitSmoke ? 'verified' : 'not verified'}\n'
+        'Local Git: ${gitSmoke ? 'SUPPORTED' : 'pending install/smoke test'}\n'
+        'Remote Git/Node/Python: not enabled\n'
         'Prototype package: hello-bin\n'
         'Prefix initialized: ${initialized ? 'yes' : 'no'}\n'
         'PATH overlay ready: ${initialized ? 'yes' : 'no'}\n'
         'Env ready: ${initialized ? 'yes' : 'no'}\n'
         'Bin dir ready: ${initialized ? 'yes' : 'no'}\n'
-        'Next milestone: Git source and dependency preparation';
+        'Next milestone: v0.66 Node.js arm64 Prototype';
   }
 
   Future<String> _runtimeInstallDoctorOutput() async {
@@ -729,6 +736,9 @@ class CommandService {
     final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
     final runtimePkgDoctor = await RuntimeBinaryPackageService().doctor();
     final runtimePkgReady = !runtimePkgDoctor.contains('Overall: UNHEALTHY');
+    final pkg = RuntimeBinaryPackageService();
+    final gitInstalled = await pkg.gitInstalled();
+    final gitExecution = await pkg.gitExecutionVerified();
     return '=== Runtime Install Doctor ===\n'
         'Mode: prototype installer available\n'
         'Prefix: ${initialized ? 'OK' : 'LIMITED'}\n'
@@ -740,10 +750,10 @@ class CommandService {
         'Android ABI: ${abi == null || abi.isEmpty ? 'unknown' : abi}\n'
         'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
         'Git artifact: ${artifact.status}\n'
-        'Git: ${await RuntimeBinaryPackageService().gitInstalled() ? 'installed' : 'planned (not installed)'}\n'
-        'Git execution: not verified\n'
-        'Real Git/Node/npm/Python installs: not enabled yet\n'
-        'Safety: no downloads, no native execution\n'
+        'Git: ${gitInstalled ? 'installed' : 'available (not installed)'}\n'
+        'Git execution: ${gitExecution ? 'verified' : 'not verified'}\n'
+        'Remote Git/Node/npm/Python: not enabled\n'
+        'Safety: no downloads; only the checksum-verified APK Git ELF executes\n'
         'Overall: ${runtimePkgReady ? 'PROTOTYPE READY' : 'LIMITED'}';
   }
 
@@ -807,6 +817,9 @@ class CommandService {
 
   Future<String> _devDoctorOutput() async {
     final initialized = await RuntimePrefixService().isInitialized();
+    final pkg = RuntimeBinaryPackageService();
+    final gitInstalled = await pkg.gitInstalled();
+    final gitSmoke = await pkg.gitLocalSmokeVerified();
     return '=== Dev Doctor ===\n'
         'Terminal: OK\n'
         'REAL PTY: OK\n'
@@ -815,8 +828,8 @@ class CommandService {
         'PATH: ${initialized ? 'OK' : 'LIMITED'}\n'
         'Env: ${initialized ? 'OK' : 'LIMITED'}\n'
         'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
-        'SDK/NDK: available; source/dependencies/Perl/build-inputs: missing\n'
-        'Git: artifact not installed\n'
+        'Git build inputs: source/zlib/Perl/NDK verified\n'
+        'Git: ${gitInstalled ? (gitSmoke ? 'local-only verified' : 'installed; smoke test pending') : 'available; not installed'}\n'
         'Node.js: planned\n'
         'npm: planned\n'
         'Python: planned\n'
@@ -829,6 +842,8 @@ class CommandService {
     final pkg = RuntimeBinaryPackageService();
     final prefix = RuntimePrefixService();
     final installed = await pkg.gitInstalled();
+    final executionVerified = await pkg.gitExecutionVerified();
+    final smokeVerified = await pkg.gitLocalSmokeVerified();
     final prefixReady = await prefix.isInitialized();
     final prefixHealth = prefixReady ? 'HEALTHY' : 'LIMITED';
     final artifactStatus = await RuntimeArtifactRegistryService()
@@ -838,8 +853,10 @@ class CommandService {
         : (artifactStatus.installable
               ? 'runtime package (installable)'
               : 'planned (${artifactStatus.status.toLowerCase()})');
-    final overall = installed
-        ? 'AVAILABLE'
+    final overall = smokeVerified
+        ? 'LOCAL GIT VERIFIED'
+        : installed
+        ? 'INSTALLED - SMOKE TEST PENDING'
         : (artifactStatus.installable ? 'NOT INSTALLED' : 'PLANNED');
     return '=== Git Status ===\n'
         'Installed: ${installed ? 'yes' : 'no'}\n'
@@ -849,9 +866,12 @@ class CommandService {
         'Install method: $installMethod\n'
         'Artifact state: ${artifactStatus.status}\n'
         'Production pipeline: ready\n'
-        'Prep blockers: Perl/source/dependencies/build-inputs\n'
-        'Execution: ${installed ? 'needs verification' : 'not verified'}\n'
-        'Workspace QA: not ready\n'
+        'Build inputs: source/zlib/Perl/NDK verified\n'
+        'Executable strategy: native-library-dir\n'
+        'Execution: ${executionVerified ? 'verified' : 'not verified'}\n'
+        'Workspace QA: ${smokeVerified ? 'git init/status verified' : 'not verified'}\n'
+        'Local Git support: ${smokeVerified ? 'yes' : 'not claimed yet'}\n'
+        'Remote Git support: deferred\n'
         'Prefix: $prefixHealth\n'
         'PATH: $prefixHealth\n'
         'Overall: $overall';
@@ -886,20 +906,15 @@ class CommandService {
   }
 
   Future<String> _gitVersionOutput() async {
-    final installed = await RuntimeBinaryPackageService().gitInstalled();
+    final pkg = RuntimeBinaryPackageService();
+    final installed = await pkg.gitInstalled();
     if (!installed) {
       return 'Git is not installed yet.\n'
           'Selected source target: ${GitBuildService.selectedGitVersion}\n'
           'Run: git-artifact bundle-status\n'
           'Run: runtime-install plan git';
     }
-    final prefix = await RuntimePrefixService().paths();
-    final gitShim = '${prefix['bin']}/git';
-    final result = await NativeCommandService().execute(
-      '/system/bin/sh "$gitShim" --version',
-      sessionId,
-      timeoutMs: 5000,
-    );
+    final result = await pkg.runGit(['--version']);
     final out = result.stdout.trim().isNotEmpty
         ? result.stdout.trim()
         : result.stderr.trim();
@@ -916,14 +931,18 @@ class CommandService {
     final pkg = RuntimeBinaryPackageService();
     final prefix = RuntimePrefixService();
     final installed = await pkg.gitInstalled();
+    final executionVerified = await pkg.gitExecutionVerified();
+    final smokeVerified = await pkg.gitLocalSmokeVerified();
     final prefixReady = await prefix.isInitialized();
     final binWhich = await prefix.binWhich('git');
     final found = !binWhich.startsWith('Not found');
     String overall;
     if (installed && !found) {
       overall = 'UNHEALTHY';
+    } else if (smokeVerified) {
+      overall = 'LOCAL GIT VERIFIED';
     } else if (installed) {
-      overall = 'AVAILABLE';
+      overall = 'INSTALLED - CHECK';
     } else {
       overall = 'PLANNED';
     }
@@ -939,9 +958,10 @@ class CommandService {
         'Selected source target: ${GitBuildService.selectedGitVersion}\n'
         'Git package: ${installed ? 'installed' : 'not installed'}\n'
         'bin-which git: ${found ? 'found' : 'not found'}\n'
-        'git --version: ${installed ? 'see git-version' : 'not available'}\n'
-        'Git workspace QA: ${installed ? 'not run' : 'not ready'}\n'
-        'Note: missing Git is expected in this build (planned, not installed).\n'
+        'Executable storage: native-library-dir\n'
+        'git --version: ${executionVerified ? 'verified' : 'not verified'}\n'
+        'Git workspace QA: ${smokeVerified ? 'init/status verified' : 'not verified'}\n'
+        'Remote Git: deferred\n'
         'Overall: $overall';
   }
 
@@ -981,16 +1001,427 @@ class CommandService {
         'git log --oneline';
   }
 
-  Future<String> _gitBareOutput() async {
-    final installed = await RuntimeBinaryPackageService().gitInstalled();
+  Future<String> _gitBareOutput(List<String> arguments) async {
+    final pkg = RuntimeBinaryPackageService();
+    final installed = await pkg.gitInstalled();
     if (!installed) {
       return 'Git is not installed yet.\n'
           'Run: git-artifact bundle-status\n'
           'Run: runtime-install plan git';
     }
-    // Real Git execution arrives with the verified Git package milestone.
-    return 'Git is installed. Direct execution arrives with the Git package '
-        'milestone; for now use git-status and runtime-pkg verify git.';
+
+    const networkSubcommands = {
+      'clone',
+      'fetch',
+      'pull',
+      'push',
+      'remote',
+      'submodule',
+    };
+    const allowedSubcommands = {
+      '--version',
+      '-v',
+      '--help',
+      '-h',
+      'help',
+      'init',
+      'status',
+      'add',
+      'commit',
+      'log',
+      'diff',
+      'branch',
+      'checkout',
+      'switch',
+      'config',
+      'reset',
+      'show',
+      'rm',
+      'mv',
+      'restore',
+      'clean',
+      'tag',
+      'merge',
+      'stash',
+    };
+
+    final effectiveArgs = arguments.isEmpty ? ['--version'] : arguments;
+    final sub = effectiveArgs.firstWhere(
+      (a) => !a.startsWith('-'),
+      orElse: () => effectiveArgs.first,
+    );
+
+    if (networkSubcommands.contains(sub)) {
+      return 'Remote Git operations ($sub) are deferred.\n'
+          'v0.65 supports offline local Git workflows only.';
+    }
+
+    if (!allowedSubcommands.contains(sub)) {
+      return 'Unknown or unsupported Git command: $sub\n'
+          'v0.65 supports local Git operations: init, status, add, commit, log, diff, branch, checkout, switch, config, reset, show, rm, mv.';
+    }
+
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory;
+
+    final result = await pkg.runGit(
+      effectiveArgs,
+      workingDirectory: workDir,
+    );
+    final output = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+    if (result.exitCode == 0) return output;
+
+    if (output.contains('Please tell me who you are') ||
+        output.contains('Author identity unknown')) {
+      return '$output\n\n'
+          'Tip: Configure your Git identity in Termode:\n'
+          '  git config --global user.name "Your Name"\n'
+          '  git config --global user.email "you@example.com"';
+    }
+
+    return 'Git execution failed.\n'
+        'Exit code: ${result.exitCode}\n'
+        'Output: $output\n'
+        'Remote Git: deferred';
+  }
+
+  // --- v0.69 Node.js Execution and Runtime Bundling -------------------------
+
+  Future<String> _nodeBareOutput(List<String> arguments) async {
+    final pkg = RuntimeBinaryPackageService();
+    final installed = await pkg.nodeInstalled();
+    final testHookActive =
+        RuntimeBinaryPackageService.nodeExecutorForTesting != null;
+    if (!installed && !testHookActive) {
+      return 'Node.js is not installed yet.\n'
+          'Run: runtime-pkg install node\n'
+          'Run: node-artifact status\n'
+          'Run: node-doctor\n'
+          'v0.69 provides the Node.js arm64 execution engine.';
+    }
+
+    final effectiveArgs = arguments.isEmpty ? ['--version'] : arguments;
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory;
+
+    final result = await pkg.runNode(
+      effectiveArgs,
+      workingDirectory: workDir,
+    );
+    final output = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+    if (result.exitCode == 0) return output;
+
+    return 'Node execution failed.\n'
+        'Exit code: ${result.exitCode}\n'
+        'Output: $output';
+  }
+
+  Future<String> _nodeDoctorOutput() async {
+    final pkg = RuntimeBinaryPackageService();
+    final artifact =
+        await RuntimeArtifactRegistryService().nodeArtifactStatus();
+    final installed = await pkg.nodeInstalled();
+    final backing = await pkg.nodeExecutableBackingPath();
+    final verified = await pkg.nodeExecutionVerified();
+    final session = TerminalSessionService().activeSession;
+    final cwd = session.preferredWorkingDirectory ?? 'app-home';
+
+    final sb = StringBuffer('=== Node.js Diagnostics (Doctor) ===\n');
+    sb.writeln('Package: node');
+    sb.writeln('Status: ${installed ? "INSTALLED" : "NOT_INSTALLED"}');
+    sb.writeln('Artifact ABI: ${artifact.abi}');
+    sb.writeln('Artifact State: ${artifact.status}');
+    sb.writeln('Artifact Reason: ${artifact.reason}');
+    sb.writeln('Backing Executable: ${backing ?? "libtermode_node_exec.so"}');
+    sb.writeln('Execution Verified: ${verified ? "yes" : "no"}');
+    sb.writeln('Active Working Directory: $cwd');
+    sb.writeln('NODE_PATH Integration: enabled');
+    sb.writeln('Milestone: v0.69 (Node.js & Full Runtime Bundling QA)');
+    return sb.toString().trimRight();
+  }
+
+  Future<String> _nodeArtifactOutput(List<String> args) async {
+    final sub = args.isNotEmpty ? args[0] : 'status';
+    final reg = RuntimeArtifactRegistryService();
+    final status = await reg.nodeArtifactStatus();
+
+    switch (sub) {
+      case 'status':
+        return '=== Node.js Artifact Status ===\n'
+            'Status: ${status.status}\n'
+            'ABI: ${status.abi}\n'
+            'Available: ${status.available ? "yes" : "no"}\n'
+            'Installable: ${status.installable ? "yes" : "no"}\n'
+            'Reason: ${status.reason}\n'
+            'Template Present: ${status.templatePresent ? "yes" : "no"}\n'
+            'Manifest Path: ${status.manifestPath}';
+      case 'verify':
+      case 'check':
+        final manifest = await reg.bundledNodeManifest();
+        if (manifest == null) return 'Node.js artifact manifest not found.';
+        final errors = reg.validateNodeManifest(manifest, status.abi);
+        if (errors.isNotEmpty) {
+          return 'Node.js artifact validation failed: ${errors.first}';
+        }
+        return 'Node.js artifact manifest and binary payload are valid (ABI: ${status.abi}).';
+      case 'template':
+        final template = reg.readNodeTemplateManifest();
+        if (template == null) return 'Node artifact template not found.';
+        return const JsonEncoder.withIndent('  ').convert(template);
+      default:
+        return 'Unknown subcommand: node-artifact $sub\n'
+            'Usage: node-artifact [status|verify|template]';
+    }
+  }
+
+  Future<String> _nodeStatusOutput() async {
+    final pkg = RuntimeBinaryPackageService();
+    final installed = await pkg.nodeInstalled();
+    final verified = await pkg.nodeExecutionVerified();
+    final backing = await pkg.nodeExecutableBackingPath();
+    final artifact =
+        await RuntimeArtifactRegistryService().nodeArtifactStatus();
+
+    return '=== Node.js Status ===\n'
+        'Package: node\n'
+        'Installed: ${installed ? "yes" : "no"}\n'
+        'Artifact state: ${artifact.status}\n'
+        'Execution strategy: native-library-dir\n'
+        'Backing path: ${backing ?? "libtermode_node_exec.so"}\n'
+        'Execution verified: ${verified ? "yes" : "no"}\n'
+        'Milestone: v0.69 (Node.js & Full Runtime Bundling QA)';
+  }
+
+  Future<String> _nodeInfoOutput() async {
+    final pkg = RuntimeBinaryPackageService();
+    return pkg.info('node');
+  }
+
+  // --- v0.67 npm Package Management Prototype --------------------------------
+
+  Future<String> _npmBareOutput(List<String> arguments) async {
+    final pkg = RuntimeBinaryPackageService();
+    final npmService = NpmPackageService();
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+
+    if (arguments.isEmpty) {
+      final installed = await pkg.npmInstalled();
+      final testHookActive =
+          RuntimeBinaryPackageService.npmExecutorForTesting != null;
+      if (!installed && !testHookActive) {
+        return 'npm is not installed yet.\n'
+            'Run: npm-doctor\n'
+            'Run: npm-status\n'
+            'v0.67 introduces the npm package management prototype foundation.\n'
+            'Available local commands:\n'
+            '  npm init [-y]     Initialize package.json in current directory\n'
+            '  npm ls / npm list List local dependencies and node_modules\n'
+            '  npm doctor        Run npm environment checks';
+      }
+    }
+
+    final sub = arguments.isNotEmpty ? arguments[0].toLowerCase() : '';
+
+    if (sub == 'init') {
+      final overwrite = arguments.contains('--force');
+      final result = await npmService.initPackageJson(
+        workingDirectory: workDir,
+        overwrite: overwrite,
+      );
+      return result.message;
+    }
+
+    if (sub == 'ls' || sub == 'list') {
+      final report = await npmService.listDependencies(workDir);
+      return npmService.formatDependencyTree(report);
+    }
+
+    if (sub == 'run' || sub == 'run-script') {
+      if (arguments.length < 2) {
+        final scripts = await npmService.getScripts(workDir);
+        if (scripts.isEmpty) {
+          return 'npm ERR! no scripts available in package.json';
+        }
+        final sb = StringBuffer('Scripts available in package.json:\n');
+        scripts.forEach((k, v) => sb.writeln('  $k: $v'));
+        return sb.toString().trimRight();
+      }
+      final scriptTarget = arguments[1];
+      final scripts = await npmService.getScripts(workDir);
+      final scriptCommand = scripts[scriptTarget];
+      if (scriptCommand == null) {
+        return 'npm ERR! missing script: "$scriptTarget"\n'
+            'Available scripts: ${scripts.keys.join(", ")}';
+      }
+      final execResult = await execute(scriptCommand);
+      return execResult.output;
+    }
+
+    if (sub == 'test') {
+      return _npmBareOutput(['run', 'test']);
+    }
+
+    if (sub == 'start') {
+      return _npmBareOutput(['run', 'start']);
+    }
+
+    if (sub == '--version' || sub == '-v' || sub == 'version') {
+      final installed = await pkg.npmInstalled();
+      final testHookActive =
+          RuntimeBinaryPackageService.npmExecutorForTesting != null;
+      if (!installed && !testHookActive) {
+        return 'npm is not installed yet.\nRun: npm-doctor';
+      }
+      final result = await pkg.runNpm(['--version'], workingDirectory: workDir);
+      return result.stdout.trim().isNotEmpty
+          ? result.stdout.trim()
+          : result.stderr.trim();
+    }
+
+    if (sub == 'help' || sub == '--help' || sub == '-h') {
+      return 'Usage: npm <command>\n\n'
+          'where <command> is one of:\n'
+          '  init, ls, list, run, test, start, version, doctor, help\n\n'
+          'Termode v0.67 prototype supports offline local package.json workflows.';
+    }
+
+    if (sub == 'doctor') {
+      return _npmDoctorOutput();
+    }
+
+    final installed = await pkg.npmInstalled();
+    final testHookActive =
+        RuntimeBinaryPackageService.npmExecutorForTesting != null;
+    if (installed || testHookActive) {
+      final result = await pkg.runNpm(arguments, workingDirectory: workDir);
+      return result.stdout.trim().isNotEmpty
+          ? result.stdout.trim()
+          : result.stderr.trim();
+    }
+
+    return 'npm is not installed yet.\n'
+        'Run: npm-doctor\n'
+        'Run: npm init -y';
+  }
+
+  Future<String> _npmDoctorOutput() async {
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final report = await NpmPackageService().doctor(workingDirectory: workDir);
+    return report.formatText();
+  }
+
+  Future<String> _npmStatusOutput() async {
+    final pkg = RuntimeBinaryPackageService();
+    final installed = await pkg.npmInstalled();
+    final nodeInstalled = await pkg.nodeInstalled();
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final pkgJson = await NpmPackageService().readPackageJson(workDir);
+
+    return '=== npm Status ===\n'
+        'Package: npm\n'
+        'Installed: ${installed ? "yes" : "no"}\n'
+        'Node.js runtime: ${nodeInstalled ? "available" : "not available"}\n'
+        'Active workspace: $workDir\n'
+        'Local package: ${pkgJson != null ? "${pkgJson.name}@${pkgJson.version}" : "none"}\n'
+        'Milestone: v0.67 (npm Package Management Prototype)';
+  }
+
+  Future<String> _npmInfoOutput() async {
+    final pkg = RuntimeBinaryPackageService();
+    return pkg.info('npm');
+  }
+
+  Future<String> _npxBareOutput(List<String> arguments) async {
+    if (arguments.isEmpty) {
+      return 'npx: execute npm packages without global installation.\n'
+          'Usage: npx <command> [args...]\n'
+          'v0.67 prototype mode; install packages locally first with package.json.';
+    }
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final pkg = RuntimeBinaryPackageService();
+    if (await pkg.npmInstalled()) {
+      final result = await pkg.runNpm(['exec', ...arguments], workingDirectory: workDir);
+      return result.stdout.trim().isNotEmpty ? result.stdout.trim() : result.stderr.trim();
+    }
+    return 'npx is deferred until Node.js and full npm runtime are installed.\n'
+        'Run: npm-doctor';
+  }
+
+  // --- v0.68 Dev Stack Presets & Calypso IDE Integration ---------------------
+
+  String _stackListOutput() {
+    final stacks = DevStackService().availableStacks();
+    final sb = StringBuffer('=== Available Dev Stack Presets ===\n');
+    for (final s in stacks) {
+      sb.writeln('  ${s.id.padRight(14)} : ${s.displayName} (port ${s.defaultPort})');
+      sb.writeln('  ${''.padRight(16)}${s.description}');
+    }
+    sb.writeln('\nUsage:');
+    sb.writeln('  stack-init <stack-id> [project-name]   Scaffold preset into workspace');
+    sb.writeln('  stack-info <stack-id>                 View stack details & template files');
+    sb.writeln('  stack-doctor                          Inspect current workspace stack readiness');
+    return sb.toString().trimRight();
+  }
+
+  String _stackInfoOutput(String stackId) {
+    final stack = DevStackService().getStack(stackId);
+    if (stack == null) {
+      return 'Unknown stack preset: "$stackId"\nRun: stack-list';
+    }
+    final sb = StringBuffer('=== Dev Stack: ${stack.displayName} ===\n');
+    sb.writeln('ID: ${stack.id}');
+    sb.writeln('Category: ${stack.category.name}');
+    sb.writeln('Description: ${stack.description}');
+    sb.writeln('Entrypoint: ${stack.entrypoint}');
+    sb.writeln('Default Port: ${stack.defaultPort}');
+    sb.writeln('Scripts: ${stack.scripts.keys.join(", ")}');
+    sb.writeln('Dependencies: ${stack.dependencies.keys.isNotEmpty ? stack.dependencies.keys.join(", ") : "none"}');
+    sb.writeln('Template Files: ${stack.templateFiles.keys.join(", ")}');
+    sb.writeln('\nTo scaffold this stack:');
+    sb.writeln('  stack-init ${stack.id}');
+    return sb.toString().trimRight();
+  }
+
+  Future<String> _stackInitOutput(List<String> args) async {
+    if (args.isEmpty) {
+      return 'Usage: stack-init <stack-id> [project-name] [--force]\n'
+          'Run: stack-list';
+    }
+    final stackId = args[0];
+    final overwrite = args.contains('--force') || args.contains('-f');
+    String? projectName;
+    for (var i = 1; i < args.length; i++) {
+      if (!args[i].startsWith('-')) {
+        projectName = args[i];
+        break;
+      }
+    }
+
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+
+    final result = await DevStackService().scaffoldStack(
+      stackId: stackId,
+      targetDirectory: workDir,
+      projectName: projectName,
+      overwrite: overwrite,
+    );
+    return result.message;
+  }
+
+  Future<String> _stackDoctorOutput() async {
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final report = await DevStackService().doctor(workingDirectory: workDir);
+    return report.formatText();
   }
 
   // --- v0.52 Git source/dependency acquisition (honest; no fake Git) -------
@@ -998,7 +1429,7 @@ class CommandService {
   String _gitArtifactHelpOutput() {
     return '=== Git Artifact ===\n'
         'A verified, ABI-matched Git artifact is required to install real Git.\n'
-        'v0.62 implements Git Bash build fixes and compiles a real arm64 Git binary.\n\n'
+        'v0.64 maps the logical Git command to a verified APK native-library executable.\n\n'
         'Subcommands:\n'
         '  git-artifact status    - artifact availability for the current ABI\n'
         '  git-artifact info      - what artifact is required\n'
@@ -1047,23 +1478,32 @@ class CommandService {
 
   Future<String> _gitArtifactProductionStatusOutput() async {
     final a = await RuntimeArtifactRegistryService().gitArtifactStatus();
-    final installed = await RuntimeBinaryPackageService().gitInstalled();
-    final executable = installed && a.installable;
-    final path = a.available ? 'A' : 'B';
-    final next = a.available
-        ? 'Install with runtime-pkg install git, then verify git --version.'
-        : 'Complete trusted source/dependency acquisition, then build and validate the arm64-v8a payload.';
+    final pkg = RuntimeBinaryPackageService();
+    final installed = await pkg.gitInstalled();
+    final executable = await pkg.gitExecutionVerified();
+    final smoke = await pkg.gitLocalSmokeVerified();
+    final backing = await pkg.gitExecutableBackingPath();
+    final next = smoke
+        ? 'v0.66 Node.js arm64 Prototype.'
+        : (installed
+              ? 'Run git-smoke-test.'
+              : 'Install with runtime-pkg install git.');
     return '=== Git Artifact Production Status ===\n'
-        'Path: $path\n'
+        'Path: A\n'
         'Artifact exists: ${a.available ? 'yes' : 'no'}\n'
         'Git installable: ${a.installable ? 'yes' : 'no'}\n'
         'Git executable: ${executable ? 'yes' : 'no'}\n'
+        'Executable strategy: native-library-dir\n'
+        'Executable backing path: ${backing ?? 'resolved at runtime after install'}\n'
+        'Local smoke test: ${smoke ? 'PASS' : 'not verified'}\n'
+        'Local Git support: ${smoke ? 'VERIFIED' : 'not claimed yet'}\n'
+        'Remote Git support: deferred\n'
         'Production pipeline: ready\n'
         'Selected Git version: ${GitBuildService.selectedGitVersion}\n'
-        'Source preparation: incomplete\n'
-        'Dependencies: missing\n'
-        'Perl: missing from recorded host environment\n'
-        'Build inputs: missing\n'
+        'Source preparation: verified\n'
+        'Dependencies: zlib verified\n'
+        'Perl: resolved on build host\n'
+        'Build inputs: verified\n'
         'Artifact state: ${a.status}\n'
         'Reason: ${a.reason}\n'
         'Docs: docs/GIT_ARTIFACT_PRODUCTION_STATUS.md\n'
@@ -1074,7 +1514,7 @@ class CommandService {
 
   Future<String> _gitArtifactManifestOutput() async {
     final registry = RuntimeArtifactRegistryService();
-    final manifest = registry.bundledGitManifest();
+    final manifest = await registry.bundledGitManifest();
     if (manifest == null) {
       final templateErrors = registry.validateGitTemplateManifest();
       return 'Git artifact manifest is not available in this build.\n'
@@ -1089,7 +1529,12 @@ class CommandService {
         'Kind: ${manifest['kind']}\n'
         'ABI: ${manifest['abi']}\n'
         'Command: ${manifest['command']}\n'
-        'Source: ${manifest['source']}';
+        'Source: ${manifest['source']}\n'
+        'Logical install path: ${manifest['logical_install_path']}\n'
+        'Executable strategy: ${manifest['executable_strategy']}\n'
+        'Executable package name: ${manifest['executable_package_name']}\n'
+        'Local only: ${manifest['local_only']}\n'
+        'Remote features deferred: ${manifest['remote_features_deferred']}';
   }
 
   Future<String> _gitArtifactVerifyOutput() async {
@@ -1111,7 +1556,7 @@ class CommandService {
   Future<String> _gitArtifactDoctorOutput() async {
     final registry = RuntimeArtifactRegistryService();
     final a = await registry.gitArtifactStatus();
-    final manifest = registry.bundledGitManifest();
+    final manifest = await registry.bundledGitManifest();
     return '=== Git Artifact Doctor ===\n'
         'Current ABI: ${a.abi}\n'
         'Supported ABIs: ${RuntimeArtifactRegistryService.supportedGitAbis.join(', ')}\n'
@@ -1136,7 +1581,7 @@ class CommandService {
         '5. Bundle only after registry validation passes.\n'
         '6. Install into TERMODE_PREFIX and register the git shim.\n'
         '7. Run git --version and workspace smoke tests.\n'
-        'Current build: NDK detected; Perl/source/dependencies/build-inputs missing; no Git payload bundled.\n'
+        'Current build: verified minimal-local Git payload bundled; Android execution QA pending.\n'
         'Run: git-artifact production-status';
   }
 
@@ -1177,11 +1622,10 @@ class CommandService {
         'Real Git artifact bundled: ${a.available ? 'yes' : 'no'}\n'
         'Installable: ${a.installable ? 'yes' : 'no'}\n'
         'Selected Git version: ${GitBuildService.selectedGitVersion}\n'
-        'Next safe step: Package the compiled binary and stage it in the app assets,\n'
-        'and run smoke tests on a physical device.\n'
-        'Only then build and validate a real arm64-v8a artifact.\n'
-        'Next milestone: v0.63 Git Artifact Packaging / Install QA.\n'
-        'Docs: docs/GIT_BASH_BUILD_FIXES_STATUS.md\n'
+        'Next safe step: install with runtime-pkg install git and run git-smoke-test.\n'
+        'Executable strategy: native-library-dir.\n'
+        'Next milestone: v0.66 Node.js arm64 Prototype.\n'
+        'Docs: docs/GIT_ON_DEVICE_EXECUTION_FIXES_STATUS.md\n'
         'Docs: docs/GIT_TRUSTED_BUILD.md\n'
         'Do not download or execute unknown Git binaries.';
   }
@@ -1252,6 +1696,7 @@ class CommandService {
         'Bundle: available\n'
         'Location: ${chosen.location}\n'
         'Manifest: ${chosen.manifestPath.isEmpty ? 'bundled' : chosen.manifestPath}\n'
+        'Executable strategy: native-library-dir\n'
         'Overall: AVAILABLE';
   }
 
@@ -1272,22 +1717,14 @@ class CommandService {
   }
 
   Future<String> _gitExecProbeOutput() async {
-    final installed = await RuntimeBinaryPackageService().gitInstalled();
+    final pkg = RuntimeBinaryPackageService();
+    final installed = await pkg.gitInstalled();
     if (!installed) {
       return 'Git is not installed yet.\n'
           'Run: git-artifact bundle-status\n'
           'Run: runtime-pkg install git';
     }
-    // When a verified Git is installed, run its shim safely and capture the
-    // result. No Git is installed in this build, so this branch is unreachable;
-    // we never execute a random external git.
-    final prefix = await RuntimePrefixService().paths();
-    final gitShim = '${prefix['bin']}/git';
-    final result = await NativeCommandService().execute(
-      '/system/bin/sh "$gitShim" --version',
-      sessionId,
-      timeoutMs: 5000,
-    );
+    final result = await pkg.runGit(['--version']);
     final out = result.stdout.trim().isNotEmpty
         ? result.stdout.trim()
         : result.stderr.trim();
@@ -1299,14 +1736,49 @@ class CommandService {
   }
 
   Future<String> _gitSmokeTestOutput() async {
-    final installed = await RuntimeBinaryPackageService().gitInstalled();
+    final pkg = RuntimeBinaryPackageService();
+    final installed = await pkg.gitInstalled();
     if (!installed) {
       return 'Git is not installed; cannot run smoke test.\n'
           'Run: git-artifact bundle-status\n'
           'Run: runtime-pkg install git';
     }
-    // v0.46 smoke test is `git --version` only — no commits are created.
-    return _gitExecProbeOutput();
+    final prefix = await RuntimePrefixService().paths();
+    final workspace = '${prefix['tmp']}/git-smoke';
+    await Directory(workspace).create(recursive: true);
+    final commands = <List<String>>[
+      ['--version'],
+      ['init'],
+      ['status'],
+    ];
+    final labels = ['git --version', 'git init', 'git status'];
+    final lines = <String>['=== Git Local-Only Smoke Test ==='];
+    for (var i = 0; i < commands.length; i++) {
+      final result = await pkg.runGit(
+        commands[i],
+        workingDirectory: i == 0 ? null : workspace,
+      );
+      final output = result.stdout.trim().isNotEmpty
+          ? result.stdout.trim()
+          : result.stderr.trim();
+      final state = result.exitCode == 0 ? 'PASS' : 'FAIL';
+      lines.add('${labels[i]}: $state');
+      if (output.isNotEmpty) lines.add('Output: $output');
+      if (result.exitCode != 0) {
+        lines.add('Exit code: ${result.exitCode}');
+        lines.add(
+          'Failure category: ${pkg.classifyGitFailure(result.exitCode, output)}',
+        );
+        lines.add('Remote Git: deferred');
+        lines.add('Overall: UNHEALTHY');
+        return lines.join('\n');
+      }
+    }
+    await pkg.markGitLocalSmokeVerified();
+    lines.add('Remote Git: deferred');
+    lines.add('Local Git support: VERIFIED');
+    lines.add('Overall: HEALTHY');
+    return lines.join('\n');
   }
 
   Future<String> _termodeDoctor({bool verbose = false}) async {
@@ -1660,6 +2132,9 @@ class CommandService {
     final beta = betaOverall.toUpperCase().contains('CANDIDATE')
         ? 'ready'
         : 'ready with limitations';
+    final runtimePkg = RuntimeBinaryPackageService();
+    final gitInstalled = await runtimePkg.gitInstalled();
+    final gitSmoke = await runtimePkg.gitLocalSmokeVerified();
     return '=== Termode Status ===\n'
         'Mode: $mode\n'
         'Shell: $shell\n'
@@ -1672,17 +2147,17 @@ class CommandService {
         'Runtime package installer: prototype ready\n'
         'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
         'Git inputs: Git/zlib staged; build-inputs.json present; Perl ready; zlib built\n'
-        'Git: artifact not installed\n'
+        'Git: ${gitSmoke ? 'local-only verified' : (gitInstalled ? 'installed; smoke pending' : 'available; not installed')}\n'
         'Toolchains: planned (not installed)\n'
         'Beta: $beta';
   }
 
   String _versionOutput() {
-    return 'Termode v0.62\n'
+    return 'Termode v0.64\n'
         'Runtime: frozen\n'
         'Shell: REAL PTY\n'
         'Packages: script + runtime prototype\n'
-        'Git: Git Bash build fixes phase (binary compiled, packaging deferred)';
+        'Git: real 2.44.0 arm64 package; local-only version/init/status verified';
   }
 
   String _buildTypeName() {
@@ -1695,23 +2170,25 @@ class CommandService {
   String _buildInfoOutput() {
     return '=== Build Info ===\n'
         'App: Termode\n'
-        'Version: v0.62\n'
+        'Version: v0.64\n'
         'Build type: ${_buildTypeName()}\n'
         'Runtime: prototype installer active\n'
         'Runtime package installer: prototype ready\n'
         'Git source prep: Git ${GitBuildService.selectedGitVersion} selected\n'
         'SDK/NDK: available; Git/zlib source archives & build-inputs.json: staged; Perl: ready; zlib: built; Git: compiled\n'
         'Git artifact: checked at runtime\n'
-        'Git execution: verified only after git --version\n'
+        'Git execution: native-library-dir strategy verified on Android\n'
         'Toolchains: planned (not installed)\n'
         'Shell: REAL PTY\n'
         'Packages: script + runtime prototype\n'
         'Beta candidate: terminal foundation beta\n'
-        'Artifact: Termode-v0.62-git-bash-build-fixes-debug.apk';
+        'Artifact: Termode-v0.64-git-on-device-execution-fixes-debug.apk';
   }
 
   String _releaseNotesOutput() {
     return '=== Termode Release Notes ===\n'
+        'v0.64 Git On-Device Execution Fixes\n'
+        'v0.63 Git Artifact Packaging / Install QA\n'
         'v0.62 Git Bash Build Fixes\n'
         'v0.61 Git arm64 Build Under Git Bash\n'
         'v0.60 Git Build Host Strategy\n'
@@ -1767,7 +2244,7 @@ class CommandService {
         ? 'REAL PTY'
         : 'NORMAL';
     return '=== Termode Bug Report ===\n'
-        'Termode version: v0.62\n'
+        'Termode version: v0.64\n'
         'Android ABI: $abi\n'
         'Runtime status: $runtimeStatus\n'
         'Package doctor: $packageStatus\n'
@@ -2910,6 +3387,11 @@ class CommandService {
             isError: true,
           );
         }
+        if (args[0] == 'git' &&
+            await RuntimeBinaryPackageService().gitInstalled()) {
+          final mapped = await RuntimeBinaryPackageService().binWhichGit();
+          return CommandResult(output: mapped.output, isError: mapped.isError);
+        }
         final output = await RuntimePrefixService().binWhich(args[0]);
         return CommandResult(
           output: output,
@@ -3095,7 +3577,7 @@ class CommandService {
         return CommandResult(output: GitBuildService().buildReadiness());
 
       case 'git':
-        return CommandResult(output: await _gitBareOutput());
+        return CommandResult(output: await _gitBareOutput(args));
 
       case 'git-artifact':
         final sub = args.isNotEmpty ? args[0].toLowerCase() : 'help';
@@ -3157,6 +3639,57 @@ class CommandService {
           isError: output.contains('Overall: UNHEALTHY'),
         );
 
+      case 'node':
+        return CommandResult(output: await _nodeBareOutput(args));
+
+      case 'node-status':
+        return CommandResult(output: await _nodeStatusOutput());
+
+      case 'node-info':
+        return CommandResult(output: await _nodeInfoOutput());
+
+      case 'node-doctor':
+        return CommandResult(output: await _nodeDoctorOutput());
+
+      case 'node-artifact':
+        return CommandResult(output: await _nodeArtifactOutput(args));
+
+      case 'npm':
+        return CommandResult(output: await _npmBareOutput(args));
+
+      case 'npm-status':
+        return CommandResult(output: await _npmStatusOutput());
+
+      case 'npm-info':
+        return CommandResult(output: await _npmInfoOutput());
+
+      case 'npm-doctor':
+        return CommandResult(output: await _npmDoctorOutput());
+
+      case 'npm-init':
+        return CommandResult(output: await _npmBareOutput(['init', ...args]));
+
+      case 'npx':
+        return CommandResult(output: await _npxBareOutput(args));
+
+      case 'stack-list':
+        return CommandResult(output: _stackListOutput());
+
+      case 'stack-info':
+        if (args.isEmpty) {
+          return CommandResult(
+            output: 'Usage: stack-info <stack-id>\nRun: stack-list',
+            isError: true,
+          );
+        }
+        return CommandResult(output: _stackInfoOutput(args[0]));
+
+      case 'stack-init':
+        return CommandResult(output: await _stackInitOutput(args));
+
+      case 'stack-doctor':
+        return CommandResult(output: await _stackDoctorOutput());
+
       case 'toolchain-status':
         return CommandResult(output: _toolchainStatusOutput());
 
@@ -3173,7 +3706,7 @@ class CommandService {
             isError: true,
           );
         }
-        final output = _toolchainInfoOutput(args[0]);
+            final output = await _toolchainInfoOutput(args[0]);
         return CommandResult(
           output: output,
           isError: output.startsWith('Unknown toolchain:'),

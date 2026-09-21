@@ -1,6 +1,21 @@
-# Git Artifact Production Status (v0.50, extended through v0.58)
+# Git Artifact Production Status (v0.50, extended through v0.64)
 
-## Selected Path
+## v0.64 Current Result
+
+**Path A: real Git artifact executes successfully on Android.** The exact
+5,463,168-byte Git 2.44.0 arm64-v8a ELF is packaged as
+`libtermode_git_exec.so`, extracted by Android into
+`applicationInfo.nativeLibraryDir`, checksum-verified, mapped logically to
+`TERMODE_PREFIX/usr/bin/git`, and executed through the constrained native
+adapter. Real version/init/status smoke checks passed on Android 16. Local Git
+support is enabled; remote features remain deferred.
+
+The older Path B sections below are retained as milestone history.
+
+v0.63 update: the real Git 2.44.0 arm64-v8a ELF is packaged and verified.
+On-device install/execution is pending; local or remote support is not claimed.
+
+## Historical v0.58 Selected Path
 Termode v0.58 selects **Path B: reproducible build pipeline completed, build attempted, no Git artifact yet**.
 
 No real trusted Git artifact is present in this repository or bundled APK. Git therefore remains unavailable, `runtime-pkg install git` refuses safely, and no Termode command fakes `git --version`.

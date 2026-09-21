@@ -135,7 +135,7 @@ class TerminalSessionService extends ChangeNotifier {
         ]);
       }
       lines.addAll([
-        TerminalLine(text: 'Termode v0.62', type: LineType.output),
+        TerminalLine(text: 'Termode v0.64', type: LineType.output),
         TerminalLine(
           text: 'Type "welcome" to get started.',
           type: LineType.output,
@@ -206,6 +206,31 @@ class TerminalSessionService extends ChangeNotifier {
     notifyListeners();
     saveState();
     _autoStartShellForActiveSession();
+  }
+
+  TerminalSession? getSession(String id) {
+    for (final s in _sessions) {
+      if (s.id == id) return s;
+    }
+    return null;
+  }
+
+  TerminalSession createSession({String? name, String? workingDirectory}) {
+    final sessionVfs = VirtualFileSystem();
+    final session = TerminalSession(
+      id: '${DateTime.now().microsecondsSinceEpoch}_${_sessionCounter++}',
+      name: name ?? 'Session ${_sessions.length + 1}',
+      lines: <TerminalLine>[],
+      commandHistory: [],
+      historyIndex: -1,
+      vfs: sessionVfs,
+    );
+    if (workingDirectory != null) {
+      session.preferredWorkingDirectory = workingDirectory;
+    }
+    _sessions.add(session);
+    notifyListeners();
+    return session;
   }
 
   void removeSession(int index) {
@@ -653,6 +678,21 @@ class TerminalSessionService extends ChangeNotifier {
         'git',
         'git-status',
         'git-info',
+        'node',
+        'node-status',
+        'node-info',
+        'node-doctor',
+        'node-artifact',
+        'npm',
+        'npx',
+        'npm-doctor',
+        'npm-status',
+        'npm-info',
+        'npm-init',
+        'stack-list',
+        'stack-init',
+        'stack-info',
+        'stack-doctor',
         'git-plan',
         'git-version',
         'git-doctor',

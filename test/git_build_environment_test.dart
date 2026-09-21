@@ -429,6 +429,19 @@ void main() {
       expect(result.stdout.toString(), contains('Windows-native shell: blocked'));
       expect(result.stdout.toString(), contains('Selected strategy:'));
     });
+
+    test('v0.64 packaged artifact accepts the logical usr/bin path', () async {
+      final root = Directory.current.absolute.path;
+      final result = await Process.run(_dartExecutable(), [
+        '$root/tools/git-build/validate_git_artifact.dart',
+        'arm64-v8a',
+      ]);
+
+      expect(result.exitCode, 0);
+      expect(
+        result.stdout.toString(),
+        contains('Git artifact candidate is valid for arm64-v8a'),
+      );
+    });
   });
 }
-

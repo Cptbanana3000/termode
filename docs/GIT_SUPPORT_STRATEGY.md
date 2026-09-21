@@ -1,4 +1,8 @@
-# Git Support Strategy (v0.45, extended through v0.59)
+# Git Support Strategy (v0.45, extended through v0.64)
+
+v0.64 supports real local-only Git on arm64-v8a Android. Only
+version/init/status are in the verified initial scope; all remote features
+remain deferred.
 
 v0.45 prepares the **first real-tool path** for Git on top of the v0.44 binary
 package installer prototype. It is a feasibility / installer-path milestone:
@@ -6,10 +10,10 @@ it determines how Git can be safely installed, detected, wrapped, verified, and
 exposed — **without faking Git**. Termode only claims Git is installed if a real
 `git` binary (or compatible implementation) exists and `git --version` succeeds.
 
-**Honest result for this build:** no safe Git binary artifact is bundled, so Git
-is reported as **planned / not installed** everywhere, and the install path
-refuses safely. Real Git execution requires a future vendored/built/trusted,
-ABI-matched, checksum-verified package artifact (targeted for v0.46).
+**Honest result for this build:** the bundled, ABI-matched, checksum-verified
+Git 2.44.0 artifact executes successfully from Android's native library
+directory. Termode claims only the local commands proven on-device. It does not
+claim clone/fetch/pull/push, HTTPS, SSH, credentials, LFS, or submodules.
 
 ## Why Git Is the First Real Tool Target
 
@@ -38,12 +42,11 @@ ABI-matched, checksum-verified package artifact (targeted for v0.46).
 - A Git binary must match the device ABI (`arm64-v8a`, `armeabi-v7a`, `x86_64`,
   `x86`). `runtime-abi` reports the current ABI; install must verify it.
 
-## App-Private Executable Limitations
+## App-Private Executable Policy
 
-- App-private files may be mounted no-exec; direct execution can fail with
-  permission errors. A future Git package may need an exec-capable strategy
-  (e.g. running through the shell from a permitted location) rather than
-  assuming `chmod +x` is enough.
+- Writable app-private files are treated as non-executable. Git runs only from
+  Android's extracted immutable `nativeLibraryDir` payload. The app validates
+  the exact path, ABI, ELF magic, byte count, and SHA-256 before execution.
 
 ## Dependency Concerns
 
@@ -72,7 +75,8 @@ installer validates the manifest, the ABI, and each checksum before installing.
 
 ## Install Layout Under TERMODE_PREFIX
 
-- binaries/shims under `TERMODE_PREFIX/bin` (already first on PATH)
+- logical command mapping under `TERMODE_PREFIX/bin` (already first on PATH)
+- immutable executable backing under `applicationInfo.nativeLibraryDir`
 - support files under `TERMODE_PREFIX/lib`, `TERMODE_PREFIX/share`
 - package metadata under `TERMODE_PREFIX/var/termode/runtime-packages/installed.json`
 
@@ -234,4 +238,3 @@ v0.58 attempts the first controlled arm64 Git build. It successfully compiles th
 ## v0.59 Update: Git Build Fixes
 
 v0.59 attempts build fixes and automates log analysis. It improves path normalization, clean folder handling under `tools/git-build/work/`, and reuse of the verified zlib static library. It then runs the Git build attempt, confirming Path C (Windows-native build is impractical without a Unix-like build shell) and logging the failure. Version references across the project and test suite are bumped to v0.59. Git remains unavailable in-app. See [Git Build Fixes Status](GIT_BUILD_FIXES_STATUS.md) and [Git Windows Build Issue](GIT_WINDOWS_BUILD_ISSUE.md).
-

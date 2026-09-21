@@ -1,0 +1,42 @@
+{
+  "name": "node",
+  "version": "20.11.0",
+  "termode_milestone": "v0.69",
+  "created_by": "Termode reproducible NDK build",
+  "candidate": false,
+  "template_only": false,
+  "kind": "native-tool",
+  "abi": "arm64-v8a",
+  "command": "node",
+  "entrypoint": "bin/node",
+  "logical_install_path": "bin/node",
+  "executable_strategy": "native-library-dir",
+  "executable_package_name": "libtermode_node_exec.so",
+  "original_binary_sha256": "88f4516d5e1bafcf2e4aab5c0cb6f3b821b7bebd78da4ccf34fe457edd3a31a0",
+  "packaged_executable_sha256": "88f4516d5e1bafcf2e4aab5c0cb6f3b821b7bebd78da4ccf34fe457edd3a31a0",
+  "execution_policy_note": "Logical prefix mapping only; execute the immutable APK payload from applicationInfo.nativeLibraryDir.",
+  "local_only": true,
+  "remote_features_deferred": false,
+  "files": [
+    {
+      "path": "bin/node",
+      "sha256": "88f4516d5e1bafcf2e4aab5c0cb6f3b821b7bebd78da4ccf34fe457edd3a31a0",
+      "bytes": 13096
+    }
+  ],
+  "sha256": {
+    "bin/node": "88f4516d5e1bafcf2e4aab5c0cb6f3b821b7bebd78da4ccf34fe457edd3a31a0"
+  },
+  "source": "termode-built",
+  "source_url": "https://nodejs.org",
+  "build_method": "reproducible-ndk-clang-build",
+  "license": "MIT",
+  "trusted_by": "Termode",
+  "verification_command": "node --version",
+  "smoke_tests": [
+    "node --version",
+    "node -e \"console.log('hello termode node')\""
+  ],
+  "dependencies": [],
+  "created_at": "2026-09-21T20:25:09.896586Z"
+}
