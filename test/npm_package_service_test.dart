@@ -222,14 +222,14 @@ void main() {
       expect(formatted, contains('npm Engine:'));
       expect(formatted, contains('NPM_CONFIG_CACHE:'));
       expect(formatted, contains('NPM_CONFIG_PREFIX:'));
-      expect(formatted, contains('Milestone: v0.67'));
+      expect(formatted, contains('Milestone: v0.72'));
     });
 
     test('CommandService runs npm bare and informational commands', () async {
       // Bare npm
       final bare = await commandService.execute('npm');
       expect(bare.output, contains('npm is not installed yet'));
-      expect(bare.output, contains('v0.67 introduces'));
+      expect(bare.output, contains('Install authentic upstream npm 10.9.3'));
 
       // npm-doctor
       final doc = await commandService.execute('npm-doctor');
@@ -238,7 +238,7 @@ void main() {
       // npm-status
       final status = await commandService.execute('npm-status');
       expect(status.output, contains('=== npm Status ==='));
-      expect(status.output, contains('Milestone: v0.67'));
+      expect(status.output, contains('Milestone: v0.72'));
 
       // npm-info
       final info = await commandService.execute('npm-info');
@@ -303,12 +303,58 @@ void main() {
       expect(runResult.output, contains('executed npm with install lodash'));
     });
 
-    test('CommandService npx outputs help and execution', () async {
+    test('CommandService npx outputs guidance when not installed', () async {
       final npxBare = await commandService.execute('npx');
-      expect(npxBare.output, contains('Usage: npx <command>'));
+      expect(npxBare.output, contains('npx is not installed yet'));
+      expect(npxBare.output, contains('runtime-pkg install npm'));
 
       final npxDeferred = await commandService.execute('npx prettier');
-      expect(npxDeferred.output, contains('npx is deferred until Node.js'));
+      expect(npxDeferred.output, contains('npx is not installed yet'));
+    });
+
+    test('CommandService executes npx with test hook', () async {
+      RuntimeBinaryPackageService.npmExecutorForTesting = (args, {workingDirectory}) async {
+        return NativeCommandResult(
+          exitCode: 0,
+          stdout: 'executed npx with ${args.join(" ")}',
+          stderr: '',
+        );
+      };
+
+      final npxRun = await commandService.execute('npx prettier --write .');
+      expect(npxRun.output, contains('executed npx with prettier --write .'));
+    });
+
+    test('RuntimeArtifactRegistryService validates npm manifest and artifact status', () async {
+      final registry = RuntimeArtifactRegistryService();
+      final status = await registry.npmArtifactStatus();
+      expect(status.status, equals('AVAILABLE'));
+      expect(status.installable, isTrue);
+      expect(status.version, equals('10.9.3'));
+      expect(status.archiveBytes, equals(2890824));
+    });
+
+    test('RuntimeBinaryPackageService installs npm when Node is available', () async {
+      final pkg = RuntimeBinaryPackageService();
+
+      // When node is NOT installed:
+      final failResult = await pkg.install('npm');
+      expect(failResult.isError, isTrue);
+      expect(failResult.output, contains('Node.js runtime engine must be installed before npm'));
+
+      // Mock node executor active
+      RuntimeBinaryPackageService.nodeExecutorForTesting = (args, {workingDirectory}) async {
+        return NativeCommandResult(stdout: 'v24.18.0\n', stderr: '', exitCode: 0);
+      };
+      RuntimeBinaryPackageService.npmExecutorForTesting = (args, {workingDirectory}) async {
+        return NativeCommandResult(stdout: '10.9.3\n', stderr: '', exitCode: 0);
+      };
+
+      final installResult = await pkg.install('npm');
+      expect(installResult.isError, isFalse);
+      expect(installResult.output, contains('Installed runtime package: npm'));
+      expect(installResult.output, contains('10.9.3'));
+      expect(await pkg.npmInstalled(), isTrue);
     });
   });
 }

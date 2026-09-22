@@ -1210,20 +1210,33 @@ class CommandService {
     final session = TerminalSessionService().activeSession;
     final workDir = session.preferredWorkingDirectory ?? 'app-home';
 
-    if (arguments.isEmpty) {
-      final installed = await pkg.npmInstalled();
-      final testHookActive =
-          RuntimeBinaryPackageService.npmExecutorForTesting != null;
-      if (!installed && !testHookActive) {
-        return 'npm is not installed yet.\n'
-            'Run: npm-doctor\n'
-            'Run: npm-status\n'
-            'v0.67 introduces the npm package management prototype foundation.\n'
-            'Available local commands:\n'
-            '  npm init [-y]     Initialize package.json in current directory\n'
-            '  npm ls / npm list List local dependencies and node_modules\n'
-            '  npm doctor        Run npm environment checks';
+    final installed = await pkg.npmInstalled();
+    final testHookActive =
+        RuntimeBinaryPackageService.npmExecutorForTesting != null;
+
+    if (installed || testHookActive) {
+      if (arguments.isEmpty) {
+        final result = await pkg.runNpm(['--help'], workingDirectory: workDir);
+        return result.stdout.trim().isNotEmpty
+            ? result.stdout.trim()
+            : (result.stderr.trim().isNotEmpty
+                ? result.stderr.trim()
+                : 'npm <command>\n\nUsage: npm [install|init|run|test|doctor|--version]');
       }
+      final result = await pkg.runNpm(arguments, workingDirectory: workDir);
+      return result.stdout.trim().isNotEmpty
+          ? result.stdout.trim()
+          : result.stderr.trim();
+    }
+
+    if (arguments.isEmpty) {
+      return 'npm is not installed yet.\n'
+          'Install authentic upstream npm 10.9.3:\n'
+          '  runtime-pkg install npm\n\n'
+          'Or run offline commands:\n'
+          '  npm init [-y]     Initialize package.json in current directory\n'
+          '  npm ls / npm list List local dependencies and node_modules\n'
+          '  npm doctor        Run npm environment checks';
     }
 
     final sub = arguments.isNotEmpty ? arguments[0].toLowerCase() : '';
@@ -1272,40 +1285,23 @@ class CommandService {
     }
 
     if (sub == '--version' || sub == '-v' || sub == 'version') {
-      final installed = await pkg.npmInstalled();
-      final testHookActive =
-          RuntimeBinaryPackageService.npmExecutorForTesting != null;
-      if (!installed && !testHookActive) {
-        return 'npm is not installed yet.\nRun: npm-doctor';
-      }
-      final result = await pkg.runNpm(['--version'], workingDirectory: workDir);
-      return result.stdout.trim().isNotEmpty
-          ? result.stdout.trim()
-          : result.stderr.trim();
+      return 'npm is not installed yet.\nRun: runtime-pkg install npm\nRun: npm-doctor';
     }
 
     if (sub == 'help' || sub == '--help' || sub == '-h') {
       return 'Usage: npm <command>\n\n'
           'where <command> is one of:\n'
           '  init, ls, list, run, test, start, version, doctor, help\n\n'
-          'Termode v0.67 prototype supports offline local package.json workflows.';
+          'To install full npm 10.9.3: runtime-pkg install npm';
     }
 
     if (sub == 'doctor') {
       return _npmDoctorOutput();
     }
 
-    final installed = await pkg.npmInstalled();
-    final testHookActive =
-        RuntimeBinaryPackageService.npmExecutorForTesting != null;
-    if (installed || testHookActive) {
-      final result = await pkg.runNpm(arguments, workingDirectory: workDir);
-      return result.stdout.trim().isNotEmpty
-          ? result.stdout.trim()
-          : result.stderr.trim();
-    }
-
     return 'npm is not installed yet.\n'
+        'Install authentic upstream npm 10.9.3:\n'
+        '  runtime-pkg install npm\n'
         'Run: npm-doctor\n'
         'Run: npm init -y';
   }
@@ -1327,11 +1323,11 @@ class CommandService {
 
     return '=== npm Status ===\n'
         'Package: npm\n'
-        'Installed: ${installed ? "yes" : "no"}\n'
+        'Installed: ${installed ? "yes (v10.9.3)" : "no"}\n'
         'Node.js runtime: ${nodeInstalled ? "available" : "not available"}\n'
         'Active workspace: $workDir\n'
         'Local package: ${pkgJson != null ? "${pkgJson.name}@${pkgJson.version}" : "none"}\n'
-        'Milestone: v0.67 (npm Package Management Prototype)';
+        'Milestone: v0.72 (npm Package Installation & Module Resolution)';
   }
 
   Future<String> _npmInfoOutput() async {
@@ -1340,20 +1336,33 @@ class CommandService {
   }
 
   Future<String> _npxBareOutput(List<String> arguments) async {
-    if (arguments.isEmpty) {
-      return 'npx: execute npm packages without global installation.\n'
-          'Usage: npx <command> [args...]\n'
-          'v0.67 prototype mode; install packages locally first with package.json.';
-    }
+    final pkg = RuntimeBinaryPackageService();
     final session = TerminalSessionService().activeSession;
     final workDir = session.preferredWorkingDirectory ?? 'app-home';
-    final pkg = RuntimeBinaryPackageService();
-    if (await pkg.npmInstalled()) {
-      final result = await pkg.runNpm(['exec', ...arguments], workingDirectory: workDir);
-      return result.stdout.trim().isNotEmpty ? result.stdout.trim() : result.stderr.trim();
+    final installed = await pkg.npmInstalled();
+    final testHookActive =
+        RuntimeBinaryPackageService.npmExecutorForTesting != null;
+
+    if (!installed && !testHookActive) {
+      return 'npx is not installed yet.\n'
+          'Install npm:\n'
+          '  runtime-pkg install npm\n'
+          'Run: npm-doctor';
     }
-    return 'npx is deferred until Node.js and full npm runtime are installed.\n'
-        'Run: npm-doctor';
+
+    if (arguments.isEmpty) {
+      final result = await pkg.runNpx(['--help'], workingDirectory: workDir);
+      return result.stdout.trim().isNotEmpty
+          ? result.stdout.trim()
+          : (result.stderr.trim().isNotEmpty
+              ? result.stderr.trim()
+              : 'npx: execute npm packages without global installation.\nUsage: npx <command> [args...]');
+    }
+
+    final result = await pkg.runNpx(arguments, workingDirectory: workDir);
+    return result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
   }
 
   // --- v0.68 Dev Stack Presets & Calypso IDE Integration ---------------------

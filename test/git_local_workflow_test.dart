@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:termode/models/terminal_session.dart';
 import 'package:termode/services/command_service.dart';
 import 'package:termode/services/native_command_service.dart';
 import 'package:termode/services/runtime_binary_package_service.dart';

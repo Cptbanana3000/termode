@@ -73,11 +73,50 @@ class RuntimeArtifactRegistryService {
   static const String bundledNodeFilesAssetRoot =
       'tools/runtime-artifacts/node/arm64-v8a/files';
 
+  static const String bundledNpmManifestAsset =
+      'tools/runtime-artifacts/npm/universal/manifest.json';
+  static const String bundledNpmArchiveAsset =
+      'tools/runtime-artifacts/npm/universal/npm.tar.gz';
+  static const String npmProjectManifestPath =
+      'tools/runtime-artifacts/npm/universal/manifest.json';
+  static const String npmProjectArchivePath =
+      'tools/runtime-artifacts/npm/universal/npm.tar.gz';
+
   /// Whether v0.64 declares the reviewed Git artifact in Flutter assets.
   bool bundledGitArtifactExists() => true;
 
   /// Whether v0.69 declares the reviewed Node artifact in Flutter assets.
   bool bundledNodeArtifactExists() => true;
+
+  /// Whether v0.72 declares the reviewed npm artifact in Flutter assets.
+  bool bundledNpmArtifactExists() => true;
+
+  Future<Map<String, dynamic>?> bundledNpmManifest() async {
+    try {
+      final decoded = jsonDecode(
+        await rootBundle.loadString(bundledNpmManifestAsset),
+      );
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<int>?> readBundledNpmArchive() async {
+    try {
+      final data = await rootBundle.load(bundledNpmArchiveAsset);
+      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    } catch (_) {
+      final fallback = File(npmProjectArchivePath);
+      if (fallback.existsSync()) {
+        return fallback.readAsBytesSync();
+      }
+      return null;
+    }
+  }
+
+  Map<String, dynamic>? readProjectNpmManifest() =>
+      _readJsonMap(npmProjectManifestPath);
 
   Future<Map<String, dynamic>?> bundledNodeManifest() async {
     try {
@@ -163,6 +202,77 @@ class RuntimeArtifactRegistryService {
 
   Map<String, dynamic>? readNpmTemplateManifest() =>
       _readJsonMap(npmTemplatePath);
+
+  List<String> validateNpmManifest(Map<String, dynamic> manifest) {
+    final errors = <String>[];
+    final name = manifest['name']?.toString() ?? '';
+    final version = manifest['version']?.toString() ?? '';
+    final archive = manifest['archive']?.toString() ?? '';
+    final archiveSha = manifest['archive_sha256']?.toString() ?? '';
+    final archiveBytes = manifest['archive_bytes'];
+
+    if (name != 'npm') errors.add('invalid package name');
+    if (version.trim().isEmpty) errors.add('missing version');
+    if (archive.trim().isEmpty) errors.add('missing archive');
+    if (archiveSha.length != 64) errors.add('invalid archive sha256');
+    if (archiveBytes is! int || archiveBytes <= 0) errors.add('invalid archive bytes');
+    return errors;
+  }
+
+  Future<NpmArtifactStatus> npmArtifactStatus() async {
+    final templatePresent = npmTemplateExists();
+    Map<String, dynamic>? manifest = await bundledNpmManifest();
+    var location = 'bundled';
+    if (manifest == null) {
+      manifest = readProjectNpmManifest();
+      location = 'project';
+    }
+
+    if (manifest == null) {
+      return NpmArtifactStatus(
+        available: false,
+        installable: false,
+        source: 'none',
+        reason: 'No npm artifact manifest found.',
+        status: 'UNAVAILABLE',
+        templatePresent: templatePresent,
+        manifestPresent: false,
+        location: location,
+      );
+    }
+
+    final errors = validateNpmManifest(manifest);
+    if (errors.isNotEmpty) {
+      return NpmArtifactStatus(
+        available: true,
+        installable: false,
+        source: manifest['source']?.toString() ?? 'bundled',
+        reason: 'Manifest invalid: ${errors.first}',
+        status: 'INVALID',
+        templatePresent: templatePresent,
+        manifestPresent: true,
+        location: location,
+      );
+    }
+
+    final version = manifest['version']?.toString() ?? '10.9.3';
+    final archiveSha = manifest['archive_sha256']?.toString().toLowerCase();
+    final archiveBytes = manifest['archive_bytes'] as int?;
+
+    return NpmArtifactStatus(
+      available: true,
+      installable: true,
+      source: manifest['source']?.toString() ?? 'bundled',
+      reason: 'Valid npm artifact manifest and archive found for universal runtime.',
+      status: 'AVAILABLE',
+      templatePresent: templatePresent,
+      manifestPresent: true,
+      location: location,
+      version: version,
+      archiveSha256: archiveSha,
+      archiveBytes: archiveBytes,
+    );
+  }
 
   Future<NodeArtifactStatus> nodeArtifactStatus() async {
     final bundled = await bundledNodeArtifactStatus();
@@ -1021,4 +1131,33 @@ class NodeArtifactStatus {
     this.manifestPath = '',
   });
 }
+
+class NpmArtifactStatus {
+  final bool available;
+  final bool installable;
+  final String source;
+  final String reason;
+  final String status;
+  final bool templatePresent;
+  final bool manifestPresent;
+  final String location;
+  final String version;
+  final String? archiveSha256;
+  final int? archiveBytes;
+
+  const NpmArtifactStatus({
+    required this.available,
+    required this.installable,
+    required this.source,
+    required this.reason,
+    required this.status,
+    required this.templatePresent,
+    required this.manifestPresent,
+    required this.location,
+    this.version = '',
+    this.archiveSha256,
+    this.archiveBytes,
+  });
+}
+
 

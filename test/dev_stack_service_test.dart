@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:termode/services/command_catalog.dart';
 import 'package:termode/services/command_service.dart';
 import 'package:termode/services/dev_stack_service.dart';
-import 'package:termode/services/npm_package_service.dart';
 import 'package:termode/services/runtime_binary_package_service.dart';
 import 'package:termode/services/runtime_bootstrap_service.dart';
 import 'package:termode/services/settings_service.dart';

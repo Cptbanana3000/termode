@@ -161,7 +161,7 @@ class _TermodeEmbeddableTerminalState extends State<TermodeEmbeddableTerminal> {
     final active = _sessionService.activeSession;
     if (active.isPtyInteractionActive) {
       if (text.isEmpty) {
-        _sessionService.sendRealPtyInput('\n');
+        _sessionService.sendRawRealPtyInput('\n');
       } else {
         await _sessionService.executeCommand(text);
       }
@@ -192,25 +192,46 @@ class _TermodeEmbeddableTerminalState extends State<TermodeEmbeddableTerminal> {
                   showInput: !session.isPtyInteractionActive,
                   textController: _textController,
                   focusNode: _focusNode,
-                  prompt: session.prompt,
+                  prompt: _sessionService.currentPrompt,
                   onSubmit: _handleCommandSubmit,
                 ),
               ),
-              if (widget.showExtraKeyboardRow && settings.showExtraKeys)
+              if (widget.showExtraKeyboardRow)
                 ExtraKeyboardRow(
-                  onKeyPressed: (key) {
-                    if (session.isPtyInteractionActive) {
-                      _sessionService.handleExtraKey(key);
-                    } else {
-                      _textController.text += key;
+                  controller: _textController,
+                  focusNode: _focusNode,
+                  history: _sessionService.commandHistory,
+                  onHistoryUp: () {
+                    if (session.isPtyInteractionActive) return;
+                    final cmd = _sessionService.navigateHistoryUp();
+                    if (cmd != null) {
+                      _textController.text = cmd;
+                      _textController.selection =
+                          TextSelection.collapsed(offset: cmd.length);
                     }
                   },
-                  onCtrlPressed: () {
+                  onHistoryDown: () {
+                    if (session.isPtyInteractionActive) return;
+                    final cmd = _sessionService.navigateHistoryDown();
+                    if (cmd != null) {
+                      _textController.text = cmd;
+                      _textController.selection =
+                          TextSelection.collapsed(offset: cmd.length);
+                    }
+                  },
+                  onTabComplete: () {},
+                  onPageUp: () {},
+                  onPageDown: () {},
+                  isPtyInteractionActive: session.isPtyInteractionActive,
+                  isCtrlActive: _isCtrlActive,
+                  onCtrlToggle: () {
                     setState(() {
                       _isCtrlActive = !_isCtrlActive;
                     });
                   },
-                  isCtrlActive: _isCtrlActive,
+                  onSendRawPtyInput: (val) {
+                    _sessionService.sendRawRealPtyInput(val);
+                  },
                 ),
             ],
           ),
@@ -228,15 +249,15 @@ class _TermodeEmbeddableTerminalState extends State<TermodeEmbeddableTerminal> {
         itemCount: _sessionService.sessions.length,
         itemBuilder: (context, index) {
           final s = _sessionService.sessions[index];
-          final isActive = s.id == _sessionService.activeSessionId;
+          final isActive = index == _sessionService.activeSessionIndex;
           return InkWell(
-            onTap: () => _sessionService.switchSession(s.id),
+            onTap: () => _sessionService.setActiveSession(index),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
-                    color: isActive ? settings.cursorColor : Colors.transparent,
+                    color: isActive ? settings.primaryColor : Colors.transparent,
                     width: 2,
                   ),
                 ),

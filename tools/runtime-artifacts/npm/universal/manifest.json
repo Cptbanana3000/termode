@@ -1,0 +1,43 @@
+{
+  "name": "npm",
+  "version": "10.9.3",
+  "termode_milestone": "v0.72",
+  "created_by": "Termode official upstream npm distribution",
+  "candidate": false,
+  "template_only": false,
+  "kind": "js-cli-package",
+  "abi": "universal",
+  "command": "npm",
+  "entrypoint": "usr/lib/node_modules/npm/bin/npm-cli.js",
+  "logical_install_path": "usr/lib/node_modules/npm",
+  "executable_strategy": "node-driver",
+  "executable_package_name": "npm-cli.js",
+  "archive": "npm.tar.gz",
+  "archive_sha256": "9ba7507169db7a214f72eaa53cb23811d4dcf904d4d2389ab7bf3608317cc751",
+  "archive_bytes": 2890824,
+  "execution_policy_note": "Authentic upstream npm 10.9.3 package manager driven by Termode Google V8 Node.js runtime engine with wrapper sh scripts in usr/bin.",
+  "local_only": false,
+  "remote_features_deferred": false,
+  "entrypoints": [
+    "usr/bin/npm",
+    "usr/bin/npx"
+  ],
+  "dependencies": [
+    "node"
+  ],
+  "source": "npm-official-dist",
+  "source_url": "https://registry.npmjs.org/npm/-/npm-10.9.3.tgz",
+  "build_method": "bundled node_modules/npm tar.gz archive extracted into usr/lib/node_modules/npm with bin wrappers",
+  "license": "Artistic-2.0",
+  "trusted_by": "Termode",
+  "verification_command": "npm --version",
+  "smoke_tests": [
+    "npm --version",
+    "npx --version",
+    "npm init -y",
+    "npm install is-number",
+    "npm ls",
+    "npm doctor"
+  ],
+  "created_at": "2026-09-22T14:00:00Z"
+}

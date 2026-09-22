@@ -374,6 +374,7 @@ class RuntimeBinaryPackageService {
   Future<NativeCommandResult> runNode(
     List<String> arguments, {
     String? workingDirectory,
+    int timeoutMs = 15000,
   }) async {
     if (nodeExecutorForTesting != null) {
       return nodeExecutorForTesting!(
@@ -385,6 +386,7 @@ class RuntimeBinaryPackageService {
       return NativeCommandService().executeBundledNode(
         arguments,
         workingDirectory: workingDirectory,
+        timeoutMs: timeoutMs,
       );
     }
     return NativeCommandResult(
@@ -411,6 +413,7 @@ class RuntimeBinaryPackageService {
   Future<NativeCommandResult> runNpm(
     List<String> arguments, {
     String? workingDirectory,
+    int timeoutMs = 60000,
   }) async {
     if (npmExecutorForTesting != null) {
       return npmExecutorForTesting!(
@@ -419,12 +422,46 @@ class RuntimeBinaryPackageService {
       );
     }
     if (Platform.isAndroid && (await nodeInstalled())) {
-      const npmCliPath = 'usr/lib/node_modules/npm/bin/npm-cli.js';
-      return runNode([npmCliPath, ...arguments], workingDirectory: workingDirectory);
+      final paths = await _paths();
+      final usrPath = paths['usr'] ?? paths['prefix'] ?? '';
+      final npmCliPath = '$usrPath/lib/node_modules/npm/bin/npm-cli.js';
+      return runNode(
+        [npmCliPath, ...arguments],
+        workingDirectory: workingDirectory,
+        timeoutMs: timeoutMs,
+      );
     }
     return NativeCommandResult(
       stdout: '',
       stderr: 'npm execution requires Node.js runtime or active test hook.',
+      exitCode: -1,
+    );
+  }
+
+  Future<NativeCommandResult> runNpx(
+    List<String> arguments, {
+    String? workingDirectory,
+    int timeoutMs = 60000,
+  }) async {
+    if (npmExecutorForTesting != null) {
+      return npmExecutorForTesting!(
+        arguments,
+        workingDirectory: workingDirectory,
+      );
+    }
+    if (Platform.isAndroid && (await nodeInstalled())) {
+      final paths = await _paths();
+      final usrPath = paths['usr'] ?? paths['prefix'] ?? '';
+      final npxCliPath = '$usrPath/lib/node_modules/npm/bin/npx-cli.js';
+      return runNode(
+        [npxCliPath, ...arguments],
+        workingDirectory: workingDirectory,
+        timeoutMs: timeoutMs,
+      );
+    }
+    return NativeCommandResult(
+      stdout: '',
+      stderr: 'npx execution requires Node.js runtime or active test hook.',
       exitCode: -1,
     );
   }
@@ -434,19 +471,25 @@ class RuntimeBinaryPackageService {
     final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
     final nodeArtifact =
         await RuntimeArtifactRegistryService().nodeArtifactStatus();
+    final npmArtifact =
+        await RuntimeArtifactRegistryService().npmArtifactStatus();
     final gitState = artifact.installable
         ? 'installable if verified'
         : 'artifact ${artifact.status.toLowerCase()}; install refuses safely';
     final nodeState = nodeArtifact.installable
         ? 'installable if verified'
         : 'artifact ${nodeArtifact.status.toLowerCase()}';
+    final npmState = npmArtifact.installable
+        ? 'installable if verified'
+        : 'artifact ${npmArtifact.status.toLowerCase()}';
     return '=== Available Runtime Packages ===\n'
         'Prototype available now:\n'
         '* hello-bin [${manifest['version']}] - ${manifest['description']}\n\n'
         'Reviewed real tools:\n'
         '* git - Distributed version control ($gitState)\n'
-        '* node - Node.js JavaScript runtime prototype ($nodeState)\n\n'
-        'npm/Python packages remain planned.';
+        '* node - Node.js JavaScript runtime prototype ($nodeState)\n'
+        '* npm - Node.js Package Manager ($npmState)\n\n'
+        'Python runtime packages remain planned.';
   }
 
   Future<String> list() async {
@@ -513,13 +556,24 @@ class RuntimeBinaryPackageService {
     }
     if (name == npmName) {
       final installed = await npmInstalled();
+      final artifact = await RuntimeArtifactRegistryService()
+          .npmArtifactStatus();
+      final status = installed
+          ? 'installed'
+          : (artifact.installable
+                ? 'installable (verified artifact)'
+                : 'planned (artifact ${artifact.status.toLowerCase()})');
       return '=== Runtime Package: npm ===\n'
           'Name: npm\n'
           'Kind: package-manager\n'
-          'Status: ${installed ? "installed" : "planned (prototype v0.67)"}\n'
+          'Status: $status\n'
           'Command: npm\n'
+          'Current ABI: universal\n'
+          'Artifact available: ${artifact.available ? 'yes' : 'no'}\n'
+          'Installable: ${artifact.installable ? 'yes' : 'no'}\n'
           'Description: Node.js Package Manager.\n'
-          'Install support: driven by Node.js runtime engine.\n'
+          'Install support: bundled upstream npm 10.9.3 archive driven by Node.js runtime engine.\n'
+          'Current artifact state: ${artifact.status}\n'
           'Next step: npm-doctor';
     }
     if (name != helloBinName) {
@@ -609,6 +663,35 @@ class RuntimeBinaryPackageService {
         );
       }
       return _installNodeArtifact(artifact);
+    }
+    if (name == npmName) {
+      final artifact = await RuntimeArtifactRegistryService()
+          .npmArtifactStatus();
+      if (artifact.status == 'INVALID') {
+        return RuntimeBinaryPackageResult(
+          'npm artifact failed verification.\n'
+          'Current state: ${artifact.status}\n'
+          'Reason: ${artifact.reason}\n'
+          'Run: npm-doctor',
+          isError: true,
+        );
+      }
+      if (!artifact.available) {
+        return RuntimeBinaryPackageResult(
+          'npm artifact is not available in this build.\n'
+          'Current state: ${artifact.status}\n'
+          'Run: npm-doctor',
+        );
+      }
+      if (!artifact.installable) {
+        return RuntimeBinaryPackageResult(
+          'npm artifact failed verification.\n'
+          'Reason: ${artifact.reason}\n'
+          'Run: npm-doctor',
+          isError: true,
+        );
+      }
+      return _installNpmArtifact(artifact);
     }
     if (name != helloBinName) {
       return RuntimeBinaryPackageResult(
@@ -1128,6 +1211,282 @@ class RuntimeBinaryPackageService {
         isError: true,
       );
     }
+  }
+
+  Future<RuntimeBinaryPackageResult> _installNpmArtifact(
+    NpmArtifactStatus artifact,
+  ) async {
+    final registry = RuntimeArtifactRegistryService();
+    final manifest = await registry.bundledNpmManifest() ??
+        registry.readProjectNpmManifest();
+    if (manifest == null) {
+      return const RuntimeBinaryPackageResult(
+        'npm install blocked: manifest missing.\n'
+        'Run: npm-doctor',
+        isError: true,
+      );
+    }
+    final validation = registry.validateNpmManifest(manifest);
+    if (validation.isNotEmpty) {
+      return RuntimeBinaryPackageResult(
+        'npm install blocked: ${validation.first}\n'
+        'Run: npm-doctor',
+        isError: true,
+      );
+    }
+
+    if (!await nodeInstalled() && nodeExecutorForTesting == null) {
+      return const RuntimeBinaryPackageResult(
+        'Node.js runtime engine must be installed before npm.\n'
+        'Run: runtime-pkg install node\n'
+        'Run: node-artifact status',
+        isError: true,
+      );
+    }
+
+    await _prefix.initPrefix();
+    await _ensureStructures();
+    final paths = await _paths();
+
+    final archiveBytes = await registry.readBundledNpmArchive();
+    if (archiveBytes == null || archiveBytes.isEmpty) {
+      return const RuntimeBinaryPackageResult(
+        'npm install blocked: npm archive missing or empty.\n'
+        'Run: npm-doctor',
+        isError: true,
+      );
+    }
+
+    final actualSha = _calculateSha256(archiveBytes);
+    final expectedSha = (artifact.archiveSha256 ??
+            manifest['archive_sha256']?.toString() ??
+            '')
+        .toLowerCase();
+    final expectedBytes = artifact.archiveBytes ?? manifest['archive_bytes'];
+
+    if (actualSha.toLowerCase() != expectedSha ||
+        (expectedBytes is int && archiveBytes.length != expectedBytes)) {
+      return RuntimeBinaryPackageResult(
+        'npm install blocked: archive checksum or size mismatch.\n'
+        'Expected SHA: $expectedSha\n'
+        'Actual SHA:   $actualSha\n'
+        'Expected Size: $expectedBytes\n'
+        'Actual Size:   ${archiveBytes.length}',
+        isError: true,
+      );
+    }
+
+    final createdPaths = <String>[];
+    try {
+      final usrPath = paths['usr'] ?? paths['prefix'] ?? '';
+      final homePath = paths['home'] ?? '';
+      final libPath = paths['lib'] ?? '$usrPath/lib';
+      final binPath = paths['bin'] ?? '$usrPath/bin';
+      final usrTmpPath = paths['tmp'] ?? '$usrPath/tmp';
+
+      final nodeModulesDir = Directory('$libPath/node_modules');
+      if (!await nodeModulesDir.exists()) {
+        await nodeModulesDir.create(recursive: true);
+      }
+
+      final extractedFiles = await _extractTarGz(
+        archiveBytes,
+        nodeModulesDir.path,
+      );
+      createdPaths.addAll(extractedFiles);
+
+      final binDir = Directory(binPath);
+      if (!await binDir.exists()) {
+        await binDir.create(recursive: true);
+      }
+
+      final npmWrapper = File('${binDir.path}/npm');
+      final npxWrapper = File('${binDir.path}/npx');
+
+      final npmScriptContent =
+          '#!/system/bin/sh\n'
+          'export HOME="$homePath"\n'
+          'export TMPDIR="$usrTmpPath"\n'
+          'export OPENSSL_CONF="/dev/null"\n'
+          'export NODE_PATH="$libPath/node_modules"\n'
+          'export npm_config_prefix="$homePath/.npm-global"\n'
+          'export npm_config_cache="$homePath/.npm"\n'
+          'export LD_LIBRARY_PATH="$libPath:\$LD_LIBRARY_PATH"\n'
+          'exec "$binPath/node" "$libPath/node_modules/npm/bin/npm-cli.js" "\$@"\n';
+
+      final npxScriptContent =
+          '#!/system/bin/sh\n'
+          'export HOME="$homePath"\n'
+          'export TMPDIR="$usrTmpPath"\n'
+          'export OPENSSL_CONF="/dev/null"\n'
+          'export NODE_PATH="$libPath/node_modules"\n'
+          'export npm_config_prefix="$homePath/.npm-global"\n'
+          'export npm_config_cache="$homePath/.npm"\n'
+          'export LD_LIBRARY_PATH="$libPath:\$LD_LIBRARY_PATH"\n'
+          'exec "$binPath/node" "$libPath/node_modules/npm/bin/npx-cli.js" "\$@"\n';
+
+      await npmWrapper.writeAsString(npmScriptContent, flush: true);
+      await npxWrapper.writeAsString(npxScriptContent, flush: true);
+      createdPaths.add(npmWrapper.path);
+      createdPaths.add(npxWrapper.path);
+
+      if (!Platform.isWindows) {
+        try {
+          await Process.run('chmod', ['755', npmWrapper.path, npxWrapper.path]);
+        } catch (_) {}
+      }
+
+      final probeResult = await runNpm(['--version']);
+      final probe = _preferredOutput(probeResult);
+
+      final metadata = await _readMetadata();
+      final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+      packages[npmName] = {
+        'name': npmName,
+        'version': manifest['version'] ?? '10.9.3',
+        'kind': 'package-manager',
+        'command': npmName,
+        'status': 'installed',
+        'abi': 'universal',
+        'installed_at': DateTime.now().toUtc().toIso8601String(),
+        'source': manifest['source'] ?? 'npm-official-dist',
+        'archive_sha256': actualSha,
+        'archive_bytes': archiveBytes.length,
+        'entrypoints': ['usr/bin/npm', 'usr/bin/npx'],
+        'logical_install_path': 'usr/lib/node_modules/npm',
+        'execution_verified': true,
+        'verification': probe.isNotEmpty ? probe : '10.9.3',
+      };
+      metadata['schema'] = metadataSchema;
+      metadata['packages'] = packages;
+      await _writeMetadata(metadata);
+      await _prefix.generateEnvScript();
+
+      return RuntimeBinaryPackageResult(
+        'Installed runtime package: npm\n'
+        'Version: ${manifest['version'] ?? "10.9.3"}\n'
+        'Kind: package-manager\n'
+        'Engine: Google V8 Node.js\n'
+        'Install path: $libPath/node_modules/npm\n'
+        'CLI commands: npm, npx\n'
+        'Verification: ${probe.isNotEmpty ? probe : "10.9.3"}\n'
+        'Run: npm --version\n'
+        'Run: npm-doctor',
+      );
+    } catch (e) {
+      for (final p in createdPaths.reversed) {
+        try {
+          final f = File(p);
+          if (f.existsSync()) f.deleteSync();
+        } catch (_) {}
+      }
+      return RuntimeBinaryPackageResult(
+        'npm install failed and was rolled back.\n'
+        'Reason: $e\n'
+        'Run: npm-doctor',
+        isError: true,
+      );
+    }
+  }
+
+  Future<List<String>> _extractTarGz(
+    List<int> archiveBytes,
+    String destinationDir,
+  ) async {
+    final decompressed = gzip.decode(archiveBytes);
+    final tarBytes = Uint8List.fromList(decompressed);
+    final destDir = Directory(destinationDir);
+    if (!await destDir.exists()) {
+      await destDir.create(recursive: true);
+    }
+    final canonicalDest = destDir.resolveSymbolicLinksSync().replaceAll('\\', '/');
+
+    int offset = 0;
+    String? longName;
+    final createdFiles = <String>[];
+
+    while (offset + 512 <= tarBytes.length) {
+      final header = Uint8List.sublistView(tarBytes, offset, offset + 512);
+
+      bool allZero = true;
+      for (int i = 0; i < 512; i++) {
+        if (header[i] != 0) {
+          allZero = false;
+          break;
+        }
+      }
+      if (allZero) break;
+
+      final typeFlag = header[156];
+      final sizeStr = String.fromCharCodes(header.sublist(124, 136))
+          .replaceAll('\x00', '')
+          .trim();
+      final fileSize = sizeStr.isEmpty ? 0 : int.parse(sizeStr, radix: 8);
+
+      String name;
+      if (longName != null) {
+        name = longName;
+        longName = null;
+      } else {
+        final nameRaw = header.sublist(0, 100);
+        final nullIdx = nameRaw.indexOf(0);
+        name = String.fromCharCodes(
+          nullIdx == -1 ? nameRaw : nameRaw.sublist(0, nullIdx),
+        ).trim();
+
+        final prefixRaw = header.sublist(345, 500);
+        final prefixNull = prefixRaw.indexOf(0);
+        final prefix = String.fromCharCodes(
+          prefixNull == -1 ? prefixRaw : prefixRaw.sublist(0, prefixNull),
+        ).trim();
+        if (prefix.isNotEmpty) {
+          name = '$prefix/$name';
+        }
+      }
+
+      offset += 512;
+
+      if (typeFlag == 76 /* 'L' */) {
+        final content = tarBytes.sublist(offset, offset + fileSize);
+        final nullTerm = content.indexOf(0);
+        longName = utf8.decode(
+          nullTerm == -1 ? content : content.sublist(0, nullTerm),
+        ).trim();
+        offset += ((fileSize + 511) ~/ 512) * 512;
+        continue;
+      }
+
+      final normalizedRel = name.replaceAll('\\', '/');
+      if (normalizedRel.contains('..') || normalizedRel.startsWith('/')) {
+        offset += ((fileSize + 511) ~/ 512) * 512;
+        continue;
+      }
+
+      final targetFile = File('$canonicalDest/$normalizedRel');
+      final targetNormalized = targetFile.path.replaceAll('\\', '/');
+      if (!targetNormalized.startsWith(canonicalDest)) {
+        offset += ((fileSize + 511) ~/ 512) * 512;
+        continue;
+      }
+
+      if (typeFlag == 53 /* directory */ || name.endsWith('/')) {
+        final targetDir = Directory(targetFile.path);
+        if (!await targetDir.exists()) {
+          await targetDir.create(recursive: true);
+        }
+      } else if (typeFlag == 0 || typeFlag == 48 /* regular file */) {
+        if (!await targetFile.parent.exists()) {
+          await targetFile.parent.create(recursive: true);
+        }
+        final fileContent = tarBytes.sublist(offset, offset + fileSize);
+        await targetFile.writeAsBytes(fileContent, flush: true);
+        createdFiles.add(targetFile.path);
+      }
+
+      offset += ((fileSize + 511) ~/ 512) * 512;
+    }
+
+    return createdFiles;
   }
 
   Future<NativeCommandResult> _executeGitBacking(

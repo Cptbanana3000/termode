@@ -527,6 +527,8 @@ class MainActivity: FlutterActivity() {
                                     put("TMPDIR", tmpDir.absolutePath)
                                     put("NODE_PATH", nodePath)
                                     put("OPENSSL_CONF", "/dev/null")
+                                    put("npm_config_prefix", java.io.File(homeDir, ".npm-global").absolutePath)
+                                    put("npm_config_cache", java.io.File(homeDir, ".npm").absolutePath)
                                     put(
                                         "LD_LIBRARY_PATH",
                                         "${java.io.File(usrDir, "lib").absolutePath}:${applicationInfo.nativeLibraryDir}"
@@ -582,8 +584,9 @@ class MainActivity: FlutterActivity() {
                                 } catch (_: Exception) {}
                             }
 
+                            val isNpmOrNpx = arguments.any { it.contains("npm-cli.js") || it.contains("npx-cli.js") }
                             val isProbeOrEval = arguments.any { it == "--version" || it == "-v" || it == "-e" || it == "--help" || it == "-h" }
-                            val waitLimitMs = if (isProbeOrEval) timeoutMs else 2500L
+                            val waitLimitMs = if (isProbeOrEval || isNpmOrNpx) timeoutMs else 2500L
 
                             val finished = process.waitFor(waitLimitMs, TimeUnit.MILLISECONDS)
 
@@ -600,9 +603,9 @@ class MainActivity: FlutterActivity() {
                             } else {
                                 stdoutStr = synchronized(stdoutBuilder) { stdoutBuilder.toString().trimEnd() }
                                 stderrStr = synchronized(stderrBuilder) { stderrBuilder.toString().trimEnd() }
-                                if (isProbeOrEval) {
+                                if (isProbeOrEval || isNpmOrNpx) {
                                     process.destroyForcibly()
-                                    throw java.util.concurrent.TimeoutException("Node command timed out after ${timeoutMs}ms")
+                                    throw java.util.concurrent.TimeoutException(if (isNpmOrNpx) "npm command timed out after ${waitLimitMs}ms" else "Node command timed out after ${timeoutMs}ms")
                                 } else {
                                     val srvId = "srv_${System.currentTimeMillis()}"
                                     val pid = getProcessId(process)
@@ -1488,6 +1491,10 @@ class MainActivity: FlutterActivity() {
                         env["TERMODE_CACHE"] = cacheDir.absolutePath
                         env["TERMODE_CONFIG"] = configDir.absolutePath
                         env["TMPDIR"] = tmpDir.absolutePath
+                        env["NODE_PATH"] = java.io.File(usrDir, "lib/node_modules").absolutePath
+                        env["OPENSSL_CONF"] = "/dev/null"
+                        env["npm_config_prefix"] = java.io.File(homeDir, ".npm-global").absolutePath
+                        env["npm_config_cache"] = java.io.File(homeDir, ".npm").absolutePath
                         env["PATH"] = "${binDir.absolutePath}:/system/bin:/system/xbin:/vendor/bin:/product/bin"
                         env["TERM"] = "xterm-256color"
                         env["ENV"] = java.io.File(usrDir, "termode-shell-helpers.sh").absolutePath
@@ -1780,7 +1787,10 @@ class MainActivity: FlutterActivity() {
                                 "GIT_TEMPLATE_DIR",
                                 "XDG_CONFIG_HOME",
                                 "LD_LIBRARY_PATH",
-                                "OPENSSL_CONF"
+                                "OPENSSL_CONF",
+                                "NODE_PATH",
+                                "npm_config_prefix",
+                                "npm_config_cache"
                             ),
                             arrayOf(
                                 "termode:\$ ",
@@ -1796,7 +1806,10 @@ class MainActivity: FlutterActivity() {
                                 java.io.File(usrDir, "share/git-core/templates").absolutePath,
                                 configDir.absolutePath,
                                 "${java.io.File(usrDir, "lib").absolutePath}:${applicationInfo.nativeLibraryDir}",
-                                "/dev/null"
+                                "/dev/null",
+                                java.io.File(usrDir, "lib/node_modules").absolutePath,
+                                java.io.File(homeDir, ".npm-global").absolutePath,
+                                java.io.File(homeDir, ".npm").absolutePath
                             ),
                             cols,
                             rows

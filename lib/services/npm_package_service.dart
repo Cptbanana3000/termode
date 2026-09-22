@@ -100,7 +100,7 @@ class NpmDoctorReport {
     sb.writeln('Installed node_modules: $installedModuleCount');
     sb.writeln('NPM_CONFIG_CACHE: $npmConfigCache');
     sb.writeln('NPM_CONFIG_PREFIX: $npmConfigPrefix');
-    sb.writeln('Milestone: v0.67 (npm Package Management Prototype)');
+    sb.writeln('Milestone: v0.72 (npm Package Installation & Module Resolution)');
     return sb.toString().trimRight();
   }
 }
@@ -324,7 +324,7 @@ class NpmPackageService {
           ? 'VERIFIED'
           : (nodeInstalled ? 'INSTALLED (unverified)' : 'NOT_INSTALLED'),
       npmAvailable: npmInstalled || RuntimeBinaryPackageService.npmExecutorForTesting != null,
-      npmStatus: npmInstalled ? 'INSTALLED' : 'PLANNED (Prototype v0.67)',
+      npmStatus: npmInstalled ? 'INSTALLED (v10.9.3)' : 'PLANNED (npm 10.9.3)',
       workingDirectory: workingDirectory,
       hasPackageJson: metadata != null,
       packageName: metadata != null ? '${metadata.name}@${metadata.version}' : null,

@@ -80,9 +80,10 @@ void main() {
       expect(available.output, contains('Reviewed real tools:'));
       expect(available.output, contains('git - Distributed version control'));
       expect(available.output, contains('node - Node.js JavaScript runtime prototype'));
+      expect(available.output, contains('npm - Node.js Package Manager'));
       expect(
         available.output,
-        contains('npm/Python packages remain planned'),
+        contains('Python runtime packages remain planned'),
       );
     });
 

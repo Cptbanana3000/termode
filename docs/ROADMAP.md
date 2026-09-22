@@ -1,11 +1,11 @@
 # Roadmap
 
-Current milestone: **v0.71 Dev Server Supervision & Background Process Management**. Providing
-native background daemon registry, process lifecycle management (PID, uptime, CWD, memory),
-port detection, buffered stdout/stderr logging, graceful termination and socket release,
-interactive shell commands (`dev-server list`, `stop`, `logs`, `open`, `doctor`),
-and terminal UI status indicators verified against Chrome on physical hardware.
-The next milestone is **v0.72 npm Package Installation & Module Resolution**.
+Current milestone: **v0.72 npm Package Installation & Module Resolution**. Providing
+authentic upstream npm 10.9.3 distribution bundled as a high-efficiency tar.gz archive,
+pure-Dart POSIX tar extractor, package installation via `runtime-pkg install npm`,
+CLI executable wrappers (`npm`, `npx`), live npm registry connectivity (`registry.npmjs.org`),
+sandbox module resolution (`node_modules`), and physical hardware verification on ARM64.
+The next milestone is **v0.73 Full CLI Tooling & Package Ecosystem Integration**.
 
 Termode is building a complete standalone Android terminal/dev environment
 first — easier and more guided than Termux — and only later integrating into
@@ -79,8 +79,9 @@ after v0.64 on-device smoke verification; remote Git remains planned. See
 - v0.67 npm Package Management Prototype
 - v0.69 Node.js & Full Runtime Bundling QA
 - v0.70 Authentic Google V8 Node.js Runtime Engine & Full Packaging
-- v0.71 Dev Server Supervision & Background Process Management (current)
-- v0.72 npm Package Installation & Module Resolution (next)
+- v0.71 Dev Server Supervision & Background Process Management
+- v0.72 npm Package Installation & Module Resolution (current)
+- v0.73 Full CLI Tooling & Package Ecosystem Integration (next)
 - later: Python / Native Package Ecosystem
 - Calypso IDE embedding via TermodeEngine & TermodeEmbeddableTerminal
 

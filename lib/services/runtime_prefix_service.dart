@@ -33,6 +33,7 @@ class RuntimePrefixService {
       'sandbox': sandbox,
       'home': home,
       'prefix': usr,
+      'usr': usr,
       'bin': bin,
       'lib': '$usr/lib',
       'share': '$usr/share',
