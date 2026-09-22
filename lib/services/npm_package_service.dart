@@ -73,6 +73,10 @@ class NpmDoctorReport {
   final int installedModuleCount;
   final String npmConfigCache;
   final String npmConfigPrefix;
+  final bool npmGlobalBinExists;
+  final bool npmGlobalBinInPath;
+  final int cacheSizeBytes;
+  final String cacheSizeDisplay;
 
   const NpmDoctorReport({
     required this.nodeAvailable,
@@ -87,6 +91,10 @@ class NpmDoctorReport {
     this.installedModuleCount = 0,
     required this.npmConfigCache,
     required this.npmConfigPrefix,
+    this.npmGlobalBinExists = true,
+    this.npmGlobalBinInPath = true,
+    this.cacheSizeBytes = 0,
+    this.cacheSizeDisplay = '0 KB',
   });
 
   String formatText() {
@@ -98,9 +106,12 @@ class NpmDoctorReport {
     sb.writeln('Defined Scripts: $scriptCount');
     sb.writeln('Declared Dependencies: $dependencyCount');
     sb.writeln('Installed node_modules: $installedModuleCount');
+    sb.writeln('Global Prefix: $npmConfigPrefix');
+    sb.writeln('Global Bin: ${npmGlobalBinExists ? "PRESENT" : "INITIALIZED"} (in PATH: ${npmGlobalBinInPath ? "YES" : "NO"})');
+    sb.writeln('Cache Status: $cacheSizeDisplay ($npmConfigCache)');
     sb.writeln('NPM_CONFIG_CACHE: $npmConfigCache');
     sb.writeln('NPM_CONFIG_PREFIX: $npmConfigPrefix');
-    sb.writeln('Milestone: v0.72 (npm Package Installation & Module Resolution)');
+    sb.writeln('Milestone: v0.73 (Full CLI Tooling & Package Ecosystem Integration)');
     return sb.toString().trimRight();
   }
 }
@@ -317,6 +328,22 @@ class NpmPackageService {
     final depReport = await listDependencies(workingDirectory);
 
     final homeDir = Directory(workingDirectory).parent.path;
+    final globalBin = Directory('$homeDir/.npm-global/bin');
+    final globalBinExists = globalBin.existsSync();
+    final cacheDir = Directory(defaultNpmCacheDir(homeDir));
+    int cacheBytes = 0;
+    if (cacheDir.existsSync()) {
+      try {
+        for (final entity in cacheDir.listSync(recursive: true, followLinks: false)) {
+          if (entity is File) {
+            cacheBytes += entity.lengthSync();
+          }
+        }
+      } catch (_) {}
+    }
+    final cacheDisplay = cacheBytes > 1024 * 1024
+        ? '${(cacheBytes / (1024 * 1024)).toStringAsFixed(1)} MB'
+        : '${(cacheBytes / 1024).toStringAsFixed(1)} KB';
 
     return NpmDoctorReport(
       nodeAvailable: nodeInstalled || RuntimeBinaryPackageService.nodeExecutorForTesting != null,
@@ -334,7 +361,141 @@ class NpmPackageService {
       installedModuleCount: depReport.installedModules.length,
       npmConfigCache: defaultNpmCacheDir(homeDir),
       npmConfigPrefix: defaultNpmPrefixDir(homeDir),
+      npmGlobalBinExists: globalBinExists,
+      npmGlobalBinInPath: true,
+      cacheSizeBytes: cacheBytes,
+      cacheSizeDisplay: cacheDisplay,
     );
+  }
+
+  /// Runs a script defined in `package.json` inside [workingDirectory].
+  Future<({bool success, String output})> runScript({
+    required String workingDirectory,
+    required String scriptName,
+    List<String> args = const [],
+  }) async {
+    final metadata = await readPackageJson(workingDirectory);
+    if (metadata == null) {
+      return (
+        success: false,
+        output: 'npm ERR! code ENOENT\n'
+            'npm ERR! syscall open\n'
+            'npm ERR! path $workingDirectory/package.json\n'
+            'npm ERR! enoent: no such file or directory, open \'$workingDirectory/package.json\'\n\n'
+            'Run: npm init -y',
+      );
+    }
+
+    if (!metadata.scripts.containsKey(scriptName)) {
+      final available = metadata.scripts.keys.toList();
+      return (
+        success: false,
+        output: 'npm ERR! Missing script: "$scriptName"\n'
+            'Available scripts in package.json:\n'
+            '${available.isNotEmpty ? available.map((s) => "  npm run $s").join("\n") : "  (no scripts defined)"}',
+      );
+    }
+
+    final binaryPkg = RuntimeBinaryPackageService();
+    final result = await binaryPkg.runNpm(
+      ['run', scriptName, ...args],
+      workingDirectory: workingDirectory,
+    );
+
+    final out = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+    return (
+      success: result.exitCode == 0,
+      output: out,
+    );
+  }
+
+  /// Uninstalls a package and updates dependencies in [workingDirectory].
+  Future<({bool success, String output})> uninstallPackage({
+    required String workingDirectory,
+    required String packageName,
+  }) async {
+    final binaryPkg = RuntimeBinaryPackageService();
+    final result = await binaryPkg.runNpm(
+      ['uninstall', packageName],
+      workingDirectory: workingDirectory,
+    );
+
+    final out = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+    return (
+      success: result.exitCode == 0,
+      output: out.isNotEmpty ? out : 'removed package: $packageName',
+    );
+  }
+
+  /// Cleans the local npm cache directory.
+  Future<({bool success, String output})> cacheClean({bool force = true}) async {
+    final binaryPkg = RuntimeBinaryPackageService();
+    final result = await binaryPkg.runNpm([
+      'cache',
+      'clean',
+      if (force) '--force',
+    ]);
+    final out = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+    return (
+      success: result.exitCode == 0,
+      output: out.isNotEmpty ? out : 'npm cache cleaned',
+    );
+  }
+
+  /// Verifies the local npm cache integrity.
+  Future<({bool success, String output})> cacheVerify() async {
+    final binaryPkg = RuntimeBinaryPackageService();
+    final result = await binaryPkg.runNpm(['cache', 'verify']);
+    final out = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+    return (
+      success: result.exitCode == 0,
+      output: out.isNotEmpty ? out : 'Cache verified and contents intact.',
+    );
+  }
+
+  /// Inspects the local cache directory status.
+  Future<Map<String, dynamic>> cacheStatus(String homeDir) async {
+    final cacheDir = Directory(defaultNpmCacheDir(homeDir));
+    if (!cacheDir.existsSync()) {
+      return {
+        'exists': false,
+        'path': cacheDir.path,
+        'fileCount': 0,
+        'bytes': 0,
+        'displaySize': '0 KB',
+      };
+    }
+
+    int bytes = 0;
+    int files = 0;
+    try {
+      for (final entity in cacheDir.listSync(recursive: true, followLinks: false)) {
+        if (entity is File) {
+          files++;
+          bytes += entity.lengthSync();
+        }
+      }
+    } catch (_) {}
+
+    final display = bytes > 1024 * 1024
+        ? '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB'
+        : '${(bytes / 1024).toStringAsFixed(1)} KB';
+
+    return {
+      'exists': true,
+      'path': cacheDir.path,
+      'fileCount': files,
+      'bytes': bytes,
+      'displaySize': display,
+    };
   }
 
   /// Formats dependency listing matching `npm ls` style.

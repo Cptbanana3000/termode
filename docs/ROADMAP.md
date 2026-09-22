@@ -1,11 +1,11 @@
 # Roadmap
 
-Current milestone: **v0.72 npm Package Installation & Module Resolution**. Providing
-authentic upstream npm 10.9.3 distribution bundled as a high-efficiency tar.gz archive,
-pure-Dart POSIX tar extractor, package installation via `runtime-pkg install npm`,
-CLI executable wrappers (`npm`, `npx`), live npm registry connectivity (`registry.npmjs.org`),
-sandbox module resolution (`node_modules`), and physical hardware verification on ARM64.
-The next milestone is **v0.73 Full CLI Tooling & Package Ecosystem Integration**.
+Current milestone: **v0.73 Full CLI Tooling & Package Ecosystem Integration**. Full
+npm CLI scripts execution (`npm run`, `npm test`, `npm start`), global CLI package
+discovery with `$HOME/.npm-global/bin` on PATH and global module resolution, cache
+management (`npm-cache clean`, `npm-cache verify`), package uninstallation (`npm-pkg remove`),
+and physical hardware verification on ARM64.
+The next milestone is **v0.74 Python Environment Architecture & arm64 Prototype**.
 
 Termode is building a complete standalone Android terminal/dev environment
 first — easier and more guided than Termux — and only later integrating into
@@ -80,8 +80,9 @@ after v0.64 on-device smoke verification; remote Git remains planned. See
 - v0.69 Node.js & Full Runtime Bundling QA
 - v0.70 Authentic Google V8 Node.js Runtime Engine & Full Packaging
 - v0.71 Dev Server Supervision & Background Process Management
-- v0.72 npm Package Installation & Module Resolution (current)
-- v0.73 Full CLI Tooling & Package Ecosystem Integration (next)
+- v0.72 npm Package Installation & Module Resolution
+- v0.73 Full CLI Tooling & Package Ecosystem Integration (current)
+- v0.74 Python Environment Architecture & arm64 Prototype (next)
 - later: Python / Native Package Ecosystem
 - Calypso IDE embedding via TermodeEngine & TermodeEmbeddableTerminal
 

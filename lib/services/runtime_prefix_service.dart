@@ -49,6 +49,9 @@ class RuntimePrefixService {
       'workspaces': '$home/projects',
       'cache': '$home/cache',
       'config': '$home/config',
+      'npmGlobal': '$home/.npm-global',
+      'npmGlobalBin': '$home/.npm-global/bin',
+      'npmGlobalLib': '$home/.npm-global/lib/node_modules',
     };
   }
 
@@ -69,13 +72,15 @@ class RuntimePrefixService {
     'workspaces',
     'cache',
     'config',
+    'npmGlobal',
+    'npmGlobalBin',
   ];
 
   /// The canonical safe environment future runtimes (and REAL PTY) should use.
   Future<Map<String, String>> envMap() async {
     final p = await paths();
     final pathEnv =
-        '${p['bin']}:/system/bin:/system/xbin:/vendor/bin:/product/bin';
+        '${p['bin']}:${p['npmGlobalBin']}:/system/bin:/system/xbin:/vendor/bin:/product/bin';
     return {
       'TERMODE_HOME': p['home']!,
       'TERMODE_PREFIX': p['prefix']!,
@@ -90,6 +95,9 @@ class RuntimePrefixService {
       'TERM': 'xterm-256color',
       'LD_LIBRARY_PATH': '${p['lib']}',
       'OPENSSL_CONF': '/dev/null',
+      'NODE_PATH': '${p['lib']}/node_modules:${p['npmGlobalLib']}',
+      'npm_config_prefix': p['npmGlobal']!,
+      'npm_config_cache': '${p['home']}/.npm',
     };
   }
 
@@ -98,6 +106,7 @@ class RuntimePrefixService {
     final p = await paths();
     return [
       p['bin']!,
+      p['npmGlobalBin']!,
       '/system/bin',
       '/system/xbin',
       '/vendor/bin',

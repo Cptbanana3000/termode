@@ -1327,7 +1327,108 @@ class CommandService {
         'Node.js runtime: ${nodeInstalled ? "available" : "not available"}\n'
         'Active workspace: $workDir\n'
         'Local package: ${pkgJson != null ? "${pkgJson.name}@${pkgJson.version}" : "none"}\n'
-        'Milestone: v0.72 (npm Package Installation & Module Resolution)';
+        'Milestone: v0.73 (Full CLI Tooling & Package Ecosystem Integration)';
+  }
+
+  Future<String> _npmRunOutput(List<String> args) async {
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final npmService = NpmPackageService();
+
+    if (args.isEmpty) {
+      final scripts = await npmService.getScripts(workDir);
+      if (scripts.isEmpty) {
+        return 'npm ERR! no scripts available in package.json\n'
+            'Run: npm init -y to create package.json';
+      }
+      final sb = StringBuffer('Scripts available in package.json:\n');
+      scripts.forEach((k, v) => sb.writeln('  npm run $k (cmd: $v)'));
+      return sb.toString().trimRight();
+    }
+
+    final scriptName = args[0];
+    final restArgs = args.sublist(1);
+    final result = await npmService.runScript(
+      workingDirectory: workDir,
+      scriptName: scriptName,
+      args: restArgs,
+    );
+    return result.output;
+  }
+
+  Future<String> _npmCacheOutput(List<String> args) async {
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final homeDir = Directory(workDir).parent.path;
+    final npmService = NpmPackageService();
+
+    final sub = args.isNotEmpty ? args[0].toLowerCase() : 'status';
+
+    if (sub == 'status' || sub == 'info') {
+      final status = await npmService.cacheStatus(homeDir);
+      return '=== npm Cache Status ===\n'
+          'Cache Directory: ${status['path']}\n'
+          'Exists: ${status['exists'] ? "YES" : "NO"}\n'
+          'File Count: ${status['fileCount']}\n'
+          'Size: ${status['displaySize']}\n'
+          'Commands: npm-cache clean, npm-cache verify';
+    }
+
+    if (sub == 'clean') {
+      final res = await npmService.cacheClean(force: true);
+      return res.output;
+    }
+
+    if (sub == 'verify') {
+      final res = await npmService.cacheVerify();
+      return res.output;
+    }
+
+    return 'Usage: npm-cache [status|clean|verify]\n'
+        '  npm-cache status  Show cache location, file count, and size\n'
+        '  npm-cache clean   Clean npm cache directory (--force)\n'
+        '  npm-cache verify  Verify npm cache integrity';
+  }
+
+  Future<String> _npmPkgOutput(List<String> args) async {
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final npmService = NpmPackageService();
+
+    if (args.isEmpty) {
+      final report = await npmService.listDependencies(workDir);
+      return npmService.formatDependencyTree(report);
+    }
+
+    final sub = args[0].toLowerCase();
+    if (sub == 'list' || sub == 'ls') {
+      final report = await npmService.listDependencies(workDir);
+      return npmService.formatDependencyTree(report);
+    }
+
+    if (sub == 'add' || sub == 'install') {
+      if (args.length < 2) {
+        return 'Usage: npm-pkg add <package-name>';
+      }
+      return _npmBareOutput(['install', ...args.sublist(1)]);
+    }
+
+    if (sub == 'remove' || sub == 'uninstall' || sub == 'rm') {
+      if (args.length < 2) {
+        return 'Usage: npm-pkg remove <package-name>';
+      }
+      final pkgName = args[1];
+      final res = await npmService.uninstallPackage(
+        workingDirectory: workDir,
+        packageName: pkgName,
+      );
+      return res.output;
+    }
+
+    return 'Usage: npm-pkg [list|add|remove] <package>\n'
+        '  npm-pkg list                List dependencies and node_modules\n'
+        '  npm-pkg add <package>       Install a new package dependency\n'
+        '  npm-pkg remove <package>    Uninstall a package dependency';
   }
 
   Future<String> _npmInfoOutput() async {
@@ -3803,6 +3904,15 @@ class CommandService {
 
       case 'npm-init':
         return CommandResult(output: await _npmBareOutput(['init', ...args]));
+
+      case 'npm-run':
+        return CommandResult(output: await _npmRunOutput(args));
+
+      case 'npm-cache':
+        return CommandResult(output: await _npmCacheOutput(args));
+
+      case 'npm-pkg':
+        return CommandResult(output: await _npmPkgOutput(args));
 
       case 'npx':
         return CommandResult(output: await _npxBareOutput(args));

@@ -2198,6 +2198,15 @@ esac
     sb.writeln('# Termode runtime shell helpers and aliases');
     sb.writeln('# Generated automatically. Do not edit manually.');
     sb.writeln();
+    sb.writeln('# Global package PATH and module resolution');
+    sb.writeln('if [ -n "\$TERMODE_HOME" ]; then');
+    sb.writeln('  [ -d "\$TERMODE_HOME/.npm-global/bin" ] || mkdir -p "\$TERMODE_HOME/.npm-global/bin" 2>/dev/null');
+    sb.writeln('  case ":\$PATH:" in');
+    sb.writeln('    *":\$TERMODE_HOME/.npm-global/bin:"*) ;;');
+    sb.writeln('    *) export PATH="\$TERMODE_HOME/.npm-global/bin:\$PATH" ;;');
+    sb.writeln('  esac');
+    sb.writeln('fi');
+    sb.writeln();
     sb.writeln(
       '# Clear stale helpers before defining the currently installed set.',
     );

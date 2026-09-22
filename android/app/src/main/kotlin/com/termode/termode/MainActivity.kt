@@ -510,7 +510,12 @@ class MainActivity: FlutterActivity() {
                             val nodeModulesLocal = java.io.File(workingDir, "node_modules").absolutePath
                             val nodeModulesHome = java.io.File(homeDir, "node_modules").absolutePath
                             val nodeModulesGlobal = java.io.File(usrDir, "lib/node_modules").absolutePath
-                            val nodePath = "$nodeModulesLocal:$nodeModulesHome:$nodeModulesGlobal"
+                            val nodeModulesNpmGlobal = java.io.File(homeDir, ".npm-global/lib/node_modules").absolutePath
+                            val nodePath = "$nodeModulesLocal:$nodeModulesHome:$nodeModulesGlobal:$nodeModulesNpmGlobal"
+
+                            val npmGlobalBin = java.io.File(homeDir, ".npm-global/bin").absolutePath
+                            val localNodeBin = java.io.File(workingDir, "node_modules/.bin").absolutePath
+                            val binPath = java.io.File(usrDir, "bin").absolutePath
 
                             val command = mutableListOf(nodeExecutable.absolutePath)
                             command.addAll(arguments)
@@ -521,7 +526,7 @@ class MainActivity: FlutterActivity() {
                                     put("TERMODE_HOME", homeDir.absolutePath)
                                     put("TERMODE_USR", usrDir.absolutePath)
                                     put("TERMODE_PREFIX", usrDir.absolutePath)
-                                    put("TERMODE_BIN", java.io.File(usrDir, "bin").absolutePath)
+                                    put("TERMODE_BIN", binPath)
                                     put("TERMODE_TMPDIR", usrTmpDir.absolutePath)
                                     put("TERMODE_CONFIG", configDir.absolutePath)
                                     put("TMPDIR", tmpDir.absolutePath)
@@ -535,7 +540,7 @@ class MainActivity: FlutterActivity() {
                                     )
                                     put(
                                         "PATH",
-                                        "${java.io.File(usrDir, "bin").absolutePath}:" +
+                                        "$localNodeBin:$npmGlobalBin:$binPath:" +
                                             "/system/bin:/system/xbin:/vendor/bin:/product/bin"
                                     )
                                 }
@@ -1761,7 +1766,13 @@ class MainActivity: FlutterActivity() {
                         } else {
                             homeDir
                         }
-                        val pathEnv = "${binDir.absolutePath}:/system/bin:/system/xbin:/vendor/bin:/product/bin"
+                        val npmGlobalDir = java.io.File(homeDir, ".npm-global")
+                        val npmGlobalBinDir = java.io.File(npmGlobalDir, "bin")
+                        val npmGlobalLibDir = java.io.File(npmGlobalDir, "lib/node_modules")
+                        if (!npmGlobalBinDir.exists()) npmGlobalBinDir.mkdirs()
+                        if (!npmGlobalLibDir.exists()) npmGlobalLibDir.mkdirs()
+
+                        val pathEnv = "${binDir.absolutePath}:${npmGlobalBinDir.absolutePath}:/system/bin:/system/xbin:/vendor/bin:/product/bin"
 
                         val cols = call.argument<Int>("cols") ?: 80
                         val rows = call.argument<Int>("rows") ?: 24
@@ -1807,7 +1818,7 @@ class MainActivity: FlutterActivity() {
                                 configDir.absolutePath,
                                 "${java.io.File(usrDir, "lib").absolutePath}:${applicationInfo.nativeLibraryDir}",
                                 "/dev/null",
-                                java.io.File(usrDir, "lib/node_modules").absolutePath,
+                                "${java.io.File(usrDir, "lib/node_modules").absolutePath}:${npmGlobalLibDir.absolutePath}",
                                 java.io.File(homeDir, ".npm-global").absolutePath,
                                 java.io.File(homeDir, ".npm").absolutePath
                             ),

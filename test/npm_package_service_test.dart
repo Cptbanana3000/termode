@@ -222,7 +222,7 @@ void main() {
       expect(formatted, contains('npm Engine:'));
       expect(formatted, contains('NPM_CONFIG_CACHE:'));
       expect(formatted, contains('NPM_CONFIG_PREFIX:'));
-      expect(formatted, contains('Milestone: v0.72'));
+      expect(formatted, contains('Milestone: v0.73'));
     });
 
     test('CommandService runs npm bare and informational commands', () async {
@@ -238,7 +238,7 @@ void main() {
       // npm-status
       final status = await commandService.execute('npm-status');
       expect(status.output, contains('=== npm Status ==='));
-      expect(status.output, contains('Milestone: v0.72'));
+      expect(status.output, contains('Milestone: v0.73'));
 
       // npm-info
       final info = await commandService.execute('npm-info');
@@ -355,6 +355,133 @@ void main() {
       expect(installResult.output, contains('Installed runtime package: npm'));
       expect(installResult.output, contains('10.9.3'));
       expect(await pkg.npmInstalled(), isTrue);
+    });
+
+    test('NpmPackageService runScript executes package scripts or fails with clear error', () async {
+      final npmService = NpmPackageService();
+      
+      // Before package.json exists
+      final noPkg = await npmService.runScript(
+        workingDirectory: projectDir.path,
+        scriptName: 'start',
+      );
+      expect(noPkg.success, isFalse);
+      expect(noPkg.output, contains('package.json'));
+
+      // Create package.json
+      await npmService.initPackageJson(
+        workingDirectory: projectDir.path,
+        scripts: {'build': 'echo building app', 'test': 'echo tests pass'},
+      );
+
+      // Missing script
+      final missing = await npmService.runScript(
+        workingDirectory: projectDir.path,
+        scriptName: 'deploy',
+      );
+      expect(missing.success, isFalse);
+      expect(missing.output, contains('Missing script: "deploy"'));
+      expect(missing.output, contains('npm run build'));
+
+      // Valid script with mock executor
+      RuntimeBinaryPackageService.npmExecutorForTesting = (args, {workingDirectory}) async {
+        return NativeCommandResult(
+          stdout: 'running script: ${args.join(" ")}',
+          stderr: '',
+          exitCode: 0,
+        );
+      };
+
+      final success = await npmService.runScript(
+        workingDirectory: projectDir.path,
+        scriptName: 'build',
+      );
+      expect(success.success, isTrue);
+      expect(success.output, contains('running script: run build'));
+    });
+
+    test('NpmPackageService cache management methods work properly', () async {
+      final npmService = NpmPackageService();
+      final homeDir = tempDir.path;
+
+      // cacheStatus when directory does not exist
+      final initialStatus = await npmService.cacheStatus(homeDir);
+      expect(initialStatus['exists'], isFalse);
+      expect(initialStatus['bytes'], equals(0));
+
+      // Create dummy cache file
+      final cacheDir = Directory('$homeDir/.npm');
+      await cacheDir.create(recursive: true);
+      final dummy = File('${cacheDir.path}/test.tar');
+      await dummy.writeAsBytes(List.filled(2048, 42));
+
+      final activeStatus = await npmService.cacheStatus(homeDir);
+      expect(activeStatus['exists'], isTrue);
+      expect(activeStatus['fileCount'], equals(1));
+      expect(activeStatus['bytes'], equals(2048));
+
+      // cache clean & verify with test executor
+      RuntimeBinaryPackageService.npmExecutorForTesting = (args, {workingDirectory}) async {
+        return NativeCommandResult(
+          stdout: 'cache action: ${args.join(" ")}',
+          stderr: '',
+          exitCode: 0,
+        );
+      };
+
+      final cleanRes = await npmService.cacheClean(force: true);
+      expect(cleanRes.success, isTrue);
+      expect(cleanRes.output, contains('cache action: cache clean --force'));
+
+      final verifyRes = await npmService.cacheVerify();
+      expect(verifyRes.success, isTrue);
+      expect(verifyRes.output, contains('cache action: cache verify'));
+    });
+
+    test('CommandService runs npm-run, npm-cache, and npm-pkg commands', () async {
+      final npmService = NpmPackageService();
+      await npmService.initPackageJson(
+        workingDirectory: projectDir.path,
+        scripts: {'test': 'echo test ok', 'start': 'echo start ok'},
+      );
+
+      RuntimeBinaryPackageService.npmExecutorForTesting = (args, {workingDirectory}) async {
+        return NativeCommandResult(
+          stdout: 'npm executed: ${args.join(" ")}',
+          stderr: '',
+          exitCode: 0,
+        );
+      };
+
+      // npm-run list scripts
+      final runList = await commandService.execute('npm-run');
+      expect(runList.output, contains('Scripts available in package.json:'));
+      expect(runList.output, contains('npm run test'));
+      expect(runList.output, contains('npm run start'));
+
+      // npm-run test
+      final runTest = await commandService.execute('npm-run test');
+      expect(runTest.output, contains('npm executed: run test'));
+
+      // npm-cache status
+      final cacheCmd = await commandService.execute('npm-cache');
+      expect(cacheCmd.output, contains('=== npm Cache Status ==='));
+
+      // npm-cache clean
+      final cacheClean = await commandService.execute('npm-cache clean');
+      expect(cacheClean.output, contains('npm executed: cache clean --force'));
+
+      // npm-pkg list
+      final pkgList = await commandService.execute('npm-pkg list');
+      expect(pkgList.output, contains('my-node-app@1.0.0'));
+
+      // npm-pkg add
+      final pkgAdd = await commandService.execute('npm-pkg add express');
+      expect(pkgAdd.output, contains('npm executed: install express'));
+
+      // npm-pkg remove
+      final pkgRemove = await commandService.execute('npm-pkg remove express');
+      expect(pkgRemove.output, contains('npm executed: uninstall express'));
     });
   });
 }
