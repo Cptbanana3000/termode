@@ -1,12 +1,11 @@
 # Roadmap
 
-Current milestone: **v0.70 Authentic Google V8 Node.js Runtime Engine & Full Packaging**. Bundling
-the authentic upstream Node.js v24.18.0 Google V8 ARM64 ELF binary (`libtermode_node_exec.so`),
-complete Bionic dynamic shared libraries (ICU, OpenSSL, c-ares, SQLite3, zlib, libc++_shared),
-immutable native library execution compliance with Android 10+ W^X (`nativeLibraryDir`),
-automatic shared library extraction to `$TERMODE_PREFIX/usr/lib/`, real TCP socket binding,
-and live HTTP server capability verified directly against Chrome on physical hardware.
-The next milestone is **v0.71 Dev Server Supervision & Background Process Management**.
+Current milestone: **v0.71 Dev Server Supervision & Background Process Management**. Providing
+native background daemon registry, process lifecycle management (PID, uptime, CWD, memory),
+port detection, buffered stdout/stderr logging, graceful termination and socket release,
+interactive shell commands (`dev-server list`, `stop`, `logs`, `open`, `doctor`),
+and terminal UI status indicators verified against Chrome on physical hardware.
+The next milestone is **v0.72 npm Package Installation & Module Resolution**.
 
 Termode is building a complete standalone Android terminal/dev environment
 first — easier and more guided than Termux — and only later integrating into
@@ -79,8 +78,9 @@ after v0.64 on-device smoke verification; remote Git remains planned. See
 - v0.66 Node.js arm64 Prototype
 - v0.67 npm Package Management Prototype
 - v0.69 Node.js & Full Runtime Bundling QA
-- v0.70 Authentic Google V8 Node.js Runtime Engine & Full Packaging (current)
-- v0.71 Dev Server Supervision & Background Process Management (next)
+- v0.70 Authentic Google V8 Node.js Runtime Engine & Full Packaging
+- v0.71 Dev Server Supervision & Background Process Management (current)
+- v0.72 npm Package Installation & Module Resolution (next)
 - later: Python / Native Package Ecosystem
 - Calypso IDE embedding via TermodeEngine & TermodeEmbeddableTerminal
 

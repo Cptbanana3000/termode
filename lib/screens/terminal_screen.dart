@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/terminal_session_service.dart';
 import '../services/settings_service.dart';
+import '../services/dev_server_service.dart';
 import '../services/command_catalog.dart';
 import '../widgets/terminal_view.dart';
 import '../widgets/extra_keyboard_row.dart';
@@ -29,6 +30,166 @@ class _TerminalScreenState extends State<TerminalScreen> {
     _sessionService.addListener(_scrollToBottom);
     _textController.addListener(_onTextChanged);
     _setupFocusNodeKeyListener();
+    DevServerService().listServers();
+  }
+
+  void _showDevServersModal(BuildContext context, List<DevServerInfo> servers) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'ACTIVE DEV SERVERS',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                for (final srv in servers) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black38,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF2D2D2D)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF5AF78E),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Port: ${srv.detectedPort ?? "detecting..."}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontFamily: 'monospace',
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              'PID ${srv.pid} • ${srv.formattedUptime}',
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontFamily: 'monospace',
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          srv.fullCommand,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                DevServerService().openInBrowser(port: srv.detectedPort);
+                              },
+                              icon: const Icon(
+                                Icons.open_in_browser,
+                                size: 16,
+                                color: Color(0xFF5AF78E),
+                              ),
+                              label: const Text(
+                                'Open Browser',
+                                style: TextStyle(
+                                  color: Color(0xFF5AF78E),
+                                  fontFamily: 'monospace',
+                                  fontSize: 12,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFF5AF78E)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                Navigator.pop(ctx);
+                                await DevServerService().stopServer(id: srv.id);
+                              },
+                              icon: const Icon(
+                                Icons.stop_circle_outlined,
+                                size: 16,
+                                color: Colors.redAccent,
+                              ),
+                              label: const Text(
+                                'Stop',
+                                style: TextStyle(
+                                  color: Colors.redAccent,
+                                  fontFamily: 'monospace',
+                                  fontSize: 12,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Colors.redAccent),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -390,6 +551,64 @@ class _TerminalScreenState extends State<TerminalScreen> {
                   backgroundColor: const Color(0xFF1E1E1E),
                   elevation: 0,
                   actions: [
+                    StreamBuilder<List<DevServerInfo>>(
+                      stream: DevServerService().activeServersStream,
+                      initialData: DevServerService().lastKnownServers,
+                      builder: (context, snapshot) {
+                        final servers = snapshot.data ?? [];
+                        if (servers.isEmpty) return const SizedBox.shrink();
+                        final firstPort = servers.first.detectedPort;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                            horizontal: 4,
+                          ),
+                          child: InkWell(
+                            onTap: () => _showDevServersModal(context, servers),
+                            borderRadius: BorderRadius.circular(4),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF5AF78E,
+                                ).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: const Color(0xFF5AF78E),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF5AF78E),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    ':${firstPort ?? "dev"}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF5AF78E),
+                                      fontFamily: 'monospace',
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                     IconButton(
                       icon: const Icon(Icons.help_outline, color: Colors.white),
                       onPressed: () {

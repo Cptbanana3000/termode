@@ -29,6 +29,7 @@ import 'runtime_binary_package_service.dart';
 import 'git_build_service.dart';
 import 'npm_package_service.dart';
 import 'dev_stack_service.dart';
+import 'dev_server_service.dart';
 
 class CommandResult {
   final String output;
@@ -1422,6 +1423,131 @@ class CommandService {
     final workDir = session.preferredWorkingDirectory ?? 'app-home';
     final report = await DevStackService().doctor(workingDirectory: workDir);
     return report.formatText();
+  }
+
+  // --- v0.71 Dev Server Supervision & Background Process Management ----------
+
+  Future<String> _devServerOutput(List<String> args) async {
+    final sub = args.isNotEmpty ? args[0].toLowerCase() : 'help';
+    final devService = DevServerService();
+
+    switch (sub) {
+      case 'list':
+      case 'ls':
+      case 'ps':
+        final servers = await devService.listServers(refresh: true);
+        if (servers.isEmpty) {
+          return 'No active background dev servers running.\n'
+              'Start one with: node server.js or npm start\n'
+              'Run: dev-server help';
+        }
+        final sb = StringBuffer('=== Active Dev Servers ===\n');
+        sb.writeln('ID               PID    PORT    STATUS   UPTIME   COMMAND');
+        for (final s in servers) {
+          final idStr = s.id.padRight(16);
+          final pidStr = s.pid.toString().padRight(7);
+          final portStr = (s.detectedPort?.toString() ?? 'detect').padRight(8);
+          final statusStr = (s.isAlive ? 'ONLINE' : 'STOPPED').padRight(9);
+          final uptimeStr = s.formattedUptime.padRight(9);
+          final cmdStr = s.fullCommand;
+          sb.writeln('$idStr$pidStr$portStr$statusStr$uptimeStr$cmdStr');
+        }
+        sb.writeln('\nTotal active servers: ${servers.length}');
+        sb.writeln('To view logs: dev-server logs <port|id>');
+        sb.writeln('To open:      dev-server open [port]');
+        sb.writeln('To stop:      dev-server stop <port|id>');
+        return sb.toString().trimRight();
+
+      case 'stop':
+      case 'kill':
+        if (args.length < 2) {
+          return 'Usage: dev-server stop <port|id|--all>\n'
+              'Examples:\n'
+              '  dev-server stop 3000\n'
+              '  dev-server stop srv_12345\n'
+              '  dev-server stop --all';
+        }
+        final target = args[1];
+        if (target == '--all' || target == '-a' || target == 'all') {
+          final stopped = await devService.stopServer(all: true);
+          return stopped
+              ? 'All active dev servers stopped. Sockets released.'
+              : 'No active dev servers to stop.';
+        }
+        final port = int.tryParse(target);
+        final success = port != null
+            ? await devService.stopServer(port: port)
+            : await devService.stopServer(id: target);
+
+        if (success) {
+          return 'Stopped dev server ${port != null ? "on port $port" : target}.\n'
+              'OS socket and process resources released.';
+        }
+        return 'Could not find or stop dev server: $target.\n'
+            'Run: dev-server list';
+
+      case 'logs':
+      case 'log':
+        if (args.length < 2) {
+          final servers = await devService.listServers();
+          if (servers.length == 1) {
+            final s = servers.first;
+            final logs = await devService.getServerLogs(id: s.id);
+            return '=== Logs for [${s.id}] (Port: ${s.detectedPort ?? "unknown"}) ===\n'
+                '${logs ?? "No logs recorded yet."}';
+          }
+          return 'Usage: dev-server logs <port|id>\nRun: dev-server list';
+        }
+        final target = args[1];
+        final port = int.tryParse(target);
+        final logs = port != null
+            ? await devService.getServerLogs(port: port)
+            : await devService.getServerLogs(id: target);
+
+        if (logs != null && logs.isNotEmpty) {
+          return '=== Logs for $target ===\n$logs';
+        }
+        return 'No logs found for dev server $target (or server is not running).\n'
+            'Run: dev-server list';
+
+      case 'open':
+        int? targetPort;
+        if (args.length >= 2) {
+          targetPort = int.tryParse(args[1]);
+        }
+        if (targetPort == null) {
+          final servers = await devService.listServers();
+          if (servers.isNotEmpty && servers.first.detectedPort != null) {
+            targetPort = servers.first.detectedPort;
+          } else {
+            targetPort = 3000;
+          }
+        }
+        final opened = await devService.openInBrowser(port: targetPort);
+        if (opened) {
+          return 'Opening http://127.0.0.1:$targetPort in browser...';
+        }
+        return 'Could not launch browser for http://127.0.0.1:$targetPort.\n'
+            'Ensure Chrome or a web browser is installed.';
+
+      case 'doctor':
+        final report = await devService.runDoctor();
+        return report.formatReport();
+
+      case 'help':
+      default:
+        return '=== Dev Server Supervisor (v0.71) ===\n'
+            'Manage active background Node.js dev servers and daemons.\n\n'
+            'Commands:\n'
+            '  dev-server list             List all active background dev servers\n'
+            '  dev-server stop <port|id>   Stop a background dev server and release port\n'
+            '  dev-server stop --all       Stop all running dev servers\n'
+            '  dev-server logs <port|id>   Print buffered logs for a dev server\n'
+            '  dev-server open [port]      Open dev server URL in browser (Chrome)\n'
+            '  dev-server doctor           Diagnose active servers, ports, and sockets\n\n'
+            'Aliases:\n'
+            '  server-list, server-stop, server-logs, server-open, server-doctor';
+    }
   }
 
   // --- v0.52 Git source/dependency acquisition (honest; no fake Git) -------
@@ -4369,6 +4495,25 @@ class CommandService {
 
       case 'preview-help':
         return CommandResult(output: PreviewService().help());
+
+      case 'dev-server':
+      case 'server':
+        return CommandResult(output: await _devServerOutput(args));
+
+      case 'server-list':
+        return CommandResult(output: await _devServerOutput(['list', ...args]));
+
+      case 'server-stop':
+        return CommandResult(output: await _devServerOutput(['stop', ...args]));
+
+      case 'server-logs':
+        return CommandResult(output: await _devServerOutput(['logs', ...args]));
+
+      case 'server-open':
+        return CommandResult(output: await _devServerOutput(['open', ...args]));
+
+      case 'server-doctor':
+        return CommandResult(output: await _devServerOutput(['doctor', ...args]));
 
       case 'storage-link':
         final storageService = StorageAccessService();

@@ -26,6 +26,20 @@ class MainActivity: FlutterActivity() {
     private val realPtyMasterFds = ConcurrentHashMap<String, Int>()
     private val realPtyPids = ConcurrentHashMap<String, Int>()
 
+    data class BackgroundServerEntry(
+        val id: String,
+        val pid: Int,
+        val command: String,
+        val arguments: List<String>,
+        val workingDirectory: String,
+        val startTime: Long,
+        val process: Process,
+        val stdoutBuilder: StringBuilder,
+        val stderrBuilder: StringBuilder,
+        @Volatile var detectedPort: Int? = null
+    )
+    private val backgroundServers = ConcurrentHashMap<String, BackgroundServerEntry>()
+
     private var pendingStorageResult: MethodChannel.Result? = null
     private val FOLDER_PICKER_REQUEST_CODE = 4222
 
@@ -86,6 +100,16 @@ class MainActivity: FlutterActivity() {
             }
         }
         ptyProcesses.clear()
+
+        for (srv in backgroundServers.values) {
+            try {
+                srv.process.destroy()
+                srv.process.destroyForcibly()
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+        backgroundServers.clear()
 
         for (process in activeProcesses.values) {
             try {
@@ -523,9 +547,21 @@ class MainActivity: FlutterActivity() {
                                     val reader = process.inputStream.bufferedReader()
                                     var line: String?
                                     while (reader.readLine().also { line = it } != null) {
+                                        val nonNullLine = line ?: continue
                                         synchronized(stdoutBuilder) {
                                             if (stdoutBuilder.length < 50000) {
-                                                stdoutBuilder.append(line).append("\n")
+                                                stdoutBuilder.append(nonNullLine).append("\n")
+                                            }
+                                        }
+                                        val portMatch = Regex("""(?:https?://(?:localhost|0\.0\.0\.0|127\.0\.0\.1):|listening on (?:port )?|port[:\s]+)(\d{2,5})""", RegexOption.IGNORE_CASE).find(nonNullLine)
+                                        if (portMatch != null) {
+                                            val detected = portMatch.groupValues[1].toIntOrNull()
+                                            if (detected != null) {
+                                                for (srv in backgroundServers.values) {
+                                                    if (srv.process == process && srv.detectedPort == null) {
+                                                        srv.detectedPort = detected
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -568,7 +604,26 @@ class MainActivity: FlutterActivity() {
                                     process.destroyForcibly()
                                     throw java.util.concurrent.TimeoutException("Node command timed out after ${timeoutMs}ms")
                                 } else {
-                                    activeProcesses["node_server_${System.currentTimeMillis()}"] = process
+                                    val srvId = "srv_${System.currentTimeMillis()}"
+                                    val pid = getProcessId(process)
+                                    val entry = BackgroundServerEntry(
+                                        id = srvId,
+                                        pid = pid,
+                                        command = "node",
+                                        arguments = arguments,
+                                        workingDirectory = workingDir.absolutePath,
+                                        startTime = System.currentTimeMillis(),
+                                        process = process,
+                                        stdoutBuilder = stdoutBuilder,
+                                        stderrBuilder = stderrBuilder,
+                                        detectedPort = null
+                                    )
+                                    val portMatch = Regex("""(?:https?://(?:localhost|0\.0\.0\.0|127\.0\.0\.1):|listening on (?:port )?|port[:\s]+)(\d{2,5})""", RegexOption.IGNORE_CASE).find(stdoutStr)
+                                    if (portMatch != null) {
+                                        entry.detectedPort = portMatch.groupValues[1].toIntOrNull()
+                                    }
+                                    backgroundServers[srvId] = entry
+                                    activeProcesses[srvId] = process
                                     exitCode = 0
                                 }
                             }
@@ -587,6 +642,135 @@ class MainActivity: FlutterActivity() {
                         } catch (e: Exception) {
                             Handler(Looper.getMainLooper()).post {
                                 result.error("NODE_EXECUTION_ERROR", e.message, null)
+                            }
+                        }
+                    }
+                }
+                "listDevServers" -> {
+                    thread {
+                        try {
+                            val serverList = mutableListOf<Map<String, Any?>>()
+                            for (entry in backgroundServers.values) {
+                                val isAlive = try {
+                                    entry.process.isAlive
+                                } catch (e: Exception) {
+                                    false
+                                }
+                                val recentStdout = synchronized(entry.stdoutBuilder) {
+                                    val str = entry.stdoutBuilder.toString()
+                                    if (str.length > 2000) str.substring(str.length - 2000) else str
+                                }
+                                val recentStderr = synchronized(entry.stderrBuilder) {
+                                    val str = entry.stderrBuilder.toString()
+                                    if (str.length > 2000) str.substring(str.length - 2000) else str
+                                }
+                                serverList.add(
+                                    mapOf(
+                                        "id" to entry.id,
+                                        "pid" to entry.pid,
+                                        "command" to entry.command,
+                                        "arguments" to entry.arguments,
+                                        "workingDirectory" to entry.workingDirectory,
+                                        "startTime" to entry.startTime,
+                                        "isAlive" to isAlive,
+                                        "detectedPort" to entry.detectedPort,
+                                        "recentStdout" to recentStdout,
+                                        "recentStderr" to recentStderr
+                                    )
+                                )
+                            }
+                            Handler(Looper.getMainLooper()).post {
+                                result.success(serverList)
+                            }
+                        } catch (e: Exception) {
+                            Handler(Looper.getMainLooper()).post {
+                                result.error("DEV_SERVER_ERROR", e.message, null)
+                            }
+                        }
+                    }
+                }
+                "stopDevServer" -> {
+                    val targetId = call.argument<String>("id")
+                    val targetPort = call.argument<Int>("port")
+                    val targetPid = call.argument<Int>("pid")
+                    val stopAll = call.argument<Boolean>("all") ?: false
+                    thread {
+                        try {
+                            var stoppedCount = 0
+                            val targets = mutableListOf<BackgroundServerEntry>()
+                            for (entry in backgroundServers.values) {
+                                val matches = stopAll ||
+                                    (targetId != null && entry.id == targetId) ||
+                                    (targetPort != null && entry.detectedPort == targetPort) ||
+                                    (targetPid != null && entry.pid == targetPid)
+                                if (matches) {
+                                    targets.add(entry)
+                                }
+                            }
+                            for (entry in targets) {
+                                try {
+                                    entry.process.destroy()
+                                    entry.process.waitFor(300, TimeUnit.MILLISECONDS)
+                                    if (entry.process.isAlive) {
+                                        entry.process.destroyForcibly()
+                                    }
+                                } catch (_: Exception) {
+                                    try {
+                                        entry.process.destroyForcibly()
+                                    } catch (_: Exception) {}
+                                }
+                                backgroundServers.remove(entry.id)
+                                activeProcesses.remove(entry.id)
+                                stoppedCount++
+                            }
+                            Handler(Looper.getMainLooper()).post {
+                                result.success(
+                                    mapOf(
+                                        "stoppedCount" to stoppedCount,
+                                        "success" to true
+                                    )
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Handler(Looper.getMainLooper()).post {
+                                result.error("STOP_ERROR", e.message, null)
+                            }
+                        }
+                    }
+                }
+                "getDevServerLogs" -> {
+                    val targetId = call.argument<String>("id")
+                    val targetPort = call.argument<Int>("port")
+                    thread {
+                        try {
+                            val entry = backgroundServers.values.firstOrNull {
+                                (targetId != null && it.id == targetId) ||
+                                (targetPort != null && it.detectedPort == targetPort)
+                            }
+                            if (entry == null) {
+                                Handler(Looper.getMainLooper()).post {
+                                    result.success(null)
+                                }
+                                return@thread
+                            }
+                            val stdout = synchronized(entry.stdoutBuilder) { entry.stdoutBuilder.toString() }
+                            val stderr = synchronized(entry.stderrBuilder) { entry.stderrBuilder.toString() }
+                            val isAlive = try { entry.process.isAlive } catch (_: Exception) { false }
+                            Handler(Looper.getMainLooper()).post {
+                                result.success(
+                                    mapOf(
+                                        "id" to entry.id,
+                                        "pid" to entry.pid,
+                                        "stdout" to stdout,
+                                        "stderr" to stderr,
+                                        "isAlive" to isAlive,
+                                        "detectedPort" to entry.detectedPort
+                                    )
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Handler(Looper.getMainLooper()).post {
+                                result.error("LOGS_ERROR", e.message, null)
                             }
                         }
                     }

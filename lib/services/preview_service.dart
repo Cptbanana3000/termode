@@ -410,9 +410,14 @@ class PreviewService {
   String help() {
     return '=== Termode Preview Workflow ===\n'
         'Preview commands generate, copy, open, remember, and diagnose\n'
-        'localhost preview URLs. They prepare for future Vite/Next.js dev\n'
-        'servers. Termode does not ship Node.js or npm yet.\n\n'
+        'localhost preview URLs. In v0.71, dev-server commands supervise\n'
+        'and manage active background Node.js dev servers.\n\n'
         'Commands:\n'
+        '  dev-server list         - List active background dev servers\n'
+        '  dev-server stop <port>  - Stop dev server and release socket\n'
+        '  dev-server logs <port>  - View buffered stdout/stderr logs\n'
+        '  dev-server open [port]  - Open dev server URL in browser\n'
+        '  dev-server doctor       - Diagnose active servers and ports\n'
         '  preview                 - Show compact preview status\n'
         '  preview-url <port>      - Print http://127.0.0.1:<port>\n'
         '  preview-copy <port>     - Copy a preview URL to the clipboard\n'
@@ -425,12 +430,12 @@ class PreviewService {
         '  preview-doctor          - Diagnose preview capabilities\n'
         '  preview-doctor --verbose - Show channel and platform details\n'
         '  preview-help            - Show this help reference\n\n'
-        'Future Dev Server Workflow:\n'
-        '  1. Node proof\n'
-        '  2. npm proof\n'
-        '  3. Vite dev server\n'
-        '  4. In-app preview panel\n'
-        '  5. CalypsoIDE preview integration later';
+        'Active Dev Server Workflow:\n'
+        '  1. Authentic Google V8 Node.js (v0.70)\n'
+        '  2. Dev server supervision & background management (v0.71)\n'
+        '  3. npm package management & module resolution (planned)\n'
+        '  4. Vite dev server / Web framework support\n'
+        '  5. In-app preview panel & CalypsoIDE embedding';
   }
 
   // --------------------------------------------------------------------------
