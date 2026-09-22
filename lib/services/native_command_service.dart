@@ -173,6 +173,42 @@ class NativeCommandService {
     }
   }
 
+  Future<NativeCommandResult> executeBundledPython(
+    List<String> arguments, {
+    String? workingDirectory,
+    int timeoutMs = 15000,
+  }) async {
+    try {
+      final Map<dynamic, dynamic>? result = await _channel.invokeMethod(
+        'executeBundledPython',
+        {
+          'arguments': arguments,
+          'workingDirectory': ?workingDirectory,
+          'timeoutMs': timeoutMs,
+        },
+      );
+      if (result == null) {
+        throw PlatformException(
+          code: 'NULL_RESULT',
+          message: 'Python bridge returned null',
+        );
+      }
+      return NativeCommandResult(
+        stdout: result['stdout'] as String? ?? '',
+        stderr: result['stderr'] as String? ?? '',
+        exitCode: result['exitCode'] as int? ?? -1,
+      );
+    } on PlatformException catch (e) {
+      return NativeCommandResult(
+        stdout: '',
+        stderr: 'Error: ${e.message} (${e.code})',
+        exitCode: -1,
+      );
+    } catch (e) {
+      return NativeCommandResult(stdout: '', stderr: 'Error: $e', exitCode: -1);
+    }
+  }
+
   Future<List<Map<String, dynamic>>> listDevServers() async {
     try {
       final List<dynamic>? result =

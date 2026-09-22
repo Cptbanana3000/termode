@@ -47,6 +47,7 @@ android {
             useLegacyPackaging = true
             keepDebugSymbols += "**/libtermode_git_exec.so"
             keepDebugSymbols += "**/libtermode_node_exec.so"
+            keepDebugSymbols += "**/libtermode_python_exec.so"
         }
     }
 }

@@ -82,6 +82,18 @@ class RuntimeArtifactRegistryService {
   static const String npmProjectArchivePath =
       'tools/runtime-artifacts/npm/universal/npm.tar.gz';
 
+  static const String pythonTemplatePath =
+      'tools/runtime-artifacts/python/manifest.template.json';
+  static const String pythonArtifactsRoot = 'tools/runtime-artifacts/python';
+  static const String bundledPythonManifestAsset =
+      'tools/runtime-artifacts/python/arm64-v8a/manifest.json';
+  static const String bundledPythonArchiveAsset =
+      'tools/runtime-artifacts/python/arm64-v8a/python-stdlib.tar.gz';
+  static const String pythonProjectManifestPath =
+      'tools/runtime-artifacts/python/arm64-v8a/manifest.json';
+  static const String pythonProjectArchivePath =
+      'tools/runtime-artifacts/python/arm64-v8a/python-stdlib.tar.gz';
+
   /// Whether v0.64 declares the reviewed Git artifact in Flutter assets.
   bool bundledGitArtifactExists() => true;
 
@@ -90,6 +102,9 @@ class RuntimeArtifactRegistryService {
 
   /// Whether v0.72 declares the reviewed npm artifact in Flutter assets.
   bool bundledNpmArtifactExists() => true;
+
+  /// Whether v0.75 declares the reviewed Python artifact in Flutter assets.
+  bool bundledPythonArtifactExists() => true;
 
   Future<Map<String, dynamic>?> bundledNpmManifest() async {
     try {
@@ -117,6 +132,40 @@ class RuntimeArtifactRegistryService {
 
   Map<String, dynamic>? readProjectNpmManifest() =>
       _readJsonMap(npmProjectManifestPath);
+
+  Future<Map<String, dynamic>?> bundledPythonManifest() async {
+    try {
+      final decoded = jsonDecode(
+        await rootBundle.loadString(bundledPythonManifestAsset),
+      );
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      final fallback = File(pythonProjectManifestPath);
+      if (fallback.existsSync()) {
+        try {
+          final decoded = jsonDecode(fallback.readAsStringSync());
+          return decoded is Map<String, dynamic> ? decoded : null;
+        } catch (_) {}
+      }
+      return null;
+    }
+  }
+
+  Future<List<int>?> readBundledPythonArchive() async {
+    try {
+      final data = await rootBundle.load(bundledPythonArchiveAsset);
+      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    } catch (_) {
+      final fallback = File(pythonProjectArchivePath);
+      if (fallback.existsSync()) {
+        return fallback.readAsBytesSync();
+      }
+      return null;
+    }
+  }
+
+  Map<String, dynamic>? readProjectPythonManifest() =>
+      _readJsonMap(pythonProjectManifestPath);
 
   Future<Map<String, dynamic>?> bundledNodeManifest() async {
     try {

@@ -1471,14 +1471,16 @@ class CommandService {
 
   Future<String> _pythonDoctorOutput() async {
     final session = TerminalSessionService().activeSession;
-    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final rawWorkDir = session.preferredWorkingDirectory;
+    final workDir = (rawWorkDir == null || rawWorkDir == 'app-home') ? null : rawWorkDir;
     final report = await PythonEnvironmentService().doctor(workingDirectory: workDir);
     return report.formatOutput();
   }
 
   Future<String> _pythonEnvOutput() async {
     final session = TerminalSessionService().activeSession;
-    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final rawWorkDir = session.preferredWorkingDirectory;
+    final workDir = (rawWorkDir == null || rawWorkDir == 'app-home') ? null : rawWorkDir;
     return PythonEnvironmentService().formatEnvReport(workingDirectory: workDir);
   }
 
@@ -1493,7 +1495,8 @@ class CommandService {
 
   Future<String> _pythonExecOutput(List<String> args) async {
     final session = TerminalSessionService().activeSession;
-    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final rawWorkDir = session.preferredWorkingDirectory;
+    final workDir = (rawWorkDir == null || rawWorkDir == 'app-home') ? null : rawWorkDir;
     final result = await PythonEnvironmentService().executePython(args, workingDirectory: workDir);
     return result.stdout.isNotEmpty
         ? result.stdout

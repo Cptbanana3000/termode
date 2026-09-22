@@ -348,6 +348,7 @@ class MainActivity: FlutterActivity() {
                     val nativeLibraryDir = applicationInfo.nativeLibraryDir
                     val gitExecutable = java.io.File(nativeLibraryDir, "libtermode_git_exec.so")
                     val nodeExecutable = java.io.File(nativeLibraryDir, "libtermode_node_exec.so")
+                    val pythonExecutable = java.io.File(nativeLibraryDir, "libtermode_python_exec.so")
                     result.success(
                         mapOf(
                             "nativeLibraryDir" to nativeLibraryDir,
@@ -356,7 +357,10 @@ class MainActivity: FlutterActivity() {
                             "gitExecutableCanExecute" to gitExecutable.canExecute(),
                             "nodeExecutable" to nodeExecutable.absolutePath,
                             "nodeExecutableExists" to nodeExecutable.isFile,
-                            "nodeExecutableCanExecute" to nodeExecutable.canExecute()
+                            "nodeExecutableCanExecute" to nodeExecutable.canExecute(),
+                            "pythonExecutable" to pythonExecutable.absolutePath,
+                            "pythonExecutableExists" to pythonExecutable.isFile,
+                            "pythonExecutableCanExecute" to pythonExecutable.canExecute()
                         )
                     )
                 }
@@ -650,6 +654,178 @@ class MainActivity: FlutterActivity() {
                         } catch (e: Exception) {
                             Handler(Looper.getMainLooper()).post {
                                 result.error("NODE_EXECUTION_ERROR", e.message, null)
+                            }
+                        }
+                    }
+                }
+                "executeBundledPython" -> {
+                    val arguments = call.argument<List<String>>("arguments") ?: emptyList()
+                    val timeoutMs = (call.argument<Int>("timeoutMs") ?: 15000).toLong()
+                    thread {
+                        try {
+                            val pythonExecutable = java.io.File(
+                                applicationInfo.nativeLibraryDir,
+                                "libtermode_python_exec.so"
+                            ).canonicalFile
+                            if (!pythonExecutable.isFile) {
+                                throw java.io.FileNotFoundException(
+                                    "Bundled Python executable is missing: ${pythonExecutable.absolutePath}"
+                                )
+                            }
+
+                            val filesRoot = filesDir.canonicalFile
+                            val homeDir = java.io.File(filesDir, "home").apply { mkdirs() }.canonicalFile
+                            val tmpDir = java.io.File(filesDir, "tmp").apply { mkdirs() }.canonicalFile
+                            val usrDir = java.io.File(filesDir, "usr").apply { mkdirs() }.canonicalFile
+                            val usrTmpDir = java.io.File(usrDir, "tmp").apply { mkdirs() }.canonicalFile
+                            val configDir = java.io.File(homeDir, "config").apply { mkdirs() }.canonicalFile
+                            val localBin = java.io.File(homeDir, ".local/bin").apply { mkdirs() }.canonicalFile
+                            val localLib = java.io.File(homeDir, ".local/lib/python3.14/site-packages").apply { mkdirs() }.canonicalFile
+                            val usrLib = java.io.File(usrDir, "lib").apply { mkdirs() }.canonicalFile
+                            val usrBin = java.io.File(usrDir, "bin").apply { mkdirs() }.canonicalFile
+                            val requestedWorkingDir = call.argument<String>("workingDirectory")
+                            val workingDir = if (requestedWorkingDir.isNullOrBlank() || requestedWorkingDir == "app-home") {
+                                homeDir
+                            } else {
+                                val candidate = java.io.File(requestedWorkingDir).canonicalFile
+                                val insideFiles = candidate.path == filesRoot.path ||
+                                    candidate.path.startsWith(filesRoot.path + java.io.File.separator)
+                                if (!insideFiles || !candidate.isDirectory) {
+                                    homeDir
+                                } else {
+                                    candidate
+                                }
+                            }
+
+                            val pythonPath = "${usrLib.absolutePath}/python3.14:${localLib.absolutePath}"
+                            val ldLibraryPath = "${usrLib.absolutePath}:${applicationInfo.nativeLibraryDir}"
+                            val binPath = "${localBin.absolutePath}:${usrBin.absolutePath}:/system/bin:/system/xbin:/vendor/bin:/product/bin"
+
+                            val command = mutableListOf(pythonExecutable.absolutePath)
+                            command.addAll(arguments)
+                            val process = ProcessBuilder(command).apply {
+                                directory(workingDir)
+                                environment().apply {
+                                    put("HOME", homeDir.absolutePath)
+                                    put("TERMODE_HOME", homeDir.absolutePath)
+                                    put("TERMODE_USR", usrDir.absolutePath)
+                                    put("TERMODE_PREFIX", usrDir.absolutePath)
+                                    put("TERMODE_BIN", usrBin.absolutePath)
+                                    put("TERMODE_TMPDIR", usrTmpDir.absolutePath)
+                                    put("TERMODE_CONFIG", configDir.absolutePath)
+                                    put("TMPDIR", tmpDir.absolutePath)
+                                    put("PYTHONHOME", usrDir.absolutePath)
+                                    put("PYTHONPATH", pythonPath)
+                                    put("PYTHONUSERBASE", java.io.File(homeDir, ".local").absolutePath)
+                                    put("OPENSSL_CONF", "/dev/null")
+                                    put("LD_LIBRARY_PATH", ldLibraryPath)
+                                    put("PATH", binPath)
+                                }
+                            }.start()
+
+                            val stdoutBuilder = StringBuilder()
+                            val stderrBuilder = StringBuilder()
+
+                            val stdoutThread = thread {
+                                try {
+                                    val reader = process.inputStream.bufferedReader()
+                                    var line: String?
+                                    while (reader.readLine().also { line = it } != null) {
+                                        val nonNullLine = line ?: continue
+                                        synchronized(stdoutBuilder) {
+                                            if (stdoutBuilder.length < 50000) {
+                                                stdoutBuilder.append(nonNullLine).append("\n")
+                                            }
+                                        }
+                                        val portMatch = Regex("""(?:https?://(?:localhost|0\.0\.0\.0|127\.0\.0\.1):|listening on (?:port )?|port[:\s]+)(\d{2,5})""", RegexOption.IGNORE_CASE).find(nonNullLine)
+                                        if (portMatch != null) {
+                                            val detected = portMatch.groupValues[1].toIntOrNull()
+                                            if (detected != null) {
+                                                for (srv in backgroundServers.values) {
+                                                    if (srv.process == process && srv.detectedPort == null) {
+                                                        srv.detectedPort = detected
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (_: Exception) {}
+                            }
+
+                            val stderrThread = thread {
+                                try {
+                                    val reader = process.errorStream.bufferedReader()
+                                    var line: String?
+                                    while (reader.readLine().also { line = it } != null) {
+                                        synchronized(stderrBuilder) {
+                                            if (stderrBuilder.length < 50000) {
+                                                stderrBuilder.append(line).append("\n")
+                                            }
+                                        }
+                                    }
+                                } catch (_: Exception) {}
+                            }
+
+                            val isProbeOrEval = arguments.any { it == "--version" || it == "-V" || it == "-c" || it == "--help" || it == "-h" }
+                            val waitLimitMs = if (isProbeOrEval) timeoutMs else 2500L
+
+                            val finished = process.waitFor(waitLimitMs, TimeUnit.MILLISECONDS)
+
+                            val stdoutStr: String
+                            val stderrStr: String
+                            val exitCode: Int
+
+                            if (finished) {
+                                stdoutThread.join(500)
+                                stderrThread.join(500)
+                                stdoutStr = synchronized(stdoutBuilder) { stdoutBuilder.toString().trimEnd() }
+                                stderrStr = synchronized(stderrBuilder) { stderrBuilder.toString().trimEnd() }
+                                exitCode = process.exitValue()
+                            } else {
+                                stdoutStr = synchronized(stdoutBuilder) { stdoutBuilder.toString().trimEnd() }
+                                stderrStr = synchronized(stderrBuilder) { stderrBuilder.toString().trimEnd() }
+                                if (isProbeOrEval) {
+                                    process.destroyForcibly()
+                                    throw java.util.concurrent.TimeoutException("Python command timed out after ${timeoutMs}ms")
+                                } else {
+                                    val srvId = "py_srv_${System.currentTimeMillis()}"
+                                    val pid = getProcessId(process)
+                                    val entry = BackgroundServerEntry(
+                                        id = srvId,
+                                        pid = pid,
+                                        command = "python3",
+                                        arguments = arguments,
+                                        workingDirectory = workingDir.absolutePath,
+                                        startTime = System.currentTimeMillis(),
+                                        process = process,
+                                        stdoutBuilder = stdoutBuilder,
+                                        stderrBuilder = stderrBuilder,
+                                        detectedPort = null
+                                    )
+                                    val portMatch = Regex("""(?:https?://(?:localhost|0\.0\.0\.0|127\.0\.0\.1):|listening on (?:port )?|port[:\s]+)(\d{2,5})""", RegexOption.IGNORE_CASE).find(stdoutStr)
+                                    if (portMatch != null) {
+                                        entry.detectedPort = portMatch.groupValues[1].toIntOrNull()
+                                    }
+                                    backgroundServers[srvId] = entry
+                                    activeProcesses[srvId] = process
+                                    exitCode = 0
+                                }
+                            }
+
+                            Handler(Looper.getMainLooper()).post {
+                                result.success(
+                                    mapOf(
+                                        "stdout" to (if (stdoutStr.isNotEmpty()) stdoutStr else if (!finished) "Python server running in background" else ""),
+                                        "stderr" to stderrStr,
+                                        "exitCode" to exitCode,
+                                        "executablePath" to pythonExecutable.absolutePath,
+                                        "workingDirectory" to workingDir.absolutePath
+                                    )
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Handler(Looper.getMainLooper()).post {
+                                result.error("PYTHON_EXECUTION_ERROR", e.message, null)
                             }
                         }
                     }
@@ -1774,7 +1950,7 @@ class MainActivity: FlutterActivity() {
 
                         val pythonUserDir = java.io.File(homeDir, ".local")
                         val pythonUserBinDir = java.io.File(pythonUserDir, "bin")
-                        val pythonUserLibDir = java.io.File(pythonUserDir, "lib/python3.11/site-packages")
+                        val pythonUserLibDir = java.io.File(pythonUserDir, "lib/python3.14/site-packages")
                         if (!pythonUserBinDir.exists()) pythonUserBinDir.mkdirs()
                         if (!pythonUserLibDir.exists()) pythonUserLibDir.mkdirs()
 
@@ -1830,7 +2006,7 @@ class MainActivity: FlutterActivity() {
                                 java.io.File(homeDir, ".npm-global").absolutePath,
                                 java.io.File(homeDir, ".npm").absolutePath,
                                 pythonUserDir.absolutePath,
-                                "${java.io.File(usrDir, "lib/python3.11").absolutePath}:${pythonUserLibDir.absolutePath}"
+                                "${java.io.File(usrDir, "lib/python3.14").absolutePath}:${pythonUserLibDir.absolutePath}"
                             ),
                             cols,
                             rows

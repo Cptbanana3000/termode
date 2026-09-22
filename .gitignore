@@ -57,3 +57,7 @@ tools/git-build/sources/*.tar.xz
 
 # Device test screenshots
 screenshot_*.png
+
+# Runtime build download caches
+tools/python-build/downloads/
+tools/node-build/downloads/

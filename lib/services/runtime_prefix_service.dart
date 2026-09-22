@@ -54,8 +54,8 @@ class RuntimePrefixService {
       'npmGlobalLib': '$home/.npm-global/lib/node_modules',
       'pythonUserBase': '$home/.local',
       'pythonUserBin': '$home/.local/bin',
-      'pythonUserLib': '$home/.local/lib/python3.11/site-packages',
-      'pythonLib': '$usr/lib/python3.11',
+      'pythonUserLib': '$home/.local/lib/python3.14/site-packages',
+      'pythonLib': '$usr/lib/python3.14',
       'pythonBin': '$usr/bin/python3',
     };
   }

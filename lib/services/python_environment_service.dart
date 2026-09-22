@@ -80,25 +80,35 @@ class PythonEnvironmentService {
     String? workingDirectory,
   })? pythonExecutorForTesting;
 
-  static const String pythonVersionTarget = '3.11.8';
+  static const String pythonVersionTarget = '3.14.6';
   static const String pythonAbiTarget = 'arm64-v8a';
   static const List<String> requiredBionicLibraries = [
     'libc.so',
     'libm.so',
     'libdl.so',
-    'libssl.so',
-    'libcrypto.so',
-    'libz.so',
+    'libssl.so.3',
+    'libcrypto.so.3',
+    'libz.so.1',
     'libsqlite3.so',
+    'libandroid-support.so',
+    'libffi.so',
   ];
 
   /// Checks if Python executable is available and verified.
   Future<bool> isPythonAvailable() async {
     if (pythonExecutorForTesting != null) return true;
+    if (Platform.isAndroid) {
+      final paths = await NativeCommandService().getExecutablePaths();
+      if (paths != null && paths['pythonExecutableExists'] == true) {
+        return true;
+      }
+    }
     final paths = await _prefix.paths();
     final pythonBin = File('${paths['prefix']}/bin/python3');
-    if (!pythonBin.existsSync()) return false;
-    return true;
+    if (pythonBin.existsSync()) return true;
+    final jniPython = File('android/app/src/main/jniLibs/arm64-v8a/libtermode_python_exec.so');
+    if (jniPython.existsSync()) return true;
+    return false;
   }
 
   /// Returns user-site base directory ($HOME/.local).
@@ -113,17 +123,17 @@ class PythonEnvironmentService {
     return paths['pythonUserBin'] ?? '${paths['home']}/.local/bin';
   }
 
-  /// Returns user-site packages directory ($HOME/.local/lib/python3.11/site-packages).
+  /// Returns user-site packages directory ($HOME/.local/lib/python3.14/site-packages).
   Future<String> userSitePackagesDir() async {
     final paths = await _prefix.paths();
     return paths['pythonUserLib'] ??
-        '${paths['home']}/.local/lib/python3.11/site-packages';
+        '${paths['home']}/.local/lib/python3.14/site-packages';
   }
 
-  /// Returns standard prefix library directory ($TERMODE_PREFIX/usr/lib/python3.11).
+  /// Returns standard prefix library directory ($TERMODE_PREFIX/usr/lib/python3.14).
   Future<String> prefixLibDir() async {
     final paths = await _prefix.paths();
-    return paths['pythonLib'] ?? '${paths['prefix']}/lib/python3.11';
+    return paths['pythonLib'] ?? '${paths['prefix']}/lib/python3.14';
   }
 
   /// Verifies whether the user bin directory is present in the active PATH entries.
@@ -144,15 +154,23 @@ class PythonEnvironmentService {
     final userSite = await userSitePackagesDir();
     final pyLib = await prefixLibDir();
 
+    String execPath = '${paths['prefix']}/bin/python3';
+    if (Platform.isAndroid) {
+      final execPaths = await NativeCommandService().getExecutablePaths();
+      if (execPaths != null && execPaths['pythonExecutable'] != null) {
+        execPath = execPaths['pythonExecutable'].toString();
+      }
+    }
+
     final status = available
-        ? 'AVAILABLE (v$pythonVersionTarget)'
+        ? 'AVAILABLE (CPython v$pythonVersionTarget)'
         : 'PROTOTYPE_CANDIDATE ($pythonAbiTarget)';
 
     return PythonDoctorReport(
       pythonAvailable: available,
       pythonStatus: status,
       pythonVersion: available ? pythonVersionTarget : null,
-      pythonExecutablePath: '${paths['prefix']}/bin/python3',
+      pythonExecutablePath: execPath,
       abi: pythonAbiTarget,
       pythonHome: paths['prefix']!,
       pythonUserBase: paths['pythonUserBase']!,
@@ -162,10 +180,10 @@ class PythonEnvironmentService {
       pythonSitePackages: userSite,
       pythonLib: pyLib,
       workingDirectory: cwd,
-      pipStatus: 'PLANNED (v0.75+ user-site installer)',
+      pipStatus: 'PLANNED (v0.76+ user-site installer)',
       bionicDependencies: requiredBionicLibraries,
       milestone:
-          'v0.74 (Python Environment Architecture & arm64 Prototype)',
+          'v0.75 (Python arm64 Binary Acquisition & Packaging)',
     );
   }
 
@@ -210,14 +228,21 @@ class PythonEnvironmentService {
         stdout: '',
         stderr:
             'termode: python3: command not found\n'
-            'CPython 3 runtime environment architecture is established (Milestone v0.74).\n'
-            'Authentic arm64-v8a CPython binary acquisition is scheduled for Milestone v0.75.\n'
+            'CPython 3 runtime environment is not installed.\n'
             'Run: python-doctor',
         exitCode: 127,
       );
     }
 
-    // When authentic binary is installed, execute via NativeCommandService
+    if (Platform.isAndroid) {
+      return NativeCommandService().executeBundledPython(
+        arguments,
+        workingDirectory: workingDirectory,
+        timeoutMs: timeoutMs,
+      );
+    }
+
+    // Host fallback for testing/desktop
     final paths = await _prefix.paths();
     final pythonBin = '${paths['prefix']}/bin/python3';
     return NativeCommandService().execute(

@@ -1,10 +1,10 @@
 # Roadmap
 
-Current milestone: **v0.74 Python Environment Architecture & arm64 Prototype**.
-CPython filesystem hierarchy ($PREFIX/usr/lib/python3.11, $HOME/.local/bin in PATH),
-environment isolation (PYTHONHOME, PYTHONPATH, PYTHONUSERBASE), diagnostic doctor
-tooling (python-doctor, python-env), and arm64 artifact pipeline definition.
-The next milestone is **v0.75 Python arm64 Binary Acquisition & Packaging**.
+Current milestone: **v0.76 Python Standard Library Packaging & REPL Verification**.
+Standard Library auto-extraction on install/launch ($PREFIX/usr/lib/python3.14),
+interactive REPL terminal support (python3 -i, raw PTY pass-through),
+and laying groundwork for pip / user-site package installation.
+The next milestone is **v0.77 Pip Package Management & User-Site Installation**.
 
 Termode is building a complete standalone Android terminal/dev environment
 first — easier and more guided than Termux — and only later integrating into
@@ -22,13 +22,14 @@ CalypsoIDE as a plug-and-play terminal/runtime engine.
 - runtime package installer with `hello-bin` and reviewed local-only Git
 - real local Git 2.44.0 on supported arm64-v8a Android devices
 - **authentic upstream Google V8 Node.js v24.18.0 runtime engine** with full Bionic dynamic libraries on ARM64
+- **authentic upstream CPython v3.14.6 runtime engine** with Bionic support libraries and W^X compliant native packaging on ARM64
 - developer stack presets (node-express, static-web, react-ts) and Calypso IDE bridge facade
 
 ## What Termode Does Not Have Yet
 
 - npm registry client / live remote package downloads (in progress)
 - remote Git transports and advanced Git helpers
-- Python
+- Pip package management / live remote wheel downloads (planned v0.77)
 - a full Linux package ecosystem
 - compilers
 - full Termux-replacement status
@@ -81,10 +82,10 @@ after v0.64 on-device smoke verification; remote Git remains planned. See
 - v0.71 Dev Server Supervision & Background Process Management
 - v0.72 npm Package Installation & Module Resolution
 - v0.73 Full CLI Tooling & Package Ecosystem Integration
-- v0.74 Python Environment Architecture & arm64 Prototype (current)
-- v0.75 Python arm64 Binary Acquisition & Packaging (next)
-- v0.76 Python Standard Library Packaging & REPL Verification
-- v0.77 Pip Package Management & User-Site Installation
+- v0.74 Python Environment Architecture & arm64 Prototype
+- v0.75 Python arm64 Binary Acquisition & Packaging
+- v0.76 Python Standard Library Packaging & REPL Verification (current)
+- v0.77 Pip Package Management & User-Site Installation (next)
 - v0.78 OSINT CLI Tool Verification (Sherlock & Maigret)
 - Calypso IDE embedding via TermodeEngine & TermodeEmbeddableTerminal
 

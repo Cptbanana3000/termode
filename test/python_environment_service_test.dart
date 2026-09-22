@@ -37,13 +37,13 @@ void main() {
     }
   });
 
-  group('Milestone v0.74 Python Environment Architecture Tests', () {
+  group('Milestone v0.75 Python Environment Architecture Tests', () {
     test('RuntimePrefixService defines Python path hierarchy and PATH integration', () async {
       final paths = await prefixService.paths();
       expect(paths['pythonUserBase'], endsWith('/.local'));
       expect(paths['pythonUserBin'], endsWith('/.local/bin'));
-      expect(paths['pythonUserLib'], endsWith('/.local/lib/python3.11/site-packages'));
-      expect(paths['pythonLib'], endsWith('/usr/lib/python3.11'));
+      expect(paths['pythonUserLib'], endsWith('/.local/lib/python3.14/site-packages'));
+      expect(paths['pythonLib'], endsWith('/usr/lib/python3.14'));
       expect(paths['pythonBin'], endsWith('/usr/bin/python3'));
 
       final pathEntries = await prefixService.pathEntries();
@@ -66,7 +66,7 @@ void main() {
       expect(userBase, endsWith('/.local'));
       expect(userBin, endsWith('/.local/bin'));
       expect(userSite, contains('site-packages'));
-      expect(prefixLib, endsWith('/usr/lib/python3.11'));
+      expect(prefixLib, endsWith('/usr/lib/python3.14'));
 
       final inPath = await pythonService.isUserBinInPath();
       expect(inPath, isTrue);
@@ -75,21 +75,19 @@ void main() {
     test('PythonDoctorReport provides comprehensive diagnostics adhering to GEMINI.md', () async {
       final report = await pythonService.doctor();
 
-      expect(report.pythonAvailable, isFalse);
-      expect(report.pythonStatus, contains('PROTOTYPE_CANDIDATE'));
       expect(report.abi, equals('arm64-v8a'));
       expect(report.pythonUserBinInPath, isTrue);
-      expect(report.bionicDependencies, contains('libssl.so'));
+      expect(report.bionicDependencies, contains('libssl.so.3'));
       expect(report.bionicDependencies, contains('libsqlite3.so'));
-      expect(report.bionicDependencies, contains('libz.so'));
-      expect(report.milestone, contains('v0.74'));
+      expect(report.bionicDependencies, contains('libz.so.1'));
+      expect(report.bionicDependencies, contains('libandroid-support.so'));
+      expect(report.milestone, contains('v0.75'));
 
       final formatted = report.formatOutput();
       expect(formatted, contains('=== Python Environment Doctor ==='));
-      expect(formatted, contains('Milestone:           v0.74'));
+      expect(formatted, contains('Milestone:           v0.75'));
       expect(formatted, contains('Target ABI:          arm64-v8a (Bionic libc)'));
       expect(formatted, contains('Sherlock, Maigret -> user bin (~/.local/bin) in PATH: YES'));
-      expect(formatted, contains('PROTOTYPE READY'));
     });
 
     test('PythonEnvironmentService formats environment report correctly', () async {
@@ -102,12 +100,14 @@ void main() {
       expect(envReport, contains('Target OSINT Tools:sherlock, maigret'));
     });
 
-    test('executePython returns honest prototype error when binary is not installed', () async {
-      final result = await pythonService.executePython(['--version']);
-      expect(result.exitCode, equals(127));
-      expect(result.stderr, contains('termode: python3: command not found'));
-      expect(result.stderr, contains('Milestone v0.74'));
-      expect(result.stderr, contains('python-doctor'));
+    test('executePython returns honest error when binary is not installed', () async {
+      // In non-Android / clean test without binary
+      if (!await pythonService.isPythonAvailable()) {
+        final result = await pythonService.executePython(['--version']);
+        expect(result.exitCode, equals(127));
+        expect(result.stderr, contains('termode: python3: command not found'));
+        expect(result.stderr, contains('python-doctor'));
+      }
     });
 
     test('executePython honors testing executor hook', () async {
@@ -136,7 +136,7 @@ void main() {
       final docResult = await commandService.execute('python-doctor');
       expect(docResult.isError, isFalse);
       expect(docResult.output, contains('=== Python Environment Doctor ==='));
-      expect(docResult.output, contains('Milestone:           v0.74'));
+      expect(docResult.output, contains('Milestone:           v0.75'));
 
       final envResult = await commandService.execute('python-env');
       expect(envResult.isError, isFalse);
@@ -149,20 +149,16 @@ void main() {
     });
 
     test('CommandService routes python / python3 commands', () async {
-      final execResult = await commandService.execute('python --version');
-      expect(execResult.output, contains('command not found'));
-      expect(execResult.output, contains('python-doctor'));
-
       PythonEnvironmentService.pythonExecutorForTesting = (args, {workingDirectory}) async {
         return NativeCommandResult(
-          stdout: 'Python 3.11.8\n',
+          stdout: 'Python 3.14.6\n',
           stderr: '',
           exitCode: 0,
         );
       };
 
       final execHookResult = await commandService.execute('python3 --version');
-      expect(execHookResult.output, contains('Python 3.11.8'));
+      expect(execHookResult.output, contains('Python 3.14.6'));
     });
 
     test('tools/runtime-artifacts/python/manifest.template.json is valid and conforms to schema', () {
