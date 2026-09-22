@@ -1,11 +1,10 @@
 # Roadmap
 
-Current milestone: **v0.73 Full CLI Tooling & Package Ecosystem Integration**. Full
-npm CLI scripts execution (`npm run`, `npm test`, `npm start`), global CLI package
-discovery with `$HOME/.npm-global/bin` on PATH and global module resolution, cache
-management (`npm-cache clean`, `npm-cache verify`), package uninstallation (`npm-pkg remove`),
-and physical hardware verification on ARM64.
-The next milestone is **v0.74 Python Environment Architecture & arm64 Prototype**.
+Current milestone: **v0.74 Python Environment Architecture & arm64 Prototype**.
+CPython filesystem hierarchy ($PREFIX/usr/lib/python3.11, $HOME/.local/bin in PATH),
+environment isolation (PYTHONHOME, PYTHONPATH, PYTHONUSERBASE), diagnostic doctor
+tooling (python-doctor, python-env), and arm64 artifact pipeline definition.
+The next milestone is **v0.75 Python arm64 Binary Acquisition & Packaging**.
 
 Termode is building a complete standalone Android terminal/dev environment
 first — easier and more guided than Termux — and only later integrating into
@@ -81,9 +80,12 @@ after v0.64 on-device smoke verification; remote Git remains planned. See
 - v0.70 Authentic Google V8 Node.js Runtime Engine & Full Packaging
 - v0.71 Dev Server Supervision & Background Process Management
 - v0.72 npm Package Installation & Module Resolution
-- v0.73 Full CLI Tooling & Package Ecosystem Integration (current)
-- v0.74 Python Environment Architecture & arm64 Prototype (next)
-- later: Python / Native Package Ecosystem
+- v0.73 Full CLI Tooling & Package Ecosystem Integration
+- v0.74 Python Environment Architecture & arm64 Prototype (current)
+- v0.75 Python arm64 Binary Acquisition & Packaging (next)
+- v0.76 Python Standard Library Packaging & REPL Verification
+- v0.77 Pip Package Management & User-Site Installation
+- v0.78 OSINT CLI Tool Verification (Sherlock & Maigret)
 - Calypso IDE embedding via TermodeEngine & TermodeEmbeddableTerminal
 
 v0.62 resolves compile blockers (missing headers/libraries like OpenSSL, thread cancellation under Bionic, sync_file_range) and successfully compiles a real Git 2.44.0 arm64-v8a binary under Git Bash using a minimal-local build strategy. See [Git Bash Build Fixes Status](GIT_BASH_BUILD_FIXES_STATUS.md) and [Git Bash Build Logs](GIT_BASH_BUILD_LOGS.md).

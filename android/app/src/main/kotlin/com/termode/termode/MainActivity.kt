@@ -1772,7 +1772,13 @@ class MainActivity: FlutterActivity() {
                         if (!npmGlobalBinDir.exists()) npmGlobalBinDir.mkdirs()
                         if (!npmGlobalLibDir.exists()) npmGlobalLibDir.mkdirs()
 
-                        val pathEnv = "${binDir.absolutePath}:${npmGlobalBinDir.absolutePath}:/system/bin:/system/xbin:/vendor/bin:/product/bin"
+                        val pythonUserDir = java.io.File(homeDir, ".local")
+                        val pythonUserBinDir = java.io.File(pythonUserDir, "bin")
+                        val pythonUserLibDir = java.io.File(pythonUserDir, "lib/python3.11/site-packages")
+                        if (!pythonUserBinDir.exists()) pythonUserBinDir.mkdirs()
+                        if (!pythonUserLibDir.exists()) pythonUserLibDir.mkdirs()
+
+                        val pathEnv = "${binDir.absolutePath}:${npmGlobalBinDir.absolutePath}:${pythonUserBinDir.absolutePath}:/system/bin:/system/xbin:/vendor/bin:/product/bin"
 
                         val cols = call.argument<Int>("cols") ?: 80
                         val rows = call.argument<Int>("rows") ?: 24
@@ -1801,7 +1807,9 @@ class MainActivity: FlutterActivity() {
                                 "OPENSSL_CONF",
                                 "NODE_PATH",
                                 "npm_config_prefix",
-                                "npm_config_cache"
+                                "npm_config_cache",
+                                "PYTHONUSERBASE",
+                                "PYTHONPATH"
                             ),
                             arrayOf(
                                 "termode:\$ ",
@@ -1820,7 +1828,9 @@ class MainActivity: FlutterActivity() {
                                 "/dev/null",
                                 "${java.io.File(usrDir, "lib/node_modules").absolutePath}:${npmGlobalLibDir.absolutePath}",
                                 java.io.File(homeDir, ".npm-global").absolutePath,
-                                java.io.File(homeDir, ".npm").absolutePath
+                                java.io.File(homeDir, ".npm").absolutePath,
+                                pythonUserDir.absolutePath,
+                                "${java.io.File(usrDir, "lib/python3.11").absolutePath}:${pythonUserLibDir.absolutePath}"
                             ),
                             cols,
                             rows

@@ -30,6 +30,7 @@ import 'git_build_service.dart';
 import 'npm_package_service.dart';
 import 'dev_stack_service.dart';
 import 'dev_server_service.dart';
+import 'python_environment_service.dart';
 
 class CommandResult {
   final String output;
@@ -1464,6 +1465,41 @@ class CommandService {
     return result.stdout.trim().isNotEmpty
         ? result.stdout.trim()
         : result.stderr.trim();
+  }
+
+  // --- v0.74 Python Environment Architecture & Prototype ---------------------
+
+  Future<String> _pythonDoctorOutput() async {
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final report = await PythonEnvironmentService().doctor(workingDirectory: workDir);
+    return report.formatOutput();
+  }
+
+  Future<String> _pythonEnvOutput() async {
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    return PythonEnvironmentService().formatEnvReport(workingDirectory: workDir);
+  }
+
+  Future<String> _pythonStatusOutput() async {
+    final report = await PythonEnvironmentService().doctor();
+    return '=== Python Status ===\n'
+        'Engine: ${report.pythonStatus}\n'
+        'Target ABI: ${report.abi}\n'
+        'User Bin in PATH: ${report.pythonUserBinInPath ? "YES" : "NO"}\n'
+        'Milestone: ${report.milestone}';
+  }
+
+  Future<String> _pythonExecOutput(List<String> args) async {
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final result = await PythonEnvironmentService().executePython(args, workingDirectory: workDir);
+    return result.stdout.isNotEmpty
+        ? result.stdout
+        : (result.stderr.isNotEmpty
+            ? result.stderr
+            : 'Python execution finished with exit code ${result.exitCode}');
   }
 
   // --- v0.68 Dev Stack Presets & Calypso IDE Integration ---------------------
@@ -3916,6 +3952,19 @@ class CommandService {
 
       case 'npx':
         return CommandResult(output: await _npxBareOutput(args));
+
+      case 'python':
+      case 'python3':
+        return CommandResult(output: await _pythonExecOutput(args));
+
+      case 'python-doctor':
+        return CommandResult(output: await _pythonDoctorOutput());
+
+      case 'python-env':
+        return CommandResult(output: await _pythonEnvOutput());
+
+      case 'python-status':
+        return CommandResult(output: await _pythonStatusOutput());
 
       case 'stack-list':
         return CommandResult(output: _stackListOutput());

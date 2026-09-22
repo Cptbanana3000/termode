@@ -2205,6 +2205,12 @@ esac
     sb.writeln('    *":\$TERMODE_HOME/.npm-global/bin:"*) ;;');
     sb.writeln('    *) export PATH="\$TERMODE_HOME/.npm-global/bin:\$PATH" ;;');
     sb.writeln('  esac');
+    sb.writeln('  [ -d "\$TERMODE_HOME/.local/bin" ] || mkdir -p "\$TERMODE_HOME/.local/bin" 2>/dev/null');
+    sb.writeln('  case ":\$PATH:" in');
+    sb.writeln('    *":\$TERMODE_HOME/.local/bin:"*) ;;');
+    sb.writeln('    *) export PATH="\$TERMODE_HOME/.local/bin:\$PATH" ;;');
+    sb.writeln('  esac');
+    sb.writeln('  export PYTHONUSERBASE="\$TERMODE_HOME/.local"');
     sb.writeln('fi');
     sb.writeln();
     sb.writeln(

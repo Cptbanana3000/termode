@@ -52,6 +52,11 @@ class RuntimePrefixService {
       'npmGlobal': '$home/.npm-global',
       'npmGlobalBin': '$home/.npm-global/bin',
       'npmGlobalLib': '$home/.npm-global/lib/node_modules',
+      'pythonUserBase': '$home/.local',
+      'pythonUserBin': '$home/.local/bin',
+      'pythonUserLib': '$home/.local/lib/python3.11/site-packages',
+      'pythonLib': '$usr/lib/python3.11',
+      'pythonBin': '$usr/bin/python3',
     };
   }
 
@@ -74,13 +79,15 @@ class RuntimePrefixService {
     'config',
     'npmGlobal',
     'npmGlobalBin',
+    'pythonUserBase',
+    'pythonUserBin',
   ];
 
   /// The canonical safe environment future runtimes (and REAL PTY) should use.
   Future<Map<String, String>> envMap() async {
     final p = await paths();
     final pathEnv =
-        '${p['bin']}:${p['npmGlobalBin']}:/system/bin:/system/xbin:/vendor/bin:/product/bin';
+        '${p['bin']}:${p['npmGlobalBin']}:${p['pythonUserBin']}:/system/bin:/system/xbin:/vendor/bin:/product/bin';
     return {
       'TERMODE_HOME': p['home']!,
       'TERMODE_PREFIX': p['prefix']!,
@@ -98,6 +105,9 @@ class RuntimePrefixService {
       'NODE_PATH': '${p['lib']}/node_modules:${p['npmGlobalLib']}',
       'npm_config_prefix': p['npmGlobal']!,
       'npm_config_cache': '${p['home']}/.npm',
+      'PYTHONUSERBASE': p['pythonUserBase']!,
+      'PYTHONHOME': p['prefix']!,
+      'PYTHONPATH': '${p['pythonLib']}:${p['pythonUserLib']}',
     };
   }
 
@@ -107,6 +117,7 @@ class RuntimePrefixService {
     return [
       p['bin']!,
       p['npmGlobalBin']!,
+      p['pythonUserBin']!,
       '/system/bin',
       '/system/xbin',
       '/vendor/bin',

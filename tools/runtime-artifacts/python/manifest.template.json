@@ -1,0 +1,51 @@
+{
+  "name": "python",
+  "version": "3.11.8-template",
+  "termode_milestone": "v0.74",
+  "created_by": "Termode artifact template",
+  "candidate": true,
+  "template_only": true,
+  "kind": "native-tool",
+  "abi": "arm64-v8a",
+  "command": "python3",
+  "entrypoint": "bin/python3",
+  "logical_install_path": "bin/python3",
+  "executable_strategy": "native-library-dir",
+  "executable_package_name": "libtermode_python_exec.so",
+  "original_binary_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "packaged_executable_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "execution_policy_note": "v0.74 Python runtime prototype template; executable dispatched through native-library-dir libtermode_python_exec.so with standard library in usr/lib/python3.11.",
+  "local_only": true,
+  "remote_features_deferred": true,
+  "files": [
+    {
+      "path": "bin/python3",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "bytes": 0
+    }
+  ],
+  "sha256": {
+    "bin/python3": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "source": "termode-built",
+  "source_url": "https://www.python.org/ftp/python/3.11.8/Python-3.11.8.tgz",
+  "build_method": "template-only; reproducible Android NDK Bionic cross-compile targeting arm64-v8a",
+  "license": "Python Software Foundation License (PSFL)",
+  "trusted_by": "Termode",
+  "verification_command": "python3 --version",
+  "smoke_tests": [
+    "python3 --version",
+    "python3 -c \"import sys; print('hello from termode python', sys.version)\"",
+    "python3 -c \"import ssl, sqlite3, zlib; print('core modules verified')\""
+  ],
+  "dependencies": [
+    "libc.so",
+    "libm.so",
+    "libdl.so",
+    "libssl.so",
+    "libcrypto.so",
+    "libz.so",
+    "libsqlite3.so"
+  ],
+  "created_at": "TEMPLATE_ONLY"
+}
