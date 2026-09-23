@@ -11,6 +11,10 @@ Use `welcome`, `examples`, and `glossary` first if you are new.
 ## Getting Started
 
 - `welcome`
+- `guide`
+- `guide <python|node|git|dx>`
+- `user-guide`
+- `android-guide`
 - `getting-started`
 - `first-run`
 - `examples`
@@ -19,6 +23,40 @@ Use `welcome`, `examples`, and `glossary` first if you are new.
 - `commands`
 - `commands --all`
 - `help`
+
+## Python & pip
+
+- `python3` (or `python`) - Launch interactive Python REPL or run script
+- `pip install --user <pkg>` - Install package from PyPI
+- `pip-install <pkg>` - Host command to install Python package
+- `pip-uninstall <pkg>` - Host command to uninstall Python package
+- `pip-list` - List installed packages
+- `pip-show <pkg>` - Show package metadata and entry points
+- `pip-doctor` - Verify user-site, paths, SSL, and cache
+- `python-doctor` - Check Python engine and standard library
+
+## Node.js & npm
+
+- `node` - Launch interactive Node.js REPL or run JavaScript
+- `node-doctor` - Verify Node.js v24 executable and V8 engine
+- `npm` / `npx` - Package runner and manager
+- `npm-doctor` - Check npm and global package state
+
+## Dev Server & Localhost Preview
+
+- `dev-server start <id> -- <cmd>` - Start background server daemon
+- `dev-server list` - List running background servers
+- `dev-server logs <id>` - View real-time logs
+- `dev-server stop <id>` - Stop a running server
+- `preview-open <url>` - Open embedded browser preview
+- `port-check <port>` - Probe localhost socket binding
+
+## OSINT CLI Tooling
+
+- `sherlock <username>` - Scan 480+ platforms for username
+- `osint-doctor` - Verify OSINT engine and site data
+- `osint-setup` - Reinstall/update OSINT packages
+
 
 ## Shell / PTY
 

@@ -517,8 +517,59 @@ class RuntimeBinaryPackageService {
     return meta?['executable_backing_path']?.toString();
   }
 
-  Future<bool> pythonExecutionVerified() async =>
-      (await installedPythonMetadata())?['execution_verified'] == true;
+  /// Ensures that native execution symlinks (python3, python, node, git)
+  /// in $TERMODE_USR/bin point to the current APK nativeLibraryDir.
+  Future<void> reconcileNativeSymlinks() async {
+    if (!Platform.isAndroid) return;
+    try {
+      final execPaths = await NativeCommandService().getExecutablePaths();
+      final nativeLibraryDir = execPaths?['nativeLibraryDir']?.toString();
+      if (nativeLibraryDir == null || nativeLibraryDir.isEmpty) return;
+
+      final paths = await _paths();
+      final binDir = paths['bin']!;
+
+      final linksToReconcile = {
+        'python3': '$nativeLibraryDir/libtermode_python_exec.so',
+        'python': '$nativeLibraryDir/libtermode_python_exec.so',
+        'node': '$nativeLibraryDir/libtermode_node_exec.so',
+        'git': '$nativeLibraryDir/libtermode_git_exec.so',
+      };
+
+      for (final entry in linksToReconcile.entries) {
+        final linkPath = '$binDir/${entry.key}';
+        final targetPath = entry.value;
+        if (!File(targetPath).existsSync()) continue;
+
+        try {
+          final link = Link(linkPath);
+          final linkType = await FileSystemEntity.type(linkPath, followLinks: false);
+          bool needsUpdate = false;
+          if (linkType == FileSystemEntityType.link) {
+            try {
+              final currentTarget = await link.target();
+              if (currentTarget != targetPath || !File(currentTarget).existsSync()) {
+                needsUpdate = true;
+              }
+            } catch (_) {
+              needsUpdate = true;
+            }
+          } else if (linkType == FileSystemEntityType.notFound) {
+            needsUpdate = true;
+          }
+
+          if (needsUpdate) {
+            try {
+              if (linkType != FileSystemEntityType.notFound) {
+                await _deleteLogicalEntity(linkPath);
+              }
+            } catch (_) {}
+            await Link(linkPath).create(targetPath);
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
 
   Future<NativeCommandResult> runPython(
     List<String> arguments, {

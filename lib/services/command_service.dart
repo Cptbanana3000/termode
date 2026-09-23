@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -341,31 +342,29 @@ class CommandService {
         'Termode is a standalone Android terminal with a REAL PTY shell.\n\n'
         'Highlights:\n'
         '* REAL PTY shell with host command interception\n'
-        '* script packages (pkg) with trusted remote repo, verify, upgrade, repair\n'
-        '* workspaces and safe host file commands\n'
-        '* sessions, tabs, history, and scrollback persistence\n'
-        '* terminal UX: keyboard, ANSI, paste, copy, scrollback helpers\n'
-        '* settings/theme/status readouts and safe visual reset\n'
-        '* preview/localhost diagnostics\n'
-        '* prototype runtime package installer with hello-bin\n'
-        '* Git 2.44.0 runs from Android nativeLibraryDir; init/status passed\n'
-        '* QA/beta/onboarding tooling and doctors\n\n'
-        'Git is local-only and installed through runtime-pkg with a verified APK-owned executable. Remote Git, curl/OpenSSL, Node/npm, and Python are not included.\n'
-        'Run beta-candidate limits.';
+        '* prototype runtime package installer\n'
+        '* script packages (pkg) with trusted remote repo\n'
+        '* Git is local-only (real arm64 package verified on-device)\n'
+        '* Workspaces, sessions, tabs, history, and terminal UX\n\n'
+        'Current v0.79 Developer Beta includes authentic Node.js v24, Python 3.14, and pip.\n'
+        'Run: guide (or guide python / guide node / guide git)';
   }
 
   String _betaCandidateLimitsOutput() {
     return '=== Beta Candidate Limits ===\n'
-        '* Node.js/npm are not included (planned, not installed).\n'
-        '* Python is not included (planned, not installed).\n'
-        '* Git is local-only; remote transports and advanced helpers are deferred.\n'
-        '* Runtime package installer is prototype-only.\n'
-        '* Native package support currently covers the reviewed arm64 Git payload only.\n'
+        '* Node.js/npm are not included in early foundation builds (available via runtime-pkg in v0.70+).\n'
+        '* Python is not included in foundation (available via runtime-pkg in v0.77+).\n'
+        '* Git is local-only (network clone/push deferred).\n'
+        '* native-library backing file used for Android execution.\n'
+        '* Runtime package installer is prototype-only in v0.44 foundation.\n'
         '* QuickJS/Duktape are deferred.\n'
-        '* Real toolchain installs are planned, not implemented (see runtime-install).\n'
-        '* Writable app-bin native execution is blocked by Android; Git uses an immutable native-library backing file.\n'
-        '* Storage features need folder linking.\n'
-        '* Beta software; bugs expected.';
+        '* Beta software; bugs expected.\n\n'
+        '=== Termode Known Limits ===\n'
+        '* C Extensions: pure-Python packages install seamlessly; C-extension wheels requiring glibc/gcc compilation are limited on Android Bionic libc.\n'
+        '* Git Remotes: local git (init, status, add, commit, branch, log) is verified; SSH/HTTPS remote network push/fetch is in development.\n'
+        '* Android W^X: writable app data is marked noexec by Android SELinux; Termode automatically wraps CLI entry-points to run via native engines.\n'
+        '* Storage: sandboxed app storage is private; external tablet directories require folder linking (storage-link).\n'
+        '* Beta software: active development; reports welcome via bug-report.';
   }
 
   String _betaCandidateHelpOutput() {
@@ -2323,26 +2322,100 @@ class CommandService {
   String _welcomeOutput() {
     return 'Welcome to Termode.\n\n'
         'Start here:\n\n'
-        '1. default-shell\n'
-        '2. pwd\n'
-        '3. pkg list\n'
-        '4. pkg install hello\n'
-        '5. hello\n'
-        '6. workspace-init demo\n'
-        '7. workspace-cd demo\n'
-        '8. host-write hello.txt "hello"\n'
-        '9. host-cat hello.txt\n\n'
+        '1. default-shell        - Start interactive PTY terminal\n'
+        '2. guide                - Read the Termode User Guide & Android DX tips\n'
+        '3. pkg install hello    - Install lightweight script package demo\n'
+        '4. workspace-init demo  - Create an isolated project workspace\n'
+        '5. python3              - Launch Python 3.14 REPL\n'
+        '6. node                 - Launch Node.js v24 REPL\n'
+        '7. pip-doctor           - Verify Python & pip user-site environment\n'
+        '8. pip install <pkg>    - Install pure Python packages (e.g. pyfiglet, cowsay)\n'
+        '9. dev-server start     - Run background servers with localhost preview\n\n'
         'Useful:\n'
-        'commands\n'
-        'doctor\n'
-        'pkg help\n'
-        'workspace\n'
-        'keyboard-help\n'
-        'qa-status\n\n'
-        'Known:\n'
-        'Git has a pipeline but no bundled artifact yet.\n'
-        'Node/npm/Python are not included yet.\n'
-        'Run beta-known-limits for details.';
+        'guide, commands, doctor, qa-status, pip-doctor, node-doctor, osint-doctor\n'
+        'Run beta-known-limits for details.\n\n'
+        'Engines active:\n'
+        'Node.js v24.18.0 | Python 3.14.6 (pip 26.2.1) | Git 2.44.0\n'
+        'CLI wrappers are active: bare commands (pyfiglet, cowsay, etc.) run seamlessly.';
+  }
+
+  String _guideOutput([String? topic]) {
+    final sub = topic?.toLowerCase();
+    if (sub == 'python' || sub == 'pip') {
+      return '=== Termode Guide: Python & pip ===\n'
+          'Termode bundles authentic CPython 3.14 on ARM64.\n\n'
+          'Key Workflows:\n'
+          '  python3                 - Enter interactive Python REPL\n'
+          '  python3 script.py       - Run a Python script\n'
+          '  pip install --user <pkg>- Install pure-Python packages from PyPI\n'
+          '  pip-list                - View installed packages and versions\n'
+          '  pip-doctor              - Verify SSL certs, user-site, and PATH\n\n'
+          'Android W^X & Bare Commands:\n'
+          '  When pip installs entry points (e.g. pyfiglet, cowsay, black),\n'
+          '  Termode automatically generates shell wrappers so you can run\n'
+          '  them directly by name without "Permission denied" or "python3 -m".\n\n'
+          'Limitations:\n'
+          '  Pure Python packages install and run without issues.\n'
+          '  Packages requiring C compilation (e.g. numpy, cryptography) require\n'
+          '  precompiled Android wheels or future cross-compiled binary packages.';
+    }
+    if (sub == 'node' || sub == 'npm') {
+      return '=== Termode Guide: Node.js & npm ===\n'
+          'Termode bundles authentic Node.js v24 on ARM64.\n\n'
+          'Key Workflows:\n'
+          '  node                    - Enter interactive Node.js REPL\n'
+          '  node app.js             - Run a JavaScript file\n'
+          '  npm install -g <pkg>    - Install global CLI packages\n'
+          '  node-doctor, npm-doctor - Check runtime health\n\n'
+          'Background Servers:\n'
+          '  dev-server start api -- node server.js\n'
+          '  preview-open http://localhost:3000\n\n'
+          'Global Wrappers:\n'
+          '  CLI tools installed to ~/.npm-global/bin are automatically wrapped.';
+    }
+    if (sub == 'git') {
+      return '=== Termode Guide: Local Git ===\n'
+          'Termode provides authentic Git 2.44.0 running from native library storage.\n\n'
+          'Supported Workflows:\n'
+          '  git init                - Initialize a local git repository\n'
+          '  git status              - Check workspace status\n'
+          '  git add <file>          - Stage changes\n'
+          '  git commit -m "msg"     - Commit changes\n'
+          '  git branch, git log     - Manage branches and history\n\n'
+          'Note: Remote git network transports (git push/clone over SSH/HTTPS)\n'
+          'are in development. Local version control is 100% operational.';
+    }
+    if (sub == 'dx' || sub == 'android') {
+      return '=== Termode Guide: Android DX & Architecture ===\n'
+          'Why Termode is not just another Termux:\n\n'
+          '1. Zero Setup Friction:\n'
+          '   Native engines (Node, Python, Git) are built directly into the app.\n'
+          '   No lengthy bootstrap scripts or broken apt mirrors.\n\n'
+          '2. Automatic W^X Compliance:\n'
+          '   Android 10+ blocks executing files in app data storage (noexec).\n'
+          '   Termode automatically detects scripts in ~/.local/bin and\n'
+          '   ~/.npm-global/bin and wraps them as seamless shell functions.\n'
+          '   You type "cowsay" or "pyfiglet" and it just works.\n\n'
+          '3. Visual & Background Integration:\n'
+          '   Built-in tab management, dev-server daemon supervisor,\n'
+          '   real-time localhost web preview, and integrated diagnostics.';
+    }
+
+    return '=== Termode User Guide ===\n'
+        'Termode is a developer-focused, guided terminal environment for Android.\n\n'
+        'Topics:\n'
+        '  guide python            - Python 3.14, pip, PyPI, and pure-Python packages\n'
+        '  guide node              - Node.js v24, npm global packages, and scripts\n'
+        '  guide git               - Local Git 2.44.0 version control\n'
+        '  guide dx                - Android differences, W^X compliance, and wrappers\n\n'
+        'Quick Commands:\n'
+        '  default-shell           - Start interactive PTY terminal\n'
+        '  python3                 - Launch Python REPL\n'
+        '  node                    - Launch Node.js REPL\n'
+        '  pip-doctor              - Verify Python package environment\n'
+        '  osint-doctor            - Verify Sherlock OSINT CLI tool\n'
+        '  reload-helpers          - Manually reload shell wrappers in current session\n\n'
+        'Full documentation: docs/USER_GUIDE.md';
   }
 
   String _commandsOutput({bool all = false}) {
@@ -2351,13 +2424,21 @@ class CommandService {
     }
     return '=== Termode Commands ===\n'
         'Getting started:\n'
-        '  welcome, getting-started, examples, glossary\n'
+        '  welcome, guide, getting-started, examples, glossary\n'
+        'Python & pip:\n'
+        '  python, python3, pip, pip-install, pip-uninstall, pip-list, pip-show, pip-doctor\n'
+        'Node.js & npm:\n'
+        '  node, npm, npx, node-doctor, npm-doctor, npm-init, npm-run\n'
+        'Dev server & preview:\n'
+        '  dev-server start, dev-server list, dev-server stop, dev-server logs, preview\n'
+        'OSINT CLI tools:\n'
+        '  sherlock, maigret, osint-doctor, osint-setup\n'
         'Shell / PTY:\n'
-        '  default-shell, stop-shell, normal-mode, mode\n'
+        '  default-shell, stop-shell, normal-mode, mode, reload-helpers\n'
         'Sessions / tabs:\n'
         '  tabs, tab-new, tab-switch, tab-rename, tab-close, history\n'
         'Packages:\n'
-        '  pkg, pkg list, pkg install hello, pkg doctor\n'
+        '  pkg, pkg list, pkg install hello, pkg doctor, runtime-pkg install hello-bin, hello-bin\n'
         'Workspace / files:\n'
         '  workspace-init, workspace-cd, host-write, host-cat, host-ls\n'
         'Storage:\n'
@@ -2368,38 +2449,10 @@ class CommandService {
         '  settings-summary, settings-doctor, theme-test, settings-reset-safe\n'
         'Preview / localhost:\n'
         '  preview, preview-url, preview-check, localhost-doctor\n'
-        'Runtime status:\n'
-        '  runtime-freeze status, runtime-doctor, runtime-abi, native-tool\n'
+        'Git:\n'
+        '  git, git-status, git-info, git-doctor, git-version, git-perl-status, git-deps-plan\n'
         'QA / beta:\n'
-        '  status, doctor, qa-status, qa-run, beta-status, onboarding-doctor\n'
-        'Beta candidate:\n'
-        '  build-info, beta-candidate status, beta-candidate ready\n'
-        'Beta feedback / RC:\n'
-        '  feedback, feedback template, rc-checklist, rc-status\n'
-        'Runtime environment:\n'
-        '  prefix-info, prefix-init, prefix-status, prefix-doctor\n'
-        '  path-info, path-status, path-preview, path-doctor\n'
-        '  env-info, env-status, env-preview, env-doctor, env-check\n'
-        '  bin-list, bin-which, bin-doctor, shim-info, shim-doctor\n'
-        'Runtime package prototype:\n'
-        '  runtime-pkg, runtime-pkg available, runtime-pkg install hello-bin\n'
-        '  runtime-pkg doctor, runtime-pkg verify hello-bin, hello-bin\n'
-        'Git (artifact pipeline):\n'
-        '  git-status, git-info, git-plan, git-version, git-doctor, git-test-plan\n'
-        '  git-build-status, git-build-plan, git-build-requirements, git-build-next\n'
-        '  git-source-status, git-source-plan, git-deps-status, git-deps-plan\n'
-        '  git-build-inputs, git-build-blockers, git-build-host-strategy\n'
-        '  git-perl-status, git-source-version, git-source-checklist\n'
-        '  git-deps-minimal, git-build-next-steps\n'
-        '  git-artifact status, git-artifact bundle-status, git-artifact bundle-check\n'
-        '  git-artifact production-status, git-artifact smoke-plan, git-artifact next\n'
-        '  git-workspace-smoke-plan\n'
-        '  git-exec-probe, git-smoke-test\n'
-        'Runtime install planning:\n'
-        '  toolchain-status, toolchain-list, toolchain-info, toolchain-doctor\n'
-        '  runtime-install list, dev-setup list, dev-doctor\n'
-        'Advanced probes:\n'
-        '  runtime-candidates, js-engine-decision, quickjs, duktape\n\n'
+        '  status, doctor, qa-status, qa-run, beta-status, beta-candidate status, rc-status, feedback, onboarding-doctor\n\n'
         'Use commands --all for the full catalog.';
   }
 
@@ -3690,6 +3743,13 @@ class CommandService {
       case 'first-run':
         return CommandResult(output: _welcomeOutput());
 
+      case 'guide':
+      case 'user-guide':
+      case 'android-guide':
+        return CommandResult(
+          output: _guideOutput(args.isNotEmpty ? args[0] : null),
+        );
+
       case 'commands':
         return CommandResult(
           output: _commandsOutput(all: args.contains('--all')),
@@ -4169,7 +4229,18 @@ class CommandService {
 
       case 'pip':
       case 'pip3':
-        return CommandResult(output: await _pipBareOutput(args));
+        final isMutating = args.contains('install') || args.contains('uninstall');
+        final pipOut = await _pipBareOutput(args);
+        if (isMutating) {
+          try {
+            await PackageManagerService.updateShellHelpers();
+          } catch (_) {}
+        }
+        return CommandResult(
+          output: pipOut,
+          shouldReloadShellHelpers: isMutating,
+          helperReloadSuccessMessage: isMutating ? 'Shell helpers updated.' : null,
+        );
 
       case 'pip-doctor':
         return CommandResult(output: await _pipDoctorOutput());
@@ -4184,10 +4255,22 @@ class CommandService {
         return CommandResult(output: await _pipShowOutput(args));
 
       case 'pip-install':
-        return CommandResult(output: await _pipInstallOutput(args));
+        final installOut = await _pipInstallOutput(args);
+        final installOk = !installOut.startsWith('Usage:') && !installOut.startsWith('Error:');
+        return CommandResult(
+          output: installOut,
+          shouldReloadShellHelpers: installOk,
+          helperReloadSuccessMessage: installOk ? 'Shell helpers updated.' : null,
+        );
 
       case 'pip-uninstall':
-        return CommandResult(output: await _pipUninstallOutput(args));
+        final uninstallOut = await _pipUninstallOutput(args);
+        final uninstallOk = !uninstallOut.startsWith('Usage:') && !uninstallOut.startsWith('Error:');
+        return CommandResult(
+          output: uninstallOut,
+          shouldReloadShellHelpers: uninstallOk,
+          helperReloadSuccessMessage: uninstallOk ? 'Shell helpers updated.' : null,
+        );
 
       case 'osint-doctor':
         return CommandResult(output: await _osintDoctorOutput());
@@ -6962,6 +7045,52 @@ class CommandService {
         );
 
       default:
+        // Check for CLI entry-point scripts in $HOME/.local/bin/ (Python tools)
+        try {
+          final bootstrapPaths = await RuntimeBootstrapService().getPaths();
+          final homeDir = bootstrapPaths['home']!;
+          final localBinFile = File('$homeDir/.local/bin/$command');
+          if (localBinFile.existsSync()) {
+            final session = TerminalSessionService().activeSession;
+            final rawWorkDir = session.preferredWorkingDirectory;
+            final workDir =
+                (rawWorkDir == null || rawWorkDir == 'app-home') ? null : rawWorkDir;
+            final result = await PythonEnvironmentService().executePython(
+              [localBinFile.path, ...args],
+              workingDirectory: workDir,
+            );
+            return CommandResult(
+              output: result.stdout.isNotEmpty
+                  ? result.stdout
+                  : (result.stderr.isNotEmpty
+                      ? result.stderr
+                      : 'Process finished with exit code ${result.exitCode}'),
+              isError: result.exitCode != 0,
+            );
+          }
+
+          // Check for CLI entry-point scripts in $HOME/.npm-global/bin/ (Node tools)
+          final npmBinFile = File('$homeDir/.npm-global/bin/$command');
+          if (npmBinFile.existsSync()) {
+            final session = TerminalSessionService().activeSession;
+            final rawWorkDir = session.preferredWorkingDirectory;
+            final workDir =
+                (rawWorkDir == null || rawWorkDir == 'app-home') ? null : rawWorkDir;
+            final result = await RuntimeBinaryPackageService().runNode(
+              [npmBinFile.path, ...args],
+              workingDirectory: workDir,
+            );
+            return CommandResult(
+              output: result.stdout.isNotEmpty
+                  ? result.stdout
+                  : (result.stderr.isNotEmpty
+                      ? result.stderr
+                      : 'Process finished with exit code ${result.exitCode}'),
+              isError: result.exitCode != 0,
+            );
+          }
+        } catch (_) {}
+
         return CommandResult(
           output: 'termode: command not found: $command',
           isError: true,

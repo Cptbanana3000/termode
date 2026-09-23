@@ -2193,6 +2193,44 @@ esac
     final service = PackageManagerService();
     final paths = await service._paths();
     final usrDir = paths['usr']!;
+    final bootstrapPaths = await RuntimeBootstrapService().getPaths();
+    final homeDir = bootstrapPaths['home']!;
+
+    // Scan for Python user-site CLI entry-points in ~/.local/bin
+    final localBinDir = Directory('$homeDir/.local/bin');
+    final pyTools = <String>{};
+    if (localBinDir.existsSync()) {
+      try {
+        for (final entity in localBinDir.listSync()) {
+          if (entity is File) {
+            final name = entity.uri.pathSegments.last;
+            if (name.isNotEmpty &&
+                !name.startsWith('.') &&
+                !name.endsWith('.tmp') &&
+                !name.endsWith('.bak')) {
+              pyTools.add(name);
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Scan for npm global CLI entry-points in ~/.npm-global/bin
+    final npmBinDir = Directory('$homeDir/.npm-global/bin');
+    final nodeTools = <String>{};
+    if (npmBinDir.existsSync()) {
+      try {
+        for (final entity in npmBinDir.listSync()) {
+          final name = entity.uri.pathSegments.last;
+          if (name.isNotEmpty &&
+              !name.startsWith('.') &&
+              !name.endsWith('.tmp') &&
+              !name.endsWith('.bak')) {
+            nodeTools.add(name);
+          }
+        }
+      } catch (_) {}
+    }
 
     final sb = StringBuffer();
     sb.writeln('# Termode runtime shell helpers and aliases');
@@ -2213,6 +2251,11 @@ esac
     sb.writeln('  export PYTHONUSERBASE="\$TERMODE_HOME/.local"');
     sb.writeln('fi');
     sb.writeln();
+    sb.writeln('if [ -n "\$TERMODE_USR" ]; then');
+    sb.writeln('  export PYTHONHOME="\$TERMODE_USR"');
+    sb.writeln('  export PYTHONPATH="\$TERMODE_USR/lib/python3.14:\$TERMODE_USR/lib/python3.14/lib-dynload:\$TERMODE_HOME/.local/lib/python3.14/site-packages\${PYTHONPATH:+:\$PYTHONPATH}"');
+    sb.writeln('fi');
+    sb.writeln();
     sb.writeln(
       '# Clear stale helpers before defining the currently installed set.',
     );
@@ -2222,6 +2265,12 @@ esac
       if (execName != null && execName.isNotEmpty) {
         sb.writeln('unset -f $execName 2>/dev/null');
       }
+    }
+    for (final tool in pyTools) {
+      sb.writeln('unset -f $tool 2>/dev/null');
+    }
+    for (final tool in nodeTools) {
+      sb.writeln('unset -f $tool 2>/dev/null');
     }
     sb.writeln('hash -r 2>/dev/null');
     sb.writeln();
@@ -2260,9 +2309,47 @@ esac
     sb.writeln();
     sb.writeln('pip() {');
     sb.writeln('  python3 -m pip "\$@"');
+    sb.writeln('  _ret=\$?');
+    sb.writeln('  if [ \$_ret -eq 0 ] && [ "\$1" = "install" -o "\$1" = "uninstall" ]; then');
+    sb.writeln('    if [ -d "\$TERMODE_HOME/.local/bin" ]; then');
+    sb.writeln('      for _bin in "\$TERMODE_HOME/.local/bin"/*; do');
+    sb.writeln('        if [ -f "\$_bin" ]; then');
+    sb.writeln('          _tool=\$(basename "\$_bin")');
+    sb.writeln('          case "\$_tool" in');
+    sb.writeln('            pip|pip3|sherlock|maigret|*.*) ;;');
+    sb.writeln('            *)');
+    sb.writeln(
+      r'              eval "$_tool() { python3 \"$TERMODE_HOME/.local/bin/$_tool\" \"\$@\"; }"',
+    );
+    sb.writeln('              ;;');
+    sb.writeln('          esac');
+    sb.writeln('        fi');
+    sb.writeln('      done');
+    sb.writeln('    fi');
+    sb.writeln('  fi');
+    sb.writeln('  return \$_ret');
     sb.writeln('}');
     sb.writeln('pip3() {');
     sb.writeln('  python3 -m pip "\$@"');
+    sb.writeln('  _ret=\$?');
+    sb.writeln('  if [ \$_ret -eq 0 ] && [ "\$1" = "install" -o "\$1" = "uninstall" ]; then');
+    sb.writeln('    if [ -d "\$TERMODE_HOME/.local/bin" ]; then');
+    sb.writeln('      for _bin in "\$TERMODE_HOME/.local/bin"/*; do');
+    sb.writeln('        if [ -f "\$_bin" ]; then');
+    sb.writeln('          _tool=\$(basename "\$_bin")');
+    sb.writeln('          case "\$_tool" in');
+    sb.writeln('            pip|pip3|sherlock|maigret|*.*) ;;');
+    sb.writeln('            *)');
+    sb.writeln(
+      r'              eval "$_tool() { python3 \"$TERMODE_HOME/.local/bin/$_tool\" \"\$@\"; }"',
+    );
+    sb.writeln('              ;;');
+    sb.writeln('          esac');
+    sb.writeln('        fi');
+    sb.writeln('      done');
+    sb.writeln('    fi');
+    sb.writeln('  fi');
+    sb.writeln('  return \$_ret');
     sb.writeln('}');
     sb.writeln();
     sb.writeln('sherlock() {');
@@ -2271,6 +2358,38 @@ esac
     sb.writeln('maigret() {');
     sb.writeln('  python3 -m maigret "\$@" 2>/dev/null || python3 "\$TERMODE_HOME/.local/bin/maigret" "\$@"');
     sb.writeln('}');
+
+    final validIdent = RegExp(r'^[a-zA-Z0-9_\-]+$');
+    if (pyTools.isNotEmpty) {
+      sb.writeln();
+      sb.writeln('# Pip and Python CLI Tool Wrappers');
+      for (final tool in pyTools) {
+        if (tool == 'pip' || tool == 'pip3' || tool == 'sherlock' || tool == 'maigret') {
+          continue;
+        }
+        if (!validIdent.hasMatch(tool)) {
+          continue;
+        }
+        sb.writeln();
+        sb.writeln('$tool() {');
+        sb.writeln('  python3 "\$TERMODE_HOME/.local/bin/$tool" "\$@"');
+        sb.writeln('}');
+      }
+    }
+
+    if (nodeTools.isNotEmpty) {
+      sb.writeln();
+      sb.writeln('# npm Global CLI Tool Wrappers');
+      for (final tool in nodeTools) {
+        if (!validIdent.hasMatch(tool)) {
+          continue;
+        }
+        sb.writeln();
+        sb.writeln('$tool() {');
+        sb.writeln('  node "\$TERMODE_HOME/.npm-global/bin/$tool" "\$@"');
+        sb.writeln('}');
+      }
+    }
 
     final helpersFile = File('$usrDir/termode-shell-helpers.sh');
     await helpersFile.writeAsString(sb.toString());

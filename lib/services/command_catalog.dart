@@ -5,6 +5,9 @@
 const List<String> kTermodeCommands = [
   'help',
   'welcome',
+  'guide',
+  'user-guide',
+  'android-guide',
   'getting-started',
   'first-run',
   'commands',

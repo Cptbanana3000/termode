@@ -634,6 +634,9 @@ class TerminalSessionService extends ChangeNotifier {
       final firstToken = parts.isNotEmpty ? parts[0] : '';
       const hostCommands = {
         'welcome',
+        'guide',
+        'user-guide',
+        'android-guide',
         'getting-started',
         'first-run',
         'commands',

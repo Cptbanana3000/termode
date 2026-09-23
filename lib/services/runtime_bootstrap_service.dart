@@ -10,7 +10,7 @@ class RuntimeBootstrapService {
 
   Directory? _overrideBaseDir;
 
-  set overrideBaseDir(Directory dir) {
+  set overrideBaseDir(Directory? dir) {
     _overrideBaseDir = dir;
   }
 

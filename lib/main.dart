@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'screens/terminal_screen.dart';
 import 'services/terminal_session_service.dart';
 import 'services/settings_service.dart';
+import 'services/package_manager_service.dart';
+import 'services/runtime_binary_package_service.dart';
 import 'services/runtime_bootstrap_service.dart';
 
 void main() async {
@@ -12,6 +14,12 @@ void main() async {
 
   // Bootstrap the runtime folders inside the sandbox
   await RuntimeBootstrapService().init();
+
+  // Reconcile native library symlinks (python3, node, git) after installs/updates
+  await RuntimeBinaryPackageService().reconcileNativeSymlinks();
+
+  // Generate / refresh shell helpers with any installed CLI tools
+  await PackageManagerService.updateShellHelpers();
   
   runApp(const TermodeApp());
 }

@@ -334,7 +334,8 @@ class MainActivity: FlutterActivity() {
                                 "fileChecks" to fileChecks,
                                 "testOutput" to testOutput,
                                 "runtimeHome" to runtimeHome,
-                                "runtimePath" to runtimePath
+                                "runtimePath" to runtimePath,
+                                "nativeLibraryDir" to applicationInfo.nativeLibraryDir
                             )
 
                             Handler(Looper.getMainLooper()).post {

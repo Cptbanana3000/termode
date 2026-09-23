@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package_manager_service.dart';
 import 'python_environment_service.dart';
 import 'runtime_binary_package_service.dart';
 import 'runtime_prefix_service.dart';
@@ -390,6 +391,11 @@ class PipPackageService {
     final out = result.stdout.trim().isNotEmpty
         ? result.stdout.trim()
         : result.stderr.trim();
+    if (result.exitCode == 0) {
+      try {
+        await PackageManagerService.updateShellHelpers();
+      } catch (_) {}
+    }
     return (
       success: result.exitCode == 0,
       output: out,
@@ -411,6 +417,11 @@ class PipPackageService {
     final out = result.stdout.trim().isNotEmpty
         ? result.stdout.trim()
         : result.stderr.trim();
+    if (result.exitCode == 0) {
+      try {
+        await PackageManagerService.updateShellHelpers();
+      } catch (_) {}
+    }
     return (
       success: result.exitCode == 0,
       output: out.isNotEmpty ? out : 'Successfully uninstalled $packageName',

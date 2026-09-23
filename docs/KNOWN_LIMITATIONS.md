@@ -1,106 +1,54 @@
-# Known Limitations
+# Known Limitations & Capabilities Matrix
 
-Termode is beta software. v0.64 supports a deliberately small local Git 2.44.0
-surface on arm64-v8a Android: `git --version`, `git init`, and `git status`
-were verified on-device. Remote Git, OpenSSL, curl, HTTPS/SSH, credentials, LFS,
-submodules, and broader Git workflows remain deferred. The executable is an
-immutable APK payload in Android's `nativeLibraryDir`; the prefix path is a
-logical mapping, not a writable executable copy. Unsupported ABI, altered
-metadata, missing payloads, or failed execution probes are rejected safely.
-Termode never fakes Git. See [Git Artifact Contract](GIT_ARTIFACT_CONTRACT.md),
-[Git Artifact Production Status](GIT_ARTIFACT_PRODUCTION_STATUS.md),
-[Git NDK Build Status](GIT_NDK_BUILD_STATUS.md),
-[Git NDK Source Build](GIT_NDK_SOURCE_BUILD.md),
-[Git Source Acquisition Status](GIT_SOURCE_ACQUISITION_STATUS.md),
-[Git Source Acquisition](GIT_SOURCE_ACQUISITION.md),
-[Git Dependency Plan](GIT_DEPENDENCY_PLAN.md),
-[Git Trusted Build](GIT_TRUSTED_BUILD.md),
-[Git Artifact Build Status](GIT_ARTIFACT_BUILD_STATUS.md),
-[Git arm64-v8a Artifact Pipeline](GIT_ARM64_ARTIFACT_PIPELINE.md),
-[Git Artifact Acquisition](GIT_ARTIFACT_ACQUISITION.md),
-[Git Build Pipeline](GIT_BUILD_PIPELINE.md),
-[Git Bundle Smoke Test](GIT_BUNDLE_SMOKE_TEST.md), and
-[Git Support Strategy](GIT_SUPPORT_STRATEGY.md).
-Termode does not run Node.js, npm, Python, or remote Git yet. A `LIMITED` or
-`PROTOTYPE READY`, `ARCHITECTURE PHASE`, or `LIMITED` status is often
-intentional when it refers to frozen runtime work, unlinked Android storage,
-planned toolchains, or a prefix that has not been initialized yet.
+Termode is in active developer beta (Milestone v0.79). This document provides an accurate, transparent overview of current capabilities, verified engines, and deliberate technical constraints.
 
-## Runtime Freeze
+---
 
-Runtime direction is frozen for the current beta foundation. Termode currently
-supports:
+## 1. Verified Native Engines & Runtimes (ARM64-v8a)
 
-- REAL PTY shell sessions
-- script packages through `/system/bin/sh`
-- built-in JNI native tools
-- `js-proof` controlled evaluator
-- localhost/preview diagnostics
-- prefix/PATH/environment infrastructure for future tools
-- runtime package installer prototype with `hello-bin`
-- reviewed local-only Git package on arm64-v8a
+Termode enforces an **anti-mocking rule** (GEMINI.md Rule 1): all supported runtimes are authentic, upstream binaries executing directly on hardware:
 
-## Not Included Yet
+| Runtime / Engine | Upstream Version | Execution Mode | Verification Status |
+| :--- | :--- | :--- | :--- |
+| **CPython** | v3.14.6 | Native ELF executable in `nativeLibraryDir` | Fully verified on hardware; interactive REPL, scripts, sockets, HTTPS |
+| **pip** | v26.2.1 | Upstream wheel extracted into site-packages | Fully verified; live PyPI downloads, SSL verification, `--user` installs |
+| **Node.js** | v24.18.0 | Native ELF executable with V8 engine | Fully verified; interactive REPL, scripts, standard library |
+| **Git** | v2.44.0 | Native ELF executable in `nativeLibraryDir` | Local-only verified (`init`, `status`, `add`, `commit`, `branch`, `log`) |
+| **Dev Server** | Termode Daemon | Process supervision with log rotation | Verified; background process management, port binding |
+| **OSINT** | Sherlock v0.16.2 | Pure-Python engine with 480+ targets | Fully verified on physical hardware |
 
-- Node.js/npm
-- Python
-- remote Git and advanced Git helpers
-- general-purpose native binary package installs
-- native package manager
-- full Linux distribution compatibility
+---
 
-QuickJS and Duktape remain probe surfaces only. They are not production
-runtimes.
+## 2. Android Security & Execution Constraints (W^X / SELinux)
 
-## Runtime Environment And Planned Toolchains
+### Writable Storage `noexec`
+Android 10+ (API 29+) enforces Write XOR Execute (`noexec`) on all app-writable directories (`/data/user/0/...`).
+- **Impact**: Shell scripts or executables installed by `pip` into `$HOME/.local/bin/` or `npm` into `$HOME/.npm-global/bin/` cannot be directly executed via `execve` by `/system/bin/sh`.
+- **Termode DX Hardening**: Termode automatically scans `$HOME/.local/bin/` and `$HOME/.npm-global/bin/` to generate compliant shell wrapper functions in `$TERMODE_USR/termode-shell-helpers.sh`. Bare commands (e.g. `cowsay`, `pyfiglet`, `black`) run through their parent native binary without `Permission denied`.
 
-Node.js, npm, Python, curl/wget, editors, and remote Git are planned for future
-milestones. v0.64 enables only the reviewed bundled local Git package; no runtime
-download or unknown native execution is allowed. Explore it with:
+---
 
-```sh
-prefix-status
-path-status
-env-status
-bin-list
-shim-info
-toolchain-status
-runtime-install status
-runtime-pkg status
-runtime-pkg available
-runtime-abi
-git-status
-git-doctor
-git-artifact production-status
-git-build-status
-git-source-status
-git-deps-status
-git-build-blockers
-dev-doctor
-```
+## 3. Python Ecosystem & C-Extensions
 
-See [Binary Package Installer Prototype](BINARY_PACKAGE_INSTALLER_PROTOTYPE.md),
-[Prefix / PATH / Environment](PREFIX_PATH_ENVIRONMENT.md), and
-[Runtime Expansion Architecture](RUNTIME_EXPANSION_ARCHITECTURE.md).
+- **Pure-Python Packages**: Packages composed entirely of Python code (e.g. `requests`, `urllib3`, `rich`, `click`, `cowsay`, `pyfiglet`, `black`, `flake8`, `jinja2`) install and run seamlessly via `pip install --user <pkg>`.
+- **Compiled C Extensions**: Android uses Google's Bionic libc rather than GNU glibc. Packages requiring compilation during installation (or standard manylinux wheels with compiled C extensions, such as `numpy` or `cryptography`) cannot be built on-device without an Android NDK toolchain and cross-compiled Bionic wheels.
 
-## Android / Storage Limits
+---
 
-- Storage features need the user to link an Android folder.
-- Direct app-bin execution may be blocked by Android on some devices.
-- Some terminal behavior may differ from desktop Linux.
-- Preview commands need an external browser for `preview-open`.
+## 4. Git Capabilities & Deferrals
 
-## What To Run
+- **Supported (Local Version Control)**:
+  - Repository initialization (`git init`)
+  - Status queries (`git status`)
+  - Staging and committing (`git add`, `git commit`)
+  - Branching and checkout (`git branch`, `git checkout`)
+  - History log inspection (`git log`)
+- **Deferred (Network Transports)**:
+  - Remote Git network transports (`git push`, `git fetch`, `git clone` over SSH/HTTPS) require integration with OpenSSL/libcurl network libraries, which is actively in development.
 
-```sh
-beta-known-limits
-runtime-freeze status
-runtime-freeze why
-prefix-status
-path-status
-env-status
-toolchain-status
-runtime-install status
-doctor
-qa-status
-```
+---
+
+## 5. Storage & Sandboxing
+
+- Termode executes within an isolated application sandbox.
+- Access to external Android tablet storage (Downloads, Documents, external SD cards) requires linking via Android's Storage Access Framework (`storage-link`).
