@@ -13,6 +13,7 @@ import 'settings_service.dart';
 import 'ansi_parser.dart';
 import 'preview_service.dart';
 import 'runtime_bootstrap_service.dart';
+import 'runtime_prefix_service.dart';
 
 class _HelperReloadState {
   final StringBuffer buffer = StringBuffer();
@@ -697,6 +698,7 @@ class TerminalSessionService extends ChangeNotifier {
         'python-doctor',
         'python-env',
         'python-status',
+        'python-setup',
         'stack-list',
         'stack-init',
         'stack-info',
@@ -860,7 +862,17 @@ class TerminalSessionService extends ChangeNotifier {
         'paste-force',
       };
 
-      if (hostCommands.contains(firstToken)) {
+      bool isHostCommand = hostCommands.contains(firstToken);
+      if (activeSession.isPtyInteractionActive &&
+          (firstToken == 'python' || firstToken == 'python3')) {
+        final prefixPaths = await RuntimePrefixService().paths();
+        final pyBin = File(prefixPaths['pythonBin']!);
+        if (pyBin.existsSync()) {
+          isHostCommand = false;
+        }
+      }
+
+      if (isHostCommand) {
         _recordHistory(activeSession, trimmed);
         // Log the command locally so it shows on screen
         _appendHostInterceptionOutput(activeSession, '$trimmed\n');

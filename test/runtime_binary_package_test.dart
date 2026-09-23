@@ -83,7 +83,7 @@ void main() {
       expect(available.output, contains('npm - Node.js Package Manager'));
       expect(
         available.output,
-        contains('Python runtime packages remain planned'),
+        contains('python - Authentic CPython 3.14 runtime engine'),
       );
     });
 

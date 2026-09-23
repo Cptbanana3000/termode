@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'native_command_service.dart';
+import 'runtime_binary_package_service.dart';
 import 'runtime_prefix_service.dart';
 
 /// Diagnostic report for the Python runtime environment.
@@ -17,6 +18,11 @@ class PythonDoctorReport {
   final bool pythonUserBinInPath;
   final String pythonSitePackages;
   final String pythonLib;
+  final bool stdlibInstalled;
+  final String stdlibStatus;
+  final int stdlibModuleCount;
+  final List<String> verifiedCoreModules;
+  final String replStatus;
   final String workingDirectory;
   final String pipStatus;
   final List<String> bionicDependencies;
@@ -35,6 +41,11 @@ class PythonDoctorReport {
     required this.pythonUserBinInPath,
     required this.pythonSitePackages,
     required this.pythonLib,
+    required this.stdlibInstalled,
+    required this.stdlibStatus,
+    required this.stdlibModuleCount,
+    required this.verifiedCoreModules,
+    required this.replStatus,
     required this.workingDirectory,
     required this.pipStatus,
     required this.bionicDependencies,
@@ -55,12 +66,17 @@ class PythonDoctorReport {
         'User Bin Dir:        $pythonUserBin (${pythonUserBinExists ? "INITIALIZED" : "PENDING"}, in PATH: ${pythonUserBinInPath ? "YES" : "NO"})');
     sb.writeln('User Site-Packages:  $pythonSitePackages');
     sb.writeln('Prefix Library:      $pythonLib');
+    sb.writeln('Standard Library:    $stdlibStatus');
+    if (verifiedCoreModules.isNotEmpty) {
+      sb.writeln('Core Modules:        ${verifiedCoreModules.join(", ")}');
+    }
+    sb.writeln('REPL Status:         $replStatus');
     sb.writeln('Pip Status:          $pipStatus');
     sb.writeln('Bionic Dependencies: ${bionicDependencies.join(", ")}');
     sb.writeln(
         'OSINT Target Tools:  Sherlock, Maigret -> user bin (~/.local/bin) in PATH: ${pythonUserBinInPath ? "YES" : "NO"}');
     sb.writeln(
-        'Status:              ${pythonAvailable ? "READY" : "PROTOTYPE READY (Awaiting arm64 CPython binary acquisition)"}');
+        'Status:              ${pythonAvailable && stdlibInstalled ? "READY (CPython runtime & standard library fully operational)" : (pythonAvailable ? "READY (CPython binary packaged; run: python-setup)" : "PROTOTYPE READY (Awaiting arm64 CPython binary acquisition)")}');
     return sb.toString().trimRight();
   }
 }
@@ -136,6 +152,78 @@ class PythonEnvironmentService {
     return paths['pythonLib'] ?? '${paths['prefix']}/lib/python3.14';
   }
 
+  /// Verifies whether the standard library has been extracted into prefix.
+  Future<bool> isStdlibInstalled() async {
+    if (pythonExecutorForTesting != null) return true;
+    final pyLib = await prefixLibDir();
+    final osModule = File('$pyLib/os.py');
+    return osModule.existsSync();
+  }
+
+  /// Returns total number of Python modules and extension libraries in stdlib.
+  Future<int> stdlibModuleCount() async {
+    final pyLib = await prefixLibDir();
+    final dir = Directory(pyLib);
+    if (!dir.existsSync()) return 0;
+    try {
+      return dir
+          .listSync(recursive: true)
+          .where((e) =>
+              e is File &&
+              (e.path.endsWith('.py') || e.path.endsWith('.so')))
+          .length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Verifies which core standard library modules are present and ready.
+  Future<List<String>> verifyCoreModules() async {
+    final pyLib = await prefixLibDir();
+    final modules = <String>[];
+    if (File('$pyLib/os.py').existsSync()) modules.add('os');
+    modules.add('sys'); // built-in
+    if (File('$pyLib/json.py').existsSync() ||
+        Directory('$pyLib/json').existsSync() ||
+        File('$pyLib/json/__init__.py').existsSync()) {
+      modules.add('json');
+    }
+    if (File('$pyLib/sqlite3.py').existsSync() ||
+        Directory('$pyLib/sqlite3').existsSync() ||
+        File('$pyLib/sqlite3/__init__.py').existsSync()) {
+      modules.add('sqlite3');
+    }
+    if (File('$pyLib/ssl.py').existsSync() ||
+        File('$pyLib/lib-dynload/_ssl.cpython-314-aarch64-linux-android.so')
+            .existsSync()) {
+      modules.add('ssl');
+    }
+    if (Directory('$pyLib/ctypes').existsSync() ||
+        File('$pyLib/ctypes/__init__.py').existsSync()) {
+      modules.add('ctypes');
+    }
+    if (File('$pyLib/lib-dynload/readline.cpython-314-aarch64-linux-android.so')
+        .existsSync()) {
+      modules.add('readline');
+    }
+    if (File('$pyLib/lib-dynload/math.cpython-314-aarch64-linux-android.so')
+        .existsSync()) {
+      modules.add('math');
+    }
+    if (Directory('$pyLib/asyncio').existsSync()) {
+      modules.add('asyncio');
+    }
+    return modules;
+  }
+
+  /// Unpacks standard library and companion libraries into prefix.
+  Future<RuntimeBinaryPackageResult> setupStandardLibrary({
+    bool force = false,
+  }) async {
+    return RuntimeBinaryPackageService()
+        .install(RuntimeBinaryPackageService.pythonName);
+  }
+
   /// Verifies whether the user bin directory is present in the active PATH entries.
   Future<bool> isUserBinInPath() async {
     final pathEntries = await _prefix.pathEntries();
@@ -153,6 +241,9 @@ class PythonEnvironmentService {
     final inPath = await isUserBinInPath();
     final userSite = await userSitePackagesDir();
     final pyLib = await prefixLibDir();
+    final stdlibReady = await isStdlibInstalled();
+    final modCount = await stdlibModuleCount();
+    final coreMods = await verifyCoreModules();
 
     String execPath = '${paths['prefix']}/bin/python3';
     if (Platform.isAndroid) {
@@ -165,6 +256,16 @@ class PythonEnvironmentService {
     final status = available
         ? 'AVAILABLE (CPython v$pythonVersionTarget)'
         : 'PROTOTYPE_CANDIDATE ($pythonAbiTarget)';
+
+    final stdlibStatusStr = stdlibReady
+        ? 'INSTALLED ($modCount modules in $pyLib)'
+        : 'PENDING EXTRACTION (Run: python-setup)';
+
+    final replStatusStr = available && stdlibReady
+        ? 'READY (Interactive PTY REPL supported)'
+        : (available
+            ? 'REQUIRES_STDLIB (Run: python-setup to enable REPL)'
+            : 'UNAVAILABLE');
 
     return PythonDoctorReport(
       pythonAvailable: available,
@@ -179,11 +280,16 @@ class PythonEnvironmentService {
       pythonUserBinInPath: inPath,
       pythonSitePackages: userSite,
       pythonLib: pyLib,
+      stdlibInstalled: stdlibReady,
+      stdlibStatus: stdlibStatusStr,
+      stdlibModuleCount: modCount,
+      verifiedCoreModules: coreMods,
+      replStatus: replStatusStr,
       workingDirectory: cwd,
-      pipStatus: 'PLANNED (v0.76+ user-site installer)',
+      pipStatus: 'PLANNED (v0.77+ user-site installer)',
       bionicDependencies: requiredBionicLibraries,
       milestone:
-          'v0.75 (Python arm64 Binary Acquisition & Packaging)',
+          'v0.76 (Python Standard Library Packaging & REPL Verification)',
     );
   }
 
@@ -232,6 +338,11 @@ class PythonEnvironmentService {
             'Run: python-doctor',
         exitCode: 127,
       );
+    }
+
+    // Auto-setup standard library if not yet extracted
+    if (Platform.isAndroid && !await isStdlibInstalled()) {
+      await setupStandardLibrary();
     }
 
     if (Platform.isAndroid) {

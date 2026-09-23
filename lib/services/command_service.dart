@@ -1489,8 +1489,16 @@ class CommandService {
     return '=== Python Status ===\n'
         'Engine: ${report.pythonStatus}\n'
         'Target ABI: ${report.abi}\n'
+        'Standard Library: ${report.stdlibStatus}\n'
+        'REPL Status: ${report.replStatus}\n'
         'User Bin in PATH: ${report.pythonUserBinInPath ? "YES" : "NO"}\n'
         'Milestone: ${report.milestone}';
+  }
+
+  Future<String> _pythonSetupOutput(List<String> args) async {
+    final force = args.contains('--force');
+    final result = await PythonEnvironmentService().setupStandardLibrary(force: force);
+    return result.output;
   }
 
   Future<String> _pythonExecOutput(List<String> args) async {
@@ -3968,6 +3976,9 @@ class CommandService {
 
       case 'python-status':
         return CommandResult(output: await _pythonStatusOutput());
+
+      case 'python-setup':
+        return CommandResult(output: await _pythonSetupOutput(args));
 
       case 'stack-list':
         return CommandResult(output: _stackListOutput());

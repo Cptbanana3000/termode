@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:termode/services/command_catalog.dart';
 import 'package:termode/services/command_service.dart';
 import 'package:termode/services/native_command_service.dart';
 import 'package:termode/services/python_environment_service.dart';
+import 'package:termode/services/runtime_binary_package_service.dart';
 import 'package:termode/services/runtime_bootstrap_service.dart';
 import 'package:termode/services/runtime_prefix_service.dart';
 import 'package:termode/services/virtual_filesystem.dart';
@@ -24,14 +26,40 @@ void main() {
     await RuntimeBootstrapService().init();
     await RuntimePrefixService().initPrefix();
 
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('com.termode/native_shell'),
+          (call) async {
+            switch (call.method) {
+              case 'getDiagnostics':
+                return {'abi': 'arm64-v8a', 'pid': 8888};
+              case 'getPaths':
+                return {
+                  'home': '${tempDir.path}/files/home',
+                  'usr': '${tempDir.path}/files/usr',
+                  'bin': '${tempDir.path}/files/usr/bin',
+                  'tmp': '${tempDir.path}/files/tmp',
+                };
+            }
+            return null;
+          },
+        );
+
     pythonService = PythonEnvironmentService();
     prefixService = RuntimePrefixService();
     commandService = CommandService(VirtualFileSystem(), 'test-session');
     PythonEnvironmentService.pythonExecutorForTesting = null;
+    RuntimeBinaryPackageService.pythonExecutorForTesting = null;
   });
 
   tearDown(() async {
     PythonEnvironmentService.pythonExecutorForTesting = null;
+    RuntimeBinaryPackageService.pythonExecutorForTesting = null;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('com.termode/native_shell'),
+          null,
+        );
     if (await tempDir.exists()) {
       await tempDir.delete(recursive: true);
     }
@@ -81,11 +109,11 @@ void main() {
       expect(report.bionicDependencies, contains('libsqlite3.so'));
       expect(report.bionicDependencies, contains('libz.so.1'));
       expect(report.bionicDependencies, contains('libandroid-support.so'));
-      expect(report.milestone, contains('v0.75'));
+      expect(report.milestone, contains('v0.76'));
 
       final formatted = report.formatOutput();
       expect(formatted, contains('=== Python Environment Doctor ==='));
-      expect(formatted, contains('Milestone:           v0.75'));
+      expect(formatted, contains('Milestone:           v0.76'));
       expect(formatted, contains('Target ABI:          arm64-v8a (Bionic libc)'));
       expect(formatted, contains('Sherlock, Maigret -> user bin (~/.local/bin) in PATH: YES'));
     });
@@ -132,11 +160,11 @@ void main() {
       expect(kTermodeCommands, contains('python-status'));
     });
 
-    test('CommandService executes python-doctor, python-env, and python-status', () async {
+    test('CommandService executes python-doctor, python-env, python-status, and python-setup', () async {
       final docResult = await commandService.execute('python-doctor');
       expect(docResult.isError, isFalse);
       expect(docResult.output, contains('=== Python Environment Doctor ==='));
-      expect(docResult.output, contains('Milestone:           v0.75'));
+      expect(docResult.output, contains('Milestone:           v0.76'));
 
       final envResult = await commandService.execute('python-env');
       expect(envResult.isError, isFalse);
@@ -146,6 +174,17 @@ void main() {
       expect(statusResult.isError, isFalse);
       expect(statusResult.output, contains('=== Python Status ==='));
       expect(statusResult.output, contains('Target ABI: arm64-v8a'));
+
+      RuntimeBinaryPackageService.pythonExecutorForTesting =
+          (args, {workingDirectory}) async => NativeCommandResult(
+                stdout: 'Python 3.14.6\n',
+                stderr: '',
+                exitCode: 0,
+              );
+      final setupResult = await commandService.execute('python-setup');
+      expect(setupResult.isError, isFalse);
+      expect(setupResult.output, contains('Installed runtime package: python'));
+      expect(setupResult.output, contains('Standard library:'));
     });
 
     test('CommandService routes python / python3 commands', () async {

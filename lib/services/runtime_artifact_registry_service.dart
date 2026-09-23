@@ -89,6 +89,8 @@ class RuntimeArtifactRegistryService {
       'tools/runtime-artifacts/python/arm64-v8a/manifest.json';
   static const String bundledPythonArchiveAsset =
       'tools/runtime-artifacts/python/arm64-v8a/python-stdlib.tar.gz';
+  static const String bundledPythonFilesAssetRoot =
+      'tools/runtime-artifacts/python/arm64-v8a/files';
   static const String pythonProjectManifestPath =
       'tools/runtime-artifacts/python/arm64-v8a/manifest.json';
   static const String pythonProjectArchivePath =
@@ -166,6 +168,23 @@ class RuntimeArtifactRegistryService {
 
   Map<String, dynamic>? readProjectPythonManifest() =>
       _readJsonMap(pythonProjectManifestPath);
+
+  Future<List<int>?> readBundledPythonFile(String relativePath) async {
+    if (!_isSafeRelativePath(relativePath)) return null;
+    try {
+      final data = await rootBundle.load(
+        '$bundledPythonFilesAssetRoot/$relativePath',
+      );
+      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    } catch (_) {
+      final fallback =
+          File('$pythonArtifactsRoot/arm64-v8a/files/$relativePath');
+      if (fallback.existsSync()) {
+        return fallback.readAsBytesSync();
+      }
+      return null;
+    }
+  }
 
   Future<Map<String, dynamic>?> bundledNodeManifest() async {
     try {
@@ -251,6 +270,11 @@ class RuntimeArtifactRegistryService {
 
   Map<String, dynamic>? readNpmTemplateManifest() =>
       _readJsonMap(npmTemplatePath);
+
+  bool pythonTemplateExists() => File(pythonTemplatePath).existsSync();
+
+  Map<String, dynamic>? readPythonTemplateManifest() =>
+      _readJsonMap(pythonTemplatePath);
 
   List<String> validateNpmManifest(Map<String, dynamic> manifest) {
     final errors = <String>[];
@@ -533,6 +557,131 @@ class RuntimeArtifactRegistryService {
       }
     }
     return errors..sort();
+  }
+
+  List<String> validatePythonManifest(
+    Map<String, dynamic> manifest,
+    String expectedAbi,
+  ) {
+    final errors = <String>[];
+    final name = manifest['name']?.toString() ?? '';
+    final version = manifest['version']?.toString() ?? '';
+    final kind = manifest['kind']?.toString() ?? '';
+    final command = manifest['command']?.toString() ?? '';
+    final abi = manifest['abi']?.toString() ?? '';
+    final entrypoint = manifest['entrypoint']?.toString() ?? '';
+    final logicalInstallPath =
+        manifest['logical_install_path']?.toString() ?? '';
+    final executableStrategy =
+        manifest['executable_strategy']?.toString() ?? '';
+    final executablePackageName =
+        manifest['executable_package_name']?.toString() ?? '';
+    final files = manifest['files'];
+
+    if (name != 'python') errors.add('package name must be python');
+    if (version.trim().isEmpty) errors.add('missing version');
+    if (kind != 'native-tool') errors.add('kind must be native-tool');
+    if (command != 'python' && command != 'python3') {
+      errors.add('command must be python or python3');
+    }
+    if (abi.isEmpty) {
+      errors.add('missing abi');
+    } else if (abi != 'all' && !supportedGitAbis.contains(abi)) {
+      errors.add('unsupported abi');
+    }
+    if (!_isSafeRelativePath(entrypoint)) errors.add('invalid entrypoint');
+    if (!_isSafeRelativePath(logicalInstallPath) ||
+        logicalInstallPath != entrypoint) {
+      errors.add('invalid logical install path');
+    }
+    if (!supportedExecutableStrategies.contains(executableStrategy)) {
+      errors.add('unsafe executable strategy');
+    }
+    if (executableStrategy == 'native-library-dir' &&
+        !RegExp(r'^lib[a-z0-9_]+\.so$').hasMatch(executablePackageName)) {
+      errors.add('invalid executable package name');
+    }
+    if (files is! List || files.isEmpty) {
+      errors.add('missing files');
+    } else {
+      for (final item in files) {
+        if (item is! Map) {
+          errors.add('invalid file entry');
+          continue;
+        }
+        final path = item['path']?.toString() ?? '';
+        final sha = item['sha256']?.toString() ?? '';
+        final bytes = item['bytes'];
+        if (!_isSafeRelativePath(path)) errors.add('unsafe file path');
+        if (!RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(sha)) {
+          errors.add('invalid checksum');
+        }
+        if (bytes is! int || bytes <= 0) errors.add('invalid file byte count');
+      }
+    }
+    return errors..sort();
+  }
+
+  Future<PythonArtifactStatus> pythonArtifactStatus() async {
+    final abi = await currentAbi();
+    final manifest = await bundledPythonManifest();
+    if (manifest == null) {
+      return PythonArtifactStatus(
+        available: false,
+        installable: false,
+        abi: abi,
+        source: 'bundled',
+        reason: 'Python artifact manifest is missing.',
+        status: 'INVALID',
+        templatePresent: pythonTemplateExists(),
+        manifestPresent: false,
+        location: 'bundled',
+      );
+    }
+    final errors = validatePythonManifest(manifest, abi);
+    if (errors.isNotEmpty) {
+      return PythonArtifactStatus(
+        available: true,
+        installable: false,
+        abi: abi,
+        source: manifest['created_by']?.toString() ?? 'bundled',
+        reason: 'Manifest invalid: ${errors.first}',
+        status: 'INVALID',
+        templatePresent: pythonTemplateExists(),
+        manifestPresent: true,
+        location: 'bundled',
+      );
+    }
+    final manifestAbi = manifest['abi']?.toString() ?? '';
+    if (manifestAbi != 'all' && manifestAbi != abi) {
+      return PythonArtifactStatus(
+        available: true,
+        installable: false,
+        abi: abi,
+        source: manifest['created_by']?.toString() ?? 'bundled',
+        reason: 'Artifact ABI ($manifestAbi) does not match device ($abi).',
+        status: 'INCOMPATIBLE',
+        templatePresent: pythonTemplateExists(),
+        manifestPresent: true,
+        location: 'bundled',
+      );
+    }
+    return PythonArtifactStatus(
+      available: true,
+      installable: true,
+      abi: abi,
+      source: manifest['created_by']?.toString() ?? 'bundled',
+      reason: 'Valid Python artifact manifest found for $abi.',
+      status: 'AVAILABLE',
+      templatePresent: pythonTemplateExists(),
+      manifestPresent: true,
+      location: 'bundled',
+      version: manifest['version']?.toString() ?? '',
+      archiveSha256: manifest['archive_sha256']?.toString(),
+      archiveBytes: manifest['archive_bytes'] is int
+          ? manifest['archive_bytes'] as int
+          : null,
+    );
   }
 
   Map<String, dynamic>? _readJsonMap(String path) {
@@ -1203,6 +1352,38 @@ class NpmArtifactStatus {
     required this.templatePresent,
     required this.manifestPresent,
     required this.location,
+    this.version = '',
+    this.archiveSha256,
+    this.archiveBytes,
+  });
+}
+
+class PythonArtifactStatus {
+  final bool available;
+  final bool installable;
+  final String abi;
+  final String source;
+  final String reason;
+  final String status;
+  final bool templatePresent;
+  final bool manifestPresent;
+  final String location;
+  final String manifestPath;
+  final String version;
+  final String? archiveSha256;
+  final int? archiveBytes;
+
+  const PythonArtifactStatus({
+    required this.available,
+    required this.installable,
+    required this.abi,
+    required this.source,
+    required this.reason,
+    required this.status,
+    this.templatePresent = false,
+    this.manifestPresent = false,
+    this.location = 'unknown',
+    this.manifestPath = '',
     this.version = '',
     this.archiveSha256,
     this.archiveBytes,

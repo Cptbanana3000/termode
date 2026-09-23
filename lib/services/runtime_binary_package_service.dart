@@ -31,6 +31,10 @@ class RuntimeBinaryPackageService {
   static const String npmName = 'npm';
   static const String npxName = 'npx';
   static const String npmLogicalInstallPath = 'usr/bin/npm';
+  static const String pythonName = 'python';
+  static const String python3Name = 'python3';
+  static const String pythonLogicalInstallPath = 'usr/bin/python3';
+  static const String pythonExecutablePackageName = 'libtermode_python_exec.so';
   static const String helloBinOutput =
       'Hello from Termode binary package prototype.';
   static const String _helloBinContent =
@@ -48,6 +52,10 @@ class RuntimeBinaryPackageService {
     List<String> arguments, {
     String? workingDirectory,
   })? npmExecutorForTesting;
+  static Future<NativeCommandResult> Function(
+    List<String> arguments, {
+    String? workingDirectory,
+  })? pythonExecutorForTesting;
 
   final RuntimePrefixService _prefix = RuntimePrefixService();
 
@@ -226,6 +234,23 @@ class RuntimeBinaryPackageService {
   }
 
   File? _resolveNodePrefixFile(String relPath, Map<String, String> paths) {
+    if (!_isSafeGitRelativePath(relPath)) return null;
+    var installPath = relPath.replaceAll('\\', '/');
+    if (installPath.startsWith('usr/')) {
+      installPath = installPath.substring(4);
+    }
+    final prefix = Directory(
+      paths['prefix']!,
+    ).absolute.path.replaceAll('\\', '/');
+    final file = File('${paths['prefix']}/$installPath');
+    final normalized = file.absolute.path.replaceAll('\\', '/');
+    if (normalized == prefix || !normalized.startsWith('$prefix/')) {
+      return null;
+    }
+    return file;
+  }
+
+  File? _resolvePythonPrefixFile(String relPath, Map<String, String> paths) {
     if (!_isSafeGitRelativePath(relPath)) return null;
     var installPath = relPath.replaceAll('\\', '/');
     if (installPath.startsWith('usr/')) {
@@ -466,6 +491,53 @@ class RuntimeBinaryPackageService {
     );
   }
 
+  Future<bool> pythonInstalled() async {
+    if (pythonExecutorForTesting != null) return true;
+    final metadata = await _readMetadata();
+    final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+    return packages.containsKey(pythonName) || packages.containsKey(python3Name);
+  }
+
+  Future<Map<String, dynamic>?> installedPythonMetadata() async {
+    final metadata = await _readMetadata();
+    final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+    final value = packages[pythonName] ?? packages[python3Name];
+    return value is Map ? Map<String, dynamic>.from(value) : null;
+  }
+
+  Future<String?> pythonExecutableBackingPath() async {
+    final meta = await installedPythonMetadata();
+    return meta?['executable_backing_path']?.toString();
+  }
+
+  Future<bool> pythonExecutionVerified() async =>
+      (await installedPythonMetadata())?['execution_verified'] == true;
+
+  Future<NativeCommandResult> runPython(
+    List<String> arguments, {
+    String? workingDirectory,
+    int timeoutMs = 30000,
+  }) async {
+    if (pythonExecutorForTesting != null) {
+      return pythonExecutorForTesting!(
+        arguments,
+        workingDirectory: workingDirectory,
+      );
+    }
+    if (Platform.isAndroid) {
+      return NativeCommandService().executeBundledPython(
+        arguments,
+        workingDirectory: workingDirectory,
+        timeoutMs: timeoutMs,
+      );
+    }
+    return NativeCommandResult(
+      stdout: '',
+      stderr: 'Python execution is only available on Android or via test hook.',
+      exitCode: -1,
+    );
+  }
+
   Future<String> available() async {
     final manifest = helloBinManifest();
     final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
@@ -473,6 +545,8 @@ class RuntimeBinaryPackageService {
         await RuntimeArtifactRegistryService().nodeArtifactStatus();
     final npmArtifact =
         await RuntimeArtifactRegistryService().npmArtifactStatus();
+    final pythonArtifact =
+        await RuntimeArtifactRegistryService().pythonArtifactStatus();
     final gitState = artifact.installable
         ? 'installable if verified'
         : 'artifact ${artifact.status.toLowerCase()}; install refuses safely';
@@ -482,14 +556,18 @@ class RuntimeBinaryPackageService {
     final npmState = npmArtifact.installable
         ? 'installable if verified'
         : 'artifact ${npmArtifact.status.toLowerCase()}';
+    final pythonState = pythonArtifact.installable
+        ? 'installable if verified'
+        : 'artifact ${pythonArtifact.status.toLowerCase()}';
     return '=== Available Runtime Packages ===\n'
         'Prototype available now:\n'
         '* hello-bin [${manifest['version']}] - ${manifest['description']}\n\n'
         'Reviewed real tools:\n'
         '* git - Distributed version control ($gitState)\n'
         '* node - Node.js JavaScript runtime prototype ($nodeState)\n'
-        '* npm - Node.js Package Manager ($npmState)\n\n'
-        'Python runtime packages remain planned.';
+        '* npm - Node.js Package Manager ($npmState)\n'
+        '* python - Authentic CPython 3.14 runtime engine ($pythonState)\n\n'
+        'OSINT target tools (Sherlock, Maigret) planned for v0.78.';
   }
 
   Future<String> list() async {
@@ -575,6 +653,28 @@ class RuntimeBinaryPackageService {
           'Install support: bundled upstream npm 10.9.3 archive driven by Node.js runtime engine.\n'
           'Current artifact state: ${artifact.status}\n'
           'Next step: npm-doctor';
+    }
+    if (name == pythonName || name == python3Name) {
+      final installed = await pythonInstalled();
+      final artifact = await RuntimeArtifactRegistryService()
+          .pythonArtifactStatus();
+      final status = installed
+          ? 'installed'
+          : (artifact.installable
+                ? 'installable (verified artifact)'
+                : 'planned (artifact ${artifact.status.toLowerCase()})');
+      return '=== Runtime Package: python ===\n'
+          'Name: python\n'
+          'Kind: native-tool\n'
+          'Status: $status\n'
+          'Command: python3\n'
+          'Current ABI: ${artifact.abi}\n'
+          'Artifact available: ${artifact.available ? 'yes' : 'no'}\n'
+          'Installable: ${artifact.installable ? 'yes' : 'no'}\n'
+          'Description: Authentic CPython 3.14 runtime engine.\n'
+          'Install support: bundled upstream CPython binary and standard library archive.\n'
+          'Current artifact state: ${artifact.status}\n'
+          'Next step: python-doctor';
     }
     if (name != helloBinName) {
       return 'Unknown runtime package: $name\n'
@@ -692,6 +792,35 @@ class RuntimeBinaryPackageService {
         );
       }
       return _installNpmArtifact(artifact);
+    }
+    if (name == pythonName || name == python3Name) {
+      final artifact = await RuntimeArtifactRegistryService()
+          .pythonArtifactStatus();
+      if (artifact.status == 'INVALID' || artifact.status == 'INCOMPATIBLE') {
+        return RuntimeBinaryPackageResult(
+          'Python artifact failed verification.\n'
+          'Current state: ${artifact.status}\n'
+          'Reason: ${artifact.reason}\n'
+          'Run: python-doctor',
+          isError: true,
+        );
+      }
+      if (!artifact.available) {
+        return RuntimeBinaryPackageResult(
+          'Python artifact is not available in this build.\n'
+          'Current state: ${artifact.status}\n'
+          'Run: python-doctor',
+        );
+      }
+      if (!artifact.installable) {
+        return RuntimeBinaryPackageResult(
+          'Python artifact failed verification.\n'
+          'Reason: ${artifact.reason}\n'
+          'Run: python-doctor',
+          isError: true,
+        );
+      }
+      return _installPythonArtifact(artifact);
     }
     if (name != helloBinName) {
       return RuntimeBinaryPackageResult(
@@ -1389,6 +1518,274 @@ class RuntimeBinaryPackageService {
     }
   }
 
+  Future<RuntimeBinaryPackageResult> _installPythonArtifact(
+    PythonArtifactStatus artifact,
+  ) async {
+    final registry = RuntimeArtifactRegistryService();
+    final abi = artifact.abi;
+    final manifest = await registry.bundledPythonManifest();
+    if (manifest == null) {
+      return const RuntimeBinaryPackageResult(
+        'Python install blocked: manifest missing.\n'
+        'Run: python-doctor',
+        isError: true,
+      );
+    }
+    final validation = registry.validatePythonManifest(manifest, abi);
+    if (validation.isNotEmpty) {
+      return RuntimeBinaryPackageResult(
+        'Python install blocked: ${validation.first}\n'
+        'Run: python-doctor',
+        isError: true,
+      );
+    }
+
+    await _prefix.initPrefix();
+    await _ensureStructures();
+    final paths = await _paths();
+    final files = manifest['files'] as List;
+    final installedFiles = <String>[];
+    final createdLogicalPaths = <String>[];
+    final checksums = <String, String>{};
+
+    try {
+      final strategy = manifest['executable_strategy']?.toString() ?? '';
+      if (strategy != 'native-library-dir') {
+        throw StateError('unsupported executable strategy: $strategy');
+      }
+
+      late final String backingPath;
+      late final String nativeDir;
+      late final String executableStorage;
+      if (Platform.isAndroid) {
+        final executablePaths =
+            await NativeCommandService().getExecutablePaths();
+        nativeDir = executablePaths?['nativeLibraryDir']?.toString() ?? '';
+        backingPath = executablePaths?['pythonExecutable']?.toString() ?? '';
+        final packageName =
+            manifest['executable_package_name']?.toString() ?? '';
+        if (packageName != pythonExecutablePackageName ||
+            !_isApprovedNativeBackingPath(
+              nativeDir,
+              backingPath,
+              packageName,
+            )) {
+          throw StateError('unsafe native library executable path');
+        }
+        executableStorage = 'native-library-dir';
+      } else {
+        executableStorage = 'app-private-prefix-host-test';
+        nativeDir = '';
+        final hostExecDest = _resolvePythonPrefixFile('usr/bin/python3', paths);
+        if (hostExecDest == null) throw StateError('invalid logical Python path');
+        backingPath = hostExecDest.path;
+      }
+
+      final usrPath = paths['usr'] ?? paths['prefix'] ?? '';
+      final homePath = paths['home'] ?? '';
+      final libPath = paths['lib'] ?? '$usrPath/lib';
+      final binPath = paths['bin'] ?? '$usrPath/bin';
+
+      // 1. Install companion shared libraries from manifest into $TERMODE_PREFIX/usr/lib
+      for (final rawItem in files) {
+        if (rawItem is! Map) {
+          throw StateError('Python package contains invalid file entry');
+        }
+        final meta = Map<String, dynamic>.from(rawItem);
+        final relPath = meta['path'].toString();
+        final expectedSha = meta['sha256'].toString().toLowerCase();
+        final expectedBytes = meta['bytes'];
+
+        if (relPath == 'usr/bin/python3') {
+          // Handled via wrapper script below
+          continue;
+        }
+
+        final destination = _resolvePythonPrefixFile(relPath, paths);
+        if (destination == null) {
+          throw StateError('invalid destination for Python file: $relPath');
+        }
+        await destination.parent.create(recursive: true);
+
+        final existingType = await FileSystemEntity.type(
+          destination.path,
+          followLinks: false,
+        );
+        if (existingType != FileSystemEntityType.notFound) {
+          await _deleteLogicalEntity(destination.path);
+        }
+
+        final bytes = await registry.readBundledPythonFile(relPath);
+        if (bytes == null) {
+          throw StateError('bundled Python artifact file missing: $relPath');
+        }
+        await destination.writeAsBytes(bytes, flush: true);
+
+        final writtenBytes = await destination.readAsBytes();
+        final actual = _calculateSha256(writtenBytes);
+        if (actual.toLowerCase() != expectedSha ||
+            expectedBytes is! int ||
+            writtenBytes.length != expectedBytes) {
+          throw StateError('file checksum/size mismatch for $relPath');
+        }
+        createdLogicalPaths.add(destination.path);
+        checksums[relPath] = actual;
+        installedFiles.add(relPath);
+      }
+
+      // 2. Extract standard library archive (python-stdlib.tar.gz)
+      final archiveBytes = await registry.readBundledPythonArchive();
+      if (archiveBytes == null || archiveBytes.isEmpty) {
+        throw StateError('Python standard library archive missing or empty');
+      }
+
+      final actualArchiveSha = _calculateSha256(archiveBytes).toLowerCase();
+      final expectedArchiveSha = (artifact.archiveSha256 ??
+              manifest['archive_sha256']?.toString() ??
+              '')
+          .toLowerCase();
+      final expectedArchiveBytes =
+          artifact.archiveBytes ?? manifest['archive_bytes'];
+
+      if (actualArchiveSha != expectedArchiveSha ||
+          (expectedArchiveBytes is int &&
+              archiveBytes.length != expectedArchiveBytes)) {
+        throw StateError(
+          'Python stdlib archive checksum mismatch: expected $expectedArchiveSha, got $actualArchiveSha',
+        );
+      }
+
+      final stdlibDestDir = Directory(libPath);
+      if (!await stdlibDestDir.exists()) {
+        await stdlibDestDir.create(recursive: true);
+      }
+      final extractedStdlib = await _extractTarGz(archiveBytes, stdlibDestDir.path);
+      createdLogicalPaths.addAll(extractedStdlib);
+
+      // 3. Create POSIX wrapper scripts in usr/bin/python3 and usr/bin/python
+      final binDir = Directory(binPath);
+      if (!await binDir.exists()) {
+        await binDir.create(recursive: true);
+      }
+
+      final python3Wrapper = File('$binPath/python3');
+      final pythonWrapper = File('$binPath/python');
+
+      final userBase = paths['pythonUserBase'] ?? '$homePath/.local';
+      final pyLib = paths['pythonLib'] ?? '$libPath/python3.14';
+      final userLib =
+          paths['pythonUserLib'] ?? '$userBase/lib/python3.14/site-packages';
+
+      final effectiveLdPath = nativeDir.isNotEmpty
+          ? '$nativeDir:$libPath:\$LD_LIBRARY_PATH'
+          : '$libPath:\$LD_LIBRARY_PATH';
+
+      final scriptContent =
+          '#!/system/bin/sh\n'
+          'export PYTHONHOME="$usrPath"\n'
+          'export PYTHONUSERBASE="$userBase"\n'
+          'export PYTHONPATH="$pyLib:$userLib"\n'
+          'export LD_LIBRARY_PATH="$effectiveLdPath"\n'
+          'exec "$backingPath" "\$@"\n';
+
+      if (Platform.isAndroid) {
+        final existingPy3Type = await FileSystemEntity.type(
+          python3Wrapper.path,
+          followLinks: false,
+        );
+        if (existingPy3Type != FileSystemEntityType.notFound) {
+          await _deleteLogicalEntity(python3Wrapper.path);
+        }
+        final existingPyType = await FileSystemEntity.type(
+          pythonWrapper.path,
+          followLinks: false,
+        );
+        if (existingPyType != FileSystemEntityType.notFound) {
+          await _deleteLogicalEntity(pythonWrapper.path);
+        }
+        await Link(python3Wrapper.path).create(backingPath);
+        await Link(pythonWrapper.path).create(backingPath);
+        createdLogicalPaths.add(python3Wrapper.path);
+        createdLogicalPaths.add(pythonWrapper.path);
+        installedFiles.add('usr/bin/python3');
+        installedFiles.add('usr/bin/python');
+      } else {
+        await python3Wrapper.writeAsString(scriptContent, flush: true);
+        await pythonWrapper.writeAsString(scriptContent, flush: true);
+        createdLogicalPaths.add(python3Wrapper.path);
+        createdLogicalPaths.add(pythonWrapper.path);
+        installedFiles.add('usr/bin/python3');
+        installedFiles.add('usr/bin/python');
+
+        if (!Platform.isWindows) {
+          try {
+            await Process.run('chmod', ['755', python3Wrapper.path, pythonWrapper.path]);
+          } catch (_) {}
+        }
+      }
+
+      // 4. Verification probe
+      final probeResult = await runPython(['--version']);
+      final probe = _preferredOutput(probeResult);
+      if (probeResult.exitCode != 0 || !probe.toLowerCase().contains('python 3.14')) {
+        throw StateError('Python verification probe failed: $probe');
+      }
+
+      final metadata = await _readMetadata();
+      final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+      packages[pythonName] = {
+        'name': pythonName,
+        'version': manifest['version'] ?? '3.14.6',
+        'kind': manifest['kind'] ?? 'native-tool',
+        'abi': manifest['abi'] ?? abi,
+        'entrypoint': 'usr/bin/python3',
+        'entrypoints': ['python', 'python3'],
+        'files': installedFiles,
+        'sha256': checksums,
+        'logical_path': 'usr/bin/python3',
+        'executable_backing_path': backingPath,
+        'executable_storage': executableStorage,
+        'executable_strategy': strategy,
+        'archive_sha256': actualArchiveSha,
+        'archive_bytes': archiveBytes.length,
+        'stdlib_files_count': extractedStdlib.length,
+        'execution_verified': true,
+        'local_only': true,
+        'installed_at': DateTime.now().toUtc().toIso8601String(),
+        'source': manifest['created_by'] ?? 'bundled',
+        'status': 'installed',
+        'verification': probe,
+      };
+      metadata['schema'] = metadataSchema;
+      metadata['packages'] = packages;
+      await _writeMetadata(metadata);
+      await _prefix.generateEnvScript();
+
+      return RuntimeBinaryPackageResult(
+        'Installed runtime package: python\n'
+        'Version: ${manifest['version'] ?? "3.14.6"}\n'
+        'Kind: native-tool\n'
+        'Engine: Authentic CPython 3.14\n'
+        'Logical path: $binPath/python3\n'
+        'Standard library: $pyLib (${extractedStdlib.length} modules extracted)\n'
+        'CLI commands: python, python3\n'
+        'Verification: $probe\n'
+        'Run: python3 --version\n'
+        'Run: python-doctor',
+      );
+    } catch (e) {
+      for (final path in createdLogicalPaths.reversed) {
+        await _deleteLogicalEntity(path);
+      }
+      return RuntimeBinaryPackageResult(
+        'Python install failed and was rolled back.\n'
+        'Reason: $e\n'
+        'Run: python-doctor',
+        isError: true,
+      );
+    }
+  }
+
   Future<List<String>> _extractTarGz(
     List<int> archiveBytes,
     String destinationDir,
@@ -1582,7 +1979,9 @@ class RuntimeBinaryPackageService {
           ? _resolveGitPrefixFile(relPath, paths)
           : (name == nodeName
               ? _resolveNodePrefixFile(relPath, paths)
-              : _resolvePrefixFile(relPath, paths));
+              : (name == pythonName || name == python3Name
+                  ? _resolvePythonPrefixFile(relPath, paths)
+                  : _resolvePrefixFile(relPath, paths)));
       if (file != null) await _deleteLogicalEntity(file.path);
     }
     packages.remove(name);
@@ -1611,7 +2010,9 @@ class RuntimeBinaryPackageService {
           ? _resolveGitPrefixFile(relPath, paths)
           : (name == nodeName
               ? _resolveNodePrefixFile(relPath, paths)
-              : _resolvePrefixFile(relPath, paths));
+              : (name == pythonName || name == python3Name
+                  ? _resolvePythonPrefixFile(relPath, paths)
+                  : _resolvePrefixFile(relPath, paths)));
       if (file == null) {
         issues.add('$relPath unsafe');
         continue;
@@ -1774,6 +2175,32 @@ class RuntimeBinaryPackageService {
         'Checksum: OK\n'
         'Execution probe: PASS\n'
         'Executable storage: ${pkg['executable_storage']}\n'
+        'Status: HEALTHY',
+      );
+    }
+    if (name == pythonName || name == python3Name) {
+      final probeResult = await runPython(['--version']);
+      final probe = _preferredOutput(probeResult);
+      if (probeResult.exitCode != 0 ||
+          !probe.toLowerCase().contains('python 3.14')) {
+        return RuntimeBinaryPackageResult(
+          '=== Runtime Package Verify: python ===\n'
+          'Metadata: OK\n'
+          'Files: OK\n'
+          'Checksum: OK\n'
+          'Command: FAIL\n'
+          'Output: $probe\n'
+          'Status: UNHEALTHY',
+          isError: true,
+        );
+      }
+      return const RuntimeBinaryPackageResult(
+        '=== Runtime Package Verify: python ===\n'
+        'Metadata: OK\n'
+        'Logical mapping: OK\n'
+        'Backing executable: OK\n'
+        'Execution probe: PASS\n'
+        'Standard library: OK\n'
         'Status: HEALTHY',
       );
     }

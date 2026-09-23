@@ -172,6 +172,9 @@ class MainActivity: FlutterActivity() {
                                 env["TMPDIR"] = tmpDir.absolutePath
                                 env["OPENSSL_CONF"] = "/dev/null"
                                 env["LD_LIBRARY_PATH"] = "${java.io.File(usrDir, "lib").absolutePath}:${applicationInfo.nativeLibraryDir}"
+                                env["PYTHONHOME"] = usrDir.absolutePath
+                                env["PYTHONUSERBASE"] = java.io.File(homeDir, ".local").absolutePath
+                                env["PYTHONPATH"] = "${java.io.File(usrDir, "lib/python3.14").absolutePath}:${java.io.File(homeDir, ".local/lib/python3.14/site-packages").absolutePath}"
                                 env["PATH"] = "${binDir.absolutePath}:/system/bin:/system/xbin:/vendor/bin:/product/bin"
                                 env["TERM"] = "xterm-256color"
 
@@ -1985,7 +1988,8 @@ class MainActivity: FlutterActivity() {
                                 "npm_config_prefix",
                                 "npm_config_cache",
                                 "PYTHONUSERBASE",
-                                "PYTHONPATH"
+                                "PYTHONPATH",
+                                "PYTHONHOME"
                             ),
                             arrayOf(
                                 "termode:\$ ",
@@ -2006,7 +2010,8 @@ class MainActivity: FlutterActivity() {
                                 java.io.File(homeDir, ".npm-global").absolutePath,
                                 java.io.File(homeDir, ".npm").absolutePath,
                                 pythonUserDir.absolutePath,
-                                "${java.io.File(usrDir, "lib/python3.14").absolutePath}:${pythonUserLibDir.absolutePath}"
+                                "${java.io.File(usrDir, "lib/python3.14").absolutePath}:${pythonUserLibDir.absolutePath}",
+                                usrDir.absolutePath
                             ),
                             cols,
                             rows

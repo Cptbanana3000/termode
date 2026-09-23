@@ -1,10 +1,9 @@
 # Roadmap
 
-Current milestone: **v0.76 Python Standard Library Packaging & REPL Verification**.
-Standard Library auto-extraction on install/launch ($PREFIX/usr/lib/python3.14),
-interactive REPL terminal support (python3 -i, raw PTY pass-through),
-and laying groundwork for pip / user-site package installation.
-The next milestone is **v0.77 Pip Package Management & User-Site Installation**.
+Current milestone: **v0.77 Pip Package Management & User-Site Installation**.
+Pip package management, wheel unpacking into user-site ($PREFIX/usr/lib/python3.14/site-packages and ~/.local/lib/python3.14/site-packages),
+environment isolation, and installing pure-Python CLI packages.
+The next milestone is **v0.78 OSINT CLI Tool Verification (Sherlock & Maigret)**.
 
 Termode is building a complete standalone Android terminal/dev environment
 first — easier and more guided than Termux — and only later integrating into
@@ -22,7 +21,7 @@ CalypsoIDE as a plug-and-play terminal/runtime engine.
 - runtime package installer with `hello-bin` and reviewed local-only Git
 - real local Git 2.44.0 on supported arm64-v8a Android devices
 - **authentic upstream Google V8 Node.js v24.18.0 runtime engine** with full Bionic dynamic libraries on ARM64
-- **authentic upstream CPython v3.14.6 runtime engine** with Bionic support libraries and W^X compliant native packaging on ARM64
+- **authentic upstream CPython v3.14.6 runtime engine** with full extracted Standard Library (665 modules, sqlite3, ssl, ctypes, readline, asyncio) and interactive REPL under REAL PTY
 - developer stack presets (node-express, static-web, react-ts) and Calypso IDE bridge facade
 
 ## What Termode Does Not Have Yet
@@ -84,9 +83,9 @@ after v0.64 on-device smoke verification; remote Git remains planned. See
 - v0.73 Full CLI Tooling & Package Ecosystem Integration
 - v0.74 Python Environment Architecture & arm64 Prototype
 - v0.75 Python arm64 Binary Acquisition & Packaging
-- v0.76 Python Standard Library Packaging & REPL Verification (current)
-- v0.77 Pip Package Management & User-Site Installation (next)
-- v0.78 OSINT CLI Tool Verification (Sherlock & Maigret)
+- v0.76 Python Standard Library Packaging & REPL Verification (completed)
+- v0.77 Pip Package Management & User-Site Installation (current)
+- v0.78 OSINT CLI Tool Verification (Sherlock & Maigret) (next)
 - Calypso IDE embedding via TermodeEngine & TermodeEmbeddableTerminal
 
 v0.62 resolves compile blockers (missing headers/libraries like OpenSSL, thread cancellation under Bionic, sync_file_range) and successfully compiles a real Git 2.44.0 arm64-v8a binary under Git Bash using a minimal-local build strategy. See [Git Bash Build Fixes Status](GIT_BASH_BUILD_FIXES_STATUS.md) and [Git Bash Build Logs](GIT_BASH_BUILD_LOGS.md).

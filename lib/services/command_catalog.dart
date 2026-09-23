@@ -94,6 +94,7 @@ const List<String> kTermodeCommands = [
   'python-doctor',
   'python-env',
   'python-status',
+  'python-setup',
   'stack-list',
   'stack-init',
   'stack-info',
