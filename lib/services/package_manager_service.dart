@@ -2257,6 +2257,14 @@ esac
       }
     }
 
+    sb.writeln();
+    sb.writeln('pip() {');
+    sb.writeln('  python3 -m pip "\$@"');
+    sb.writeln('}');
+    sb.writeln('pip3() {');
+    sb.writeln('  python3 -m pip "\$@"');
+    sb.writeln('}');
+
     final helpersFile = File('$usrDir/termode-shell-helpers.sh');
     await helpersFile.writeAsString(sb.toString());
   }

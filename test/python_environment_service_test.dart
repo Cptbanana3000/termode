@@ -109,11 +109,11 @@ void main() {
       expect(report.bionicDependencies, contains('libsqlite3.so'));
       expect(report.bionicDependencies, contains('libz.so.1'));
       expect(report.bionicDependencies, contains('libandroid-support.so'));
-      expect(report.milestone, contains('v0.76'));
+      expect(report.milestone, contains('v0.77'));
 
       final formatted = report.formatOutput();
       expect(formatted, contains('=== Python Environment Doctor ==='));
-      expect(formatted, contains('Milestone:           v0.76'));
+      expect(formatted, contains('Milestone:           v0.77'));
       expect(formatted, contains('Target ABI:          arm64-v8a (Bionic libc)'));
       expect(formatted, contains('Sherlock, Maigret -> user bin (~/.local/bin) in PATH: YES'));
     });
@@ -164,7 +164,7 @@ void main() {
       final docResult = await commandService.execute('python-doctor');
       expect(docResult.isError, isFalse);
       expect(docResult.output, contains('=== Python Environment Doctor ==='));
-      expect(docResult.output, contains('Milestone:           v0.76'));
+      expect(docResult.output, contains('Milestone:           v0.77'));
 
       final envResult = await commandService.execute('python-env');
       expect(envResult.isError, isFalse);

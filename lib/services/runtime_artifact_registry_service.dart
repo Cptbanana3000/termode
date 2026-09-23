@@ -96,6 +96,15 @@ class RuntimeArtifactRegistryService {
   static const String pythonProjectArchivePath =
       'tools/runtime-artifacts/python/arm64-v8a/python-stdlib.tar.gz';
 
+  static const String bundledPipManifestAsset =
+      'tools/runtime-artifacts/pip/universal/manifest.json';
+  static const String bundledPipArchiveAsset =
+      'tools/runtime-artifacts/pip/universal/pip.tar.gz';
+  static const String pipProjectManifestPath =
+      'tools/runtime-artifacts/pip/universal/manifest.json';
+  static const String pipProjectArchivePath =
+      'tools/runtime-artifacts/pip/universal/pip.tar.gz';
+
   /// Whether v0.64 declares the reviewed Git artifact in Flutter assets.
   bool bundledGitArtifactExists() => true;
 
@@ -107,6 +116,43 @@ class RuntimeArtifactRegistryService {
 
   /// Whether v0.75 declares the reviewed Python artifact in Flutter assets.
   bool bundledPythonArtifactExists() => true;
+
+  /// Whether v0.77 declares the reviewed pip artifact in Flutter assets.
+  bool bundledPipArtifactExists() => true;
+
+  Future<Map<String, dynamic>?> bundledPipManifest() async {
+    try {
+      final decoded = jsonDecode(
+        await rootBundle.loadString(bundledPipManifestAsset),
+      );
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      final fallback = File(pipProjectManifestPath);
+      if (fallback.existsSync()) {
+        try {
+          final decoded = jsonDecode(fallback.readAsStringSync());
+          return decoded is Map<String, dynamic> ? decoded : null;
+        } catch (_) {}
+      }
+      return null;
+    }
+  }
+
+  Future<List<int>?> readBundledPipArchive() async {
+    try {
+      final data = await rootBundle.load(bundledPipArchiveAsset);
+      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    } catch (_) {
+      final fallback = File(pipProjectArchivePath);
+      if (fallback.existsSync()) {
+        return fallback.readAsBytesSync();
+      }
+      return null;
+    }
+  }
+
+  Map<String, dynamic>? readProjectPipManifest() =>
+      _readJsonMap(pipProjectManifestPath);
 
   Future<Map<String, dynamic>?> bundledNpmManifest() async {
     try {
@@ -339,6 +385,79 @@ class RuntimeArtifactRegistryService {
       reason: 'Valid npm artifact manifest and archive found for universal runtime.',
       status: 'AVAILABLE',
       templatePresent: templatePresent,
+      manifestPresent: true,
+      location: location,
+      version: version,
+      archiveSha256: archiveSha,
+      archiveBytes: archiveBytes,
+    );
+  }
+
+  List<String> validatePipManifest(Map<String, dynamic> manifest) {
+    final errors = <String>[];
+    final name = manifest['name']?.toString() ?? '';
+    final version = manifest['version']?.toString() ?? '';
+    final archive = manifest['archive']?.toString() ?? '';
+    final archiveSha = manifest['archive_sha256']?.toString() ?? '';
+    final archiveBytes = manifest['archive_bytes'];
+
+    if (name != 'pip') errors.add('invalid package name');
+    if (version.trim().isEmpty) errors.add('missing version');
+    if (archive.trim().isEmpty) errors.add('missing archive');
+    if (archiveSha.length != 64) errors.add('invalid archive sha256');
+    if (archiveBytes is! int || archiveBytes <= 0) {
+      errors.add('invalid archive bytes');
+    }
+    return errors;
+  }
+
+  Future<PipArtifactStatus> pipArtifactStatus() async {
+    Map<String, dynamic>? manifest = await bundledPipManifest();
+    var location = 'bundled';
+    if (manifest == null) {
+      manifest = readProjectPipManifest();
+      location = 'project';
+    }
+
+    if (manifest == null) {
+      return PipArtifactStatus(
+        available: false,
+        installable: false,
+        source: 'none',
+        reason: 'No pip artifact manifest found.',
+        status: 'UNAVAILABLE',
+        templatePresent: false,
+        manifestPresent: false,
+        location: location,
+      );
+    }
+
+    final errors = validatePipManifest(manifest);
+    if (errors.isNotEmpty) {
+      return PipArtifactStatus(
+        available: true,
+        installable: false,
+        source: manifest['source']?.toString() ?? 'bundled',
+        reason: 'Manifest invalid: ${errors.first}',
+        status: 'INVALID',
+        templatePresent: false,
+        manifestPresent: true,
+        location: location,
+      );
+    }
+
+    final version = manifest['version']?.toString() ?? '26.2.1';
+    final archiveSha = manifest['archive_sha256']?.toString().toLowerCase();
+    final archiveBytes = manifest['archive_bytes'] as int?;
+
+    return PipArtifactStatus(
+      available: true,
+      installable: true,
+      source: manifest['source']?.toString() ?? 'bundled',
+      reason:
+          'Valid pip artifact manifest and archive found for universal runtime.',
+      status: 'AVAILABLE',
+      templatePresent: false,
       manifestPresent: true,
       location: location,
       version: version,
@@ -1389,5 +1508,34 @@ class PythonArtifactStatus {
     this.archiveBytes,
   });
 }
+
+class PipArtifactStatus {
+  final bool available;
+  final bool installable;
+  final String source;
+  final String reason;
+  final String status;
+  final bool templatePresent;
+  final bool manifestPresent;
+  final String location;
+  final String version;
+  final String? archiveSha256;
+  final int? archiveBytes;
+
+  const PipArtifactStatus({
+    required this.available,
+    required this.installable,
+    required this.source,
+    required this.reason,
+    required this.status,
+    required this.templatePresent,
+    required this.manifestPresent,
+    required this.location,
+    this.version = '',
+    this.archiveSha256,
+    this.archiveBytes,
+  });
+}
+
 
 

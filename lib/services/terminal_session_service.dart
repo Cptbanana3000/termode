@@ -699,6 +699,14 @@ class TerminalSessionService extends ChangeNotifier {
         'python-env',
         'python-status',
         'python-setup',
+        'pip',
+        'pip3',
+        'pip-doctor',
+        'pip-setup',
+        'pip-list',
+        'pip-show',
+        'pip-install',
+        'pip-uninstall',
         'stack-list',
         'stack-init',
         'stack-info',
@@ -864,7 +872,10 @@ class TerminalSessionService extends ChangeNotifier {
 
       bool isHostCommand = hostCommands.contains(firstToken);
       if (activeSession.isPtyInteractionActive &&
-          (firstToken == 'python' || firstToken == 'python3')) {
+          (firstToken == 'python' ||
+              firstToken == 'python3' ||
+              firstToken == 'pip' ||
+              firstToken == 'pip3')) {
         final prefixPaths = await RuntimePrefixService().paths();
         final pyBin = File(prefixPaths['pythonBin']!);
         if (pyBin.existsSync()) {

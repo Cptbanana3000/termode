@@ -55,6 +55,7 @@ class RuntimePrefixService {
       'pythonUserBase': '$home/.local',
       'pythonUserBin': '$home/.local/bin',
       'pythonUserLib': '$home/.local/lib/python3.14/site-packages',
+      'pythonPrefixSite': '$usr/lib/python3.14/site-packages',
       'pythonLib': '$usr/lib/python3.14',
       'pythonBin': '$usr/bin/python3',
     };
@@ -102,12 +103,13 @@ class RuntimePrefixService {
       'TERM': 'xterm-256color',
       'LD_LIBRARY_PATH': '${p['lib']}',
       'OPENSSL_CONF': '/dev/null',
+      'SSL_CERT_DIR': '/system/etc/security/cacerts',
       'NODE_PATH': '${p['lib']}/node_modules:${p['npmGlobalLib']}',
       'npm_config_prefix': p['npmGlobal']!,
       'npm_config_cache': '${p['home']}/.npm',
       'PYTHONUSERBASE': p['pythonUserBase']!,
       'PYTHONHOME': p['prefix']!,
-      'PYTHONPATH': '${p['pythonLib']}:${p['pythonUserLib']}',
+      'PYTHONPATH': '${p['pythonLib']}:${p['pythonPrefixSite']}:${p['pythonUserLib']}',
     };
   }
 

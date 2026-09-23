@@ -700,7 +700,7 @@ class MainActivity: FlutterActivity() {
                                 }
                             }
 
-                            val pythonPath = "${usrLib.absolutePath}/python3.14:${localLib.absolutePath}"
+                            val pythonPath = "${usrLib.absolutePath}/python3.14:${usrLib.absolutePath}/python3.14/site-packages:${localLib.absolutePath}"
                             val ldLibraryPath = "${usrLib.absolutePath}:${applicationInfo.nativeLibraryDir}"
                             val binPath = "${localBin.absolutePath}:${usrBin.absolutePath}:/system/bin:/system/xbin:/vendor/bin:/product/bin"
 
@@ -721,6 +721,7 @@ class MainActivity: FlutterActivity() {
                                     put("PYTHONPATH", pythonPath)
                                     put("PYTHONUSERBASE", java.io.File(homeDir, ".local").absolutePath)
                                     put("OPENSSL_CONF", "/dev/null")
+                                    put("SSL_CERT_DIR", "/system/etc/security/cacerts")
                                     put("LD_LIBRARY_PATH", ldLibraryPath)
                                     put("PATH", binPath)
                                 }
@@ -1984,6 +1985,7 @@ class MainActivity: FlutterActivity() {
                                 "XDG_CONFIG_HOME",
                                 "LD_LIBRARY_PATH",
                                 "OPENSSL_CONF",
+                                "SSL_CERT_DIR",
                                 "NODE_PATH",
                                 "npm_config_prefix",
                                 "npm_config_cache",
@@ -2006,11 +2008,12 @@ class MainActivity: FlutterActivity() {
                                 configDir.absolutePath,
                                 "${java.io.File(usrDir, "lib").absolutePath}:${applicationInfo.nativeLibraryDir}",
                                 "/dev/null",
+                                "/system/etc/security/cacerts",
                                 "${java.io.File(usrDir, "lib/node_modules").absolutePath}:${npmGlobalLibDir.absolutePath}",
                                 java.io.File(homeDir, ".npm-global").absolutePath,
                                 java.io.File(homeDir, ".npm").absolutePath,
                                 pythonUserDir.absolutePath,
-                                "${java.io.File(usrDir, "lib/python3.14").absolutePath}:${pythonUserLibDir.absolutePath}",
+                                "${java.io.File(usrDir, "lib/python3.14").absolutePath}:${java.io.File(usrDir, "lib/python3.14/site-packages").absolutePath}:${pythonUserLibDir.absolutePath}",
                                 usrDir.absolutePath
                             ),
                             cols,

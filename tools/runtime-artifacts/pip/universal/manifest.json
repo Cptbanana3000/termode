@@ -1,0 +1,41 @@
+{
+  "name": "pip",
+  "version": "26.2.1",
+  "termode_milestone": "v0.77",
+  "created_by": "Termode official upstream pip distribution",
+  "candidate": false,
+  "template_only": false,
+  "kind": "package-manager",
+  "abi": "universal",
+  "command": "pip",
+  "entrypoint": "usr/bin/pip",
+  "logical_install_path": "usr/lib/python3.14/site-packages/pip",
+  "executable_strategy": "python-driver",
+  "executable_package_name": "pip",
+  "archive": "pip.tar.gz",
+  "archive_sha256": "be1fc563b583c6a3504273a993f3ded436e7fdae7333eeaebc940910ac872c8f",
+  "archive_bytes": 1632960,
+  "execution_policy_note": "Authentic upstream pip 26.2.1 package manager driven by Termode CPython 3.14 runtime engine with user-site package isolation.",
+  "local_only": false,
+  "remote_features_deferred": false,
+  "entrypoints": [
+    "usr/bin/pip",
+    "usr/bin/pip3"
+  ],
+  "dependencies": [
+    "python"
+  ],
+  "source": "pypi-official-wheel",
+  "source_url": "https://files.pythonhosted.org/packages/f3/6e/1736e5b4ae2b778ef2f81c47d797de9f891d4d8acb047a24ca37a60294dd/pip-26.2.1-py3-none-any.whl",
+  "build_method": "bundled site-packages/pip tar.gz archive extracted into usr/lib/python3.14/site-packages with bin wrappers and shell helpers",
+  "license": "MIT",
+  "trusted_by": "Termode",
+  "verification_command": "python3 -m pip --version",
+  "smoke_tests": [
+    "pip --version",
+    "pip3 --version",
+    "pip list",
+    "pip-doctor"
+  ],
+  "created_at": "2026-09-23T19:39:27.348716Z"
+}

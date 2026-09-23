@@ -85,6 +85,10 @@ void main() {
         available.output,
         contains('python - Authentic CPython 3.14 runtime engine'),
       );
+      expect(
+        available.output,
+        contains('pip - Official Python Package Installer'),
+      );
     });
 
     test('runtime-pkg info handles hello-bin and unknown packages', () async {

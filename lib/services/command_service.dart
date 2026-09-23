@@ -31,6 +31,7 @@ import 'npm_package_service.dart';
 import 'dev_stack_service.dart';
 import 'dev_server_service.dart';
 import 'python_environment_service.dart';
+import 'pip_package_service.dart';
 
 class CommandResult {
   final String output;
@@ -1511,6 +1512,127 @@ class CommandService {
         : (result.stderr.isNotEmpty
             ? result.stderr
             : 'Python execution finished with exit code ${result.exitCode}');
+  }
+
+  // --- v0.77 Pip Package Management & User-Site Installation -----------------
+
+  Future<String> _pipDoctorOutput() async {
+    final session = TerminalSessionService().activeSession;
+    final rawWorkDir = session.preferredWorkingDirectory;
+    final workDir =
+        (rawWorkDir == null || rawWorkDir == 'app-home') ? null : rawWorkDir;
+    final report =
+        await PipPackageService().doctor(workingDirectory: workDir);
+    return report.formatText();
+  }
+
+  Future<String> _pipSetupOutput(List<String> args) async {
+    final force = args.contains('--force');
+    final result =
+        await PythonEnvironmentService().setupPip(force: force);
+    return result.output;
+  }
+
+  Future<String> _pipListOutput(List<String> args) async {
+    final userOnly = args.contains('--user');
+    final packages =
+        await PipPackageService().listPackages(userOnly: userOnly);
+    if (packages.isEmpty) {
+      return 'No Python packages found in ${userOnly ? "user-site" : "site-packages"}.\n'
+          'Run: pip-doctor';
+    }
+    final sb = StringBuffer();
+    sb.writeln('${"Package".padRight(20)}${"Version".padRight(12)}Location');
+    sb.writeln('${"-------".padRight(20)}${"-------".padRight(12)}--------');
+    for (final p in packages) {
+      final loc = RuntimePrefixService().shortPath(p.location);
+      sb.writeln('${p.name.padRight(20)}${p.version.padRight(12)}$loc');
+    }
+    return sb.toString().trimRight();
+  }
+
+  Future<String> _pipShowOutput(List<String> args) async {
+    if (args.isEmpty) {
+      return 'Usage: pip-show <package-name>\n'
+          'Run: pip-list';
+    }
+    final pkg = await PipPackageService().showPackage(args[0]);
+    if (pkg == null) {
+      return 'Package "${args[0]}" not found in site-packages.\n'
+          'Run: pip-list';
+    }
+    final sb = StringBuffer('=== Python Package: ${pkg.name} ===\n');
+    sb.writeln('Name:        ${pkg.name}');
+    sb.writeln('Version:     ${pkg.version}');
+    sb.writeln('Summary:     ${pkg.summary.isNotEmpty ? pkg.summary : "(none)"}');
+    sb.writeln('Location:    ${pkg.location}');
+    sb.writeln('User Site:   ${pkg.isUserSite ? "YES" : "NO"}');
+    sb.writeln('Installer:   ${pkg.installer}');
+    if (pkg.license.isNotEmpty) {
+      sb.writeln('License:     ${pkg.license}');
+    }
+    if (pkg.entryPoints.isNotEmpty) {
+      sb.writeln('CLI Tools:   ${pkg.entryPoints.join(", ")}');
+    }
+    return sb.toString().trimRight();
+  }
+
+  Future<String> _pipInstallOutput(List<String> args) async {
+    if (args.isEmpty) {
+      return 'Usage: pip-install <package-spec> [--user]\n'
+          'Example: pip-install six\n'
+          'Run: pip-doctor';
+    }
+    final session = TerminalSessionService().activeSession;
+    final rawWorkDir = session.preferredWorkingDirectory;
+    final workDir =
+        (rawWorkDir == null || rawWorkDir == 'app-home') ? null : rawWorkDir;
+
+    final targetSpec =
+        args.firstWhere((a) => !a.startsWith('-'), orElse: () => '');
+    if (targetSpec.isEmpty) {
+      return 'Error: missing package name to install.\nUsage: pip-install <package-spec>';
+    }
+    final extraArgs = args.where((a) => a != targetSpec).toList();
+    final res = await PipPackageService().installPackage(
+      targetSpec,
+      extraArgs: extraArgs,
+      workingDirectory: workDir,
+    );
+    return res.output;
+  }
+
+  Future<String> _pipUninstallOutput(List<String> args) async {
+    if (args.isEmpty) {
+      return 'Usage: pip-uninstall <package-name>\n'
+          'Run: pip-list';
+    }
+    final session = TerminalSessionService().activeSession;
+    final rawWorkDir = session.preferredWorkingDirectory;
+    final workDir =
+        (rawWorkDir == null || rawWorkDir == 'app-home') ? null : rawWorkDir;
+    final res = await PipPackageService().uninstallPackage(
+      args[0],
+      workingDirectory: workDir,
+    );
+    return res.output;
+  }
+
+  Future<String> _pipBareOutput(List<String> args) async {
+    final session = TerminalSessionService().activeSession;
+    final rawWorkDir = session.preferredWorkingDirectory;
+    final workDir =
+        (rawWorkDir == null || rawWorkDir == 'app-home') ? null : rawWorkDir;
+    final effectiveArgs = args.isEmpty ? ['--help'] : args;
+    final result = await RuntimeBinaryPackageService().runPip(
+      effectiveArgs,
+      workingDirectory: workDir,
+    );
+    return result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : (result.stderr.trim().isNotEmpty
+            ? result.stderr.trim()
+            : 'pip finished with exit code ${result.exitCode}');
   }
 
   // --- v0.68 Dev Stack Presets & Calypso IDE Integration ---------------------
@@ -3979,6 +4101,28 @@ class CommandService {
 
       case 'python-setup':
         return CommandResult(output: await _pythonSetupOutput(args));
+
+      case 'pip':
+      case 'pip3':
+        return CommandResult(output: await _pipBareOutput(args));
+
+      case 'pip-doctor':
+        return CommandResult(output: await _pipDoctorOutput());
+
+      case 'pip-setup':
+        return CommandResult(output: await _pipSetupOutput(args));
+
+      case 'pip-list':
+        return CommandResult(output: await _pipListOutput(args));
+
+      case 'pip-show':
+        return CommandResult(output: await _pipShowOutput(args));
+
+      case 'pip-install':
+        return CommandResult(output: await _pipInstallOutput(args));
+
+      case 'pip-uninstall':
+        return CommandResult(output: await _pipUninstallOutput(args));
 
       case 'stack-list':
         return CommandResult(output: _stackListOutput());

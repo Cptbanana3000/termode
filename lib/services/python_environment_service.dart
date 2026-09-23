@@ -224,6 +224,23 @@ class PythonEnvironmentService {
         .install(RuntimeBinaryPackageService.pythonName);
   }
 
+  /// Verifies whether pip is installed in site-packages.
+  Future<bool> isPipInstalled() async {
+    if (RuntimeBinaryPackageService.pipExecutorForTesting != null) return true;
+    final pyLib = await prefixLibDir();
+    final pipDir = Directory('$pyLib/site-packages/pip');
+    if (pipDir.existsSync()) return true;
+    return RuntimeBinaryPackageService().pipInstalled();
+  }
+
+  /// Unpacks pip into prefix site-packages.
+  Future<RuntimeBinaryPackageResult> setupPip({
+    bool force = false,
+  }) async {
+    return RuntimeBinaryPackageService()
+        .install(RuntimeBinaryPackageService.pipName);
+  }
+
   /// Verifies whether the user bin directory is present in the active PATH entries.
   Future<bool> isUserBinInPath() async {
     final pathEntries = await _prefix.pathEntries();
@@ -267,6 +284,14 @@ class PythonEnvironmentService {
             ? 'REQUIRES_STDLIB (Run: python-setup to enable REPL)'
             : 'UNAVAILABLE');
 
+    final pySite = Directory('$pyLib/site-packages/pip');
+    final pipReady = pySite.existsSync() ||
+        (await RuntimeBinaryPackageService().pipInstalled()) ||
+        RuntimeBinaryPackageService.pipExecutorForTesting != null;
+    final pipStatusStr = pipReady
+        ? 'INSTALLED (v26.2.1)'
+        : 'NOT INSTALLED (Run: pip-setup)';
+
     return PythonDoctorReport(
       pythonAvailable: available,
       pythonStatus: status,
@@ -286,10 +311,10 @@ class PythonEnvironmentService {
       verifiedCoreModules: coreMods,
       replStatus: replStatusStr,
       workingDirectory: cwd,
-      pipStatus: 'PLANNED (v0.77+ user-site installer)',
+      pipStatus: pipStatusStr,
       bionicDependencies: requiredBionicLibraries,
       milestone:
-          'v0.76 (Python Standard Library Packaging & REPL Verification)',
+          'v0.77 (Pip Package Management & User-Site Installation)',
     );
   }
 

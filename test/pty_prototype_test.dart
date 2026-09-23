@@ -3330,7 +3330,7 @@ void main() {
         expect(resInstalledVerbose.output, contains('Installed Packages: 1'));
         expect(
           resInstalledVerbose.output,
-          contains('Helper Function Count: 1'),
+          contains('Helper Function Count: 3'),
         );
         expect(
           resInstalledVerbose.output,

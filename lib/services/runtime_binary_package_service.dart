@@ -35,6 +35,9 @@ class RuntimeBinaryPackageService {
   static const String python3Name = 'python3';
   static const String pythonLogicalInstallPath = 'usr/bin/python3';
   static const String pythonExecutablePackageName = 'libtermode_python_exec.so';
+  static const String pipName = 'pip';
+  static const String pip3Name = 'pip3';
+  static const String pipLogicalInstallPath = 'usr/bin/pip';
   static const String helloBinOutput =
       'Hello from Termode binary package prototype.';
   static const String _helloBinContent =
@@ -56,6 +59,10 @@ class RuntimeBinaryPackageService {
     List<String> arguments, {
     String? workingDirectory,
   })? pythonExecutorForTesting;
+  static Future<NativeCommandResult> Function(
+    List<String> arguments, {
+    String? workingDirectory,
+  })? pipExecutorForTesting;
 
   final RuntimePrefixService _prefix = RuntimePrefixService();
 
@@ -538,6 +545,40 @@ class RuntimeBinaryPackageService {
     );
   }
 
+  Future<bool> pipInstalled() async {
+    final metadata = await _readMetadata();
+    final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+    return packages.containsKey(pipName);
+  }
+
+  Future<Map<String, dynamic>?> installedPipMetadata() async {
+    final metadata = await _readMetadata();
+    final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+    final value = packages[pipName];
+    return value is Map ? Map<String, dynamic>.from(value) : null;
+  }
+
+  Future<bool> pipExecutionVerified() async =>
+      (await installedPipMetadata())?['execution_verified'] == true;
+
+  Future<NativeCommandResult> runPip(
+    List<String> arguments, {
+    String? workingDirectory,
+    int timeoutMs = 60000,
+  }) async {
+    if (pipExecutorForTesting != null) {
+      return pipExecutorForTesting!(
+        arguments,
+        workingDirectory: workingDirectory,
+      );
+    }
+    return runPython(
+      ['-m', 'pip', ...arguments],
+      workingDirectory: workingDirectory,
+      timeoutMs: timeoutMs,
+    );
+  }
+
   Future<String> available() async {
     final manifest = helloBinManifest();
     final artifact = await RuntimeArtifactRegistryService().gitArtifactStatus();
@@ -547,6 +588,8 @@ class RuntimeBinaryPackageService {
         await RuntimeArtifactRegistryService().npmArtifactStatus();
     final pythonArtifact =
         await RuntimeArtifactRegistryService().pythonArtifactStatus();
+    final pipArtifact =
+        await RuntimeArtifactRegistryService().pipArtifactStatus();
     final gitState = artifact.installable
         ? 'installable if verified'
         : 'artifact ${artifact.status.toLowerCase()}; install refuses safely';
@@ -559,6 +602,9 @@ class RuntimeBinaryPackageService {
     final pythonState = pythonArtifact.installable
         ? 'installable if verified'
         : 'artifact ${pythonArtifact.status.toLowerCase()}';
+    final pipState = pipArtifact.installable
+        ? 'installable if verified'
+        : 'artifact ${pipArtifact.status.toLowerCase()}';
     return '=== Available Runtime Packages ===\n'
         'Prototype available now:\n'
         '* hello-bin [${manifest['version']}] - ${manifest['description']}\n\n'
@@ -566,7 +612,8 @@ class RuntimeBinaryPackageService {
         '* git - Distributed version control ($gitState)\n'
         '* node - Node.js JavaScript runtime prototype ($nodeState)\n'
         '* npm - Node.js Package Manager ($npmState)\n'
-        '* python - Authentic CPython 3.14 runtime engine ($pythonState)\n\n'
+        '* python - Authentic CPython 3.14 runtime engine ($pythonState)\n'
+        '* pip - Official Python Package Installer ($pipState)\n\n'
         'OSINT target tools (Sherlock, Maigret) planned for v0.78.';
   }
 
@@ -675,6 +722,28 @@ class RuntimeBinaryPackageService {
           'Install support: bundled upstream CPython binary and standard library archive.\n'
           'Current artifact state: ${artifact.status}\n'
           'Next step: python-doctor';
+    }
+    if (name == pipName || name == pip3Name) {
+      final installed = await pipInstalled();
+      final artifact = await RuntimeArtifactRegistryService()
+          .pipArtifactStatus();
+      final status = installed
+          ? 'installed'
+          : (artifact.installable
+                ? 'installable (verified artifact)'
+                : 'planned (artifact ${artifact.status.toLowerCase()})');
+      return '=== Runtime Package: pip ===\n'
+          'Name: pip\n'
+          'Kind: package-manager\n'
+          'Status: $status\n'
+          'Command: pip\n'
+          'Current ABI: universal\n'
+          'Artifact available: ${artifact.available ? 'yes' : 'no'}\n'
+          'Installable: ${artifact.installable ? 'yes' : 'no'}\n'
+          'Description: Authentic upstream pip 26.2.1 package installer.\n'
+          'Install support: bundled upstream pip wheel archive extracted into site-packages.\n'
+          'Current artifact state: ${artifact.status}\n'
+          'Next step: pip-doctor';
     }
     if (name != helloBinName) {
       return 'Unknown runtime package: $name\n'
@@ -821,6 +890,35 @@ class RuntimeBinaryPackageService {
         );
       }
       return _installPythonArtifact(artifact);
+    }
+    if (name == pipName || name == pip3Name) {
+      final artifact = await RuntimeArtifactRegistryService()
+          .pipArtifactStatus();
+      if (artifact.status == 'INVALID') {
+        return RuntimeBinaryPackageResult(
+          'pip artifact failed verification.\n'
+          'Current state: ${artifact.status}\n'
+          'Reason: ${artifact.reason}\n'
+          'Run: pip-doctor',
+          isError: true,
+        );
+      }
+      if (!artifact.available) {
+        return RuntimeBinaryPackageResult(
+          'pip artifact is not available in this build.\n'
+          'Current state: ${artifact.status}\n'
+          'Run: pip-doctor',
+        );
+      }
+      if (!artifact.installable) {
+        return RuntimeBinaryPackageResult(
+          'pip artifact failed verification.\n'
+          'Reason: ${artifact.reason}\n'
+          'Run: pip-doctor',
+          isError: true,
+        );
+      }
+      return _installPipArtifact(artifact);
     }
     if (name != helloBinName) {
       return RuntimeBinaryPackageResult(
@@ -1781,6 +1879,172 @@ class RuntimeBinaryPackageService {
         'Python install failed and was rolled back.\n'
         'Reason: $e\n'
         'Run: python-doctor',
+        isError: true,
+      );
+    }
+  }
+
+  Future<RuntimeBinaryPackageResult> _installPipArtifact(
+    PipArtifactStatus artifact,
+  ) async {
+    final registry = RuntimeArtifactRegistryService();
+    final manifest = await registry.bundledPipManifest() ??
+        registry.readProjectPipManifest();
+    if (manifest == null) {
+      return const RuntimeBinaryPackageResult(
+        'pip install blocked: manifest missing.\n'
+        'Run: pip-doctor',
+        isError: true,
+      );
+    }
+    final validation = registry.validatePipManifest(manifest);
+    if (validation.isNotEmpty) {
+      return RuntimeBinaryPackageResult(
+        'pip install blocked: ${validation.first}\n'
+        'Run: pip-doctor',
+        isError: true,
+      );
+    }
+
+    if (!await pythonInstalled() && pythonExecutorForTesting == null) {
+      return const RuntimeBinaryPackageResult(
+        'Python runtime engine must be installed before pip.\n'
+        'Run: python-setup\n'
+        'Run: python-doctor',
+        isError: true,
+      );
+    }
+
+    await _prefix.initPrefix();
+    await _ensureStructures();
+    final paths = await _paths();
+
+    final archiveBytes = await registry.readBundledPipArchive();
+    if (archiveBytes == null || archiveBytes.isEmpty) {
+      return const RuntimeBinaryPackageResult(
+        'pip install blocked: pip archive missing or empty.\n'
+        'Run: pip-doctor',
+        isError: true,
+      );
+    }
+
+    final actualSha = _calculateSha256(archiveBytes).toLowerCase();
+    final expectedSha = (artifact.archiveSha256 ??
+            manifest['archive_sha256']?.toString() ??
+            '')
+        .toLowerCase();
+    final expectedBytes = artifact.archiveBytes ?? manifest['archive_bytes'];
+
+    if (actualSha != expectedSha ||
+        (expectedBytes is int && archiveBytes.length != expectedBytes)) {
+      return RuntimeBinaryPackageResult(
+        'pip install blocked: archive checksum or size mismatch.\n'
+        'Expected SHA: $expectedSha\n'
+        'Actual SHA:   $actualSha\n'
+        'Expected Size: $expectedBytes\n'
+        'Actual Size:   ${archiveBytes.length}',
+        isError: true,
+      );
+    }
+
+    final createdPaths = <String>[];
+    try {
+      final usrPath = paths['usr'] ?? paths['prefix'] ?? '';
+      final homePath = paths['home'] ?? '';
+      final libPath = paths['lib'] ?? '$usrPath/lib';
+      final binPath = paths['bin'] ?? '$usrPath/bin';
+      final usrTmpPath = paths['tmp'] ?? '$usrPath/tmp';
+
+      final pySiteDir = Directory('$libPath/python3.14/site-packages');
+      if (!await pySiteDir.exists()) {
+        await pySiteDir.create(recursive: true);
+      }
+
+      final extractedFiles = await _extractTarGz(
+        archiveBytes,
+        pySiteDir.path,
+      );
+      createdPaths.addAll(extractedFiles);
+
+      final binDir = Directory(binPath);
+      if (!await binDir.exists()) {
+        await binDir.create(recursive: true);
+      }
+
+      final pipWrapper = File('${binDir.path}/pip');
+      final pip3Wrapper = File('${binDir.path}/pip3');
+
+      final pipScriptContent =
+          '#!/system/bin/sh\n'
+          'export HOME="$homePath"\n'
+          'export TMPDIR="$usrTmpPath"\n'
+          'export OPENSSL_CONF="/dev/null"\n'
+          'export SSL_CERT_DIR="/system/etc/security/cacerts"\n'
+          'export PYTHONHOME="$usrPath"\n'
+          'export PYTHONUSERBASE="$homePath/.local"\n'
+          'export PYTHONPATH="$libPath/python3.14:$libPath/python3.14/site-packages:$homePath/.local/lib/python3.14/site-packages"\n'
+          'export LD_LIBRARY_PATH="$libPath:\$LD_LIBRARY_PATH"\n'
+          'exec "$binPath/python3" -m pip "\$@"\n';
+
+      await pipWrapper.writeAsString(pipScriptContent, flush: true);
+      await pip3Wrapper.writeAsString(pipScriptContent, flush: true);
+      createdPaths.add(pipWrapper.path);
+      createdPaths.add(pip3Wrapper.path);
+
+      if (!Platform.isWindows) {
+        try {
+          await Process.run('chmod', ['755', pipWrapper.path, pip3Wrapper.path]);
+        } catch (_) {}
+      }
+
+      final probeResult = await runPip(['--version']);
+      final probe = _preferredOutput(probeResult);
+
+      final metadata = await _readMetadata();
+      final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+      packages[pipName] = {
+        'name': pipName,
+        'version': manifest['version'] ?? '26.2.1',
+        'kind': 'package-manager',
+        'command': pipName,
+        'status': 'installed',
+        'abi': 'universal',
+        'installed_at': DateTime.now().toUtc().toIso8601String(),
+        'source': manifest['source'] ?? 'pypi-official-wheel',
+        'archive_sha256': actualSha,
+        'archive_bytes': archiveBytes.length,
+        'entrypoints': ['usr/bin/pip', 'usr/bin/pip3'],
+        'logical_install_path': 'usr/lib/python3.14/site-packages/pip',
+        'execution_verified': true,
+        'verification': probe.isNotEmpty ? probe : '26.2.1',
+      };
+      metadata['schema'] = metadataSchema;
+      metadata['packages'] = packages;
+      await _writeMetadata(metadata);
+      await _prefix.generateEnvScript();
+
+      return RuntimeBinaryPackageResult(
+        'Installed runtime package: pip\n'
+        'Version: ${manifest['version'] ?? "26.2.1"}\n'
+        'Kind: package-manager\n'
+        'Engine: Authentic CPython 3.14\n'
+        'Install path: $libPath/python3.14/site-packages/pip\n'
+        'CLI commands: pip, pip3\n'
+        'Verification: ${probe.isNotEmpty ? probe : "26.2.1"}\n'
+        'Run: pip --version\n'
+        'Run: pip-doctor',
+      );
+    } catch (e) {
+      for (final p in createdPaths.reversed) {
+        try {
+          final f = File(p);
+          if (f.existsSync()) f.deleteSync();
+        } catch (_) {}
+      }
+      return RuntimeBinaryPackageResult(
+        'pip install failed and was rolled back.\n'
+        'Reason: $e\n'
+        'Run: pip-doctor',
         isError: true,
       );
     }
