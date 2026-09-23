@@ -2264,6 +2264,13 @@ esac
     sb.writeln('pip3() {');
     sb.writeln('  python3 -m pip "\$@"');
     sb.writeln('}');
+    sb.writeln();
+    sb.writeln('sherlock() {');
+    sb.writeln('  python3 -m sherlock_project "\$@" 2>/dev/null || python3 -m sherlock "\$@" 2>/dev/null || python3 "\$TERMODE_HOME/.local/bin/sherlock" "\$@"');
+    sb.writeln('}');
+    sb.writeln('maigret() {');
+    sb.writeln('  python3 -m maigret "\$@" 2>/dev/null || python3 "\$TERMODE_HOME/.local/bin/maigret" "\$@"');
+    sb.writeln('}');
 
     final helpersFile = File('$usrDir/termode-shell-helpers.sh');
     await helpersFile.writeAsString(sb.toString());

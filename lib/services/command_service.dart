@@ -32,6 +32,7 @@ import 'dev_stack_service.dart';
 import 'dev_server_service.dart';
 import 'python_environment_service.dart';
 import 'pip_package_service.dart';
+import 'osint_service.dart';
 
 class CommandResult {
   final String output;
@@ -1633,6 +1634,70 @@ class CommandService {
         : (result.stderr.trim().isNotEmpty
             ? result.stderr.trim()
             : 'pip finished with exit code ${result.exitCode}');
+  }
+
+  // --- v0.78 OSINT CLI Tool Verification (Sherlock & Maigret) -----------------
+
+  Future<String> _osintDoctorOutput() async {
+    final session = TerminalSessionService().activeSession;
+    final rawWorkDir = session.preferredWorkingDirectory;
+    final workDir =
+        (rawWorkDir == null || rawWorkDir == 'app-home') ? null : rawWorkDir;
+    final report = await OsintService().doctor(workingDirectory: workDir);
+    return report.formatText();
+  }
+
+  Future<String> _osintSetupOutput(List<String> args) async {
+    final force = args.contains('--force');
+    final session = TerminalSessionService().activeSession;
+    final rawWorkDir = session.preferredWorkingDirectory;
+    final workDir =
+        (rawWorkDir == null || rawWorkDir == 'app-home') ? null : rawWorkDir;
+    final result =
+        await OsintService().setup(force: force, workingDirectory: workDir);
+    return result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : (result.stderr.trim().isNotEmpty
+            ? result.stderr.trim()
+            : 'osint-setup finished with exit code ${result.exitCode}');
+  }
+
+  Future<String> _sherlockOutput(List<String> args) async {
+    if (args.isEmpty) {
+      return 'Usage: sherlock <username> [options]\n'
+          'Example: sherlock octocat --print-found\n'
+          'Options: --help, --version, --print-found, --timeout <sec>, --csv, --json\n'
+          'Run: osint-doctor';
+    }
+    final session = TerminalSessionService().activeSession;
+    final rawWorkDir = session.preferredWorkingDirectory;
+    final workDir =
+        (rawWorkDir == null || rawWorkDir == 'app-home') ? null : rawWorkDir;
+    final result = await OsintService().runSherlock(
+      args,
+      workingDirectory: workDir,
+    );
+    return result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : (result.stderr.trim().isNotEmpty
+            ? result.stderr.trim()
+            : 'sherlock exited with code ${result.exitCode}');
+  }
+
+  Future<String> _maigretOutput(List<String> args) async {
+    final session = TerminalSessionService().activeSession;
+    final rawWorkDir = session.preferredWorkingDirectory;
+    final workDir =
+        (rawWorkDir == null || rawWorkDir == 'app-home') ? null : rawWorkDir;
+    final result = await OsintService().runMaigret(
+      args,
+      workingDirectory: workDir,
+    );
+    return result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : (result.stderr.trim().isNotEmpty
+            ? result.stderr.trim()
+            : 'maigret exited with code ${result.exitCode}');
   }
 
   // --- v0.68 Dev Stack Presets & Calypso IDE Integration ---------------------
@@ -4123,6 +4188,23 @@ class CommandService {
 
       case 'pip-uninstall':
         return CommandResult(output: await _pipUninstallOutput(args));
+
+      case 'osint-doctor':
+        return CommandResult(output: await _osintDoctorOutput());
+
+      case 'osint-setup':
+        return CommandResult(
+          output: await _osintSetupOutput(args),
+          shouldReloadShellHelpers: true,
+          helperReloadSuccessMessage:
+              'Shell helpers updated (sherlock, maigret available).',
+        );
+
+      case 'sherlock':
+        return CommandResult(output: await _sherlockOutput(args));
+
+      case 'maigret':
+        return CommandResult(output: await _maigretOutput(args));
 
       case 'stack-list':
         return CommandResult(output: _stackListOutput());

@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "name": "sherlock",
+  "version": "0.16.2",
+  "architecture": "universal",
+  "kind": "osint-tool",
+  "runtime": "cpython-3.14",
+  "description": "Hunt down social media accounts by username across 400+ social networks (pure-Python distribution for Android Bionic).",
+  "entrypoints": [
+    "sherlock_project",
+    "usr/bin/sherlock"
+  ],
+  "archive": {
+    "format": "tar.gz",
+    "filename": "sherlock.tar.gz",
+    "byteSize": 90460,
+    "sha256": "a1b1cea2f4b693b44d313c1177c7143934cf2bc079b378ffc3846851f02f3e3a"
+  },
+  "bundledPackages": [
+    {
+      "name": "sherlock-project",
+      "version": "0.16.2"
+    },
+    {
+      "name": "requests-futures",
+      "version": "1.1.0"
+    },
+    {
+      "name": "colorama",
+      "version": "0.4.6"
+    },
+    {
+      "name": "PySocks",
+      "version": "1.7.1"
+    },
+    {
+      "name": "tomli",
+      "version": "2.0.1"
+    }
+  ],
+  "fileCount": 54,
+  "smokeTests": [
+    {
+      "command": "python3",
+      "arguments": [
+        "-m",
+        "sherlock_project",
+        "--help"
+      ],
+      "expectedExitCode": 0,
+      "expectedStdoutSubstring": "Hunt down social media accounts by username across social networks"
+    },
+    {
+      "command": "python3",
+      "arguments": [
+        "-c",
+        "import sherlock_project, requests_futures, colorama, socks; print(\"OSINT_MODULES_OK\")"
+      ],
+      "expectedExitCode": 0,
+      "expectedStdoutSubstring": "OSINT_MODULES_OK"
+    }
+  ]
+}

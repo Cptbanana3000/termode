@@ -105,6 +105,15 @@ class RuntimeArtifactRegistryService {
   static const String pipProjectArchivePath =
       'tools/runtime-artifacts/pip/universal/pip.tar.gz';
 
+  static const String bundledSherlockManifestAsset =
+      'tools/runtime-artifacts/osint/universal/manifest.json';
+  static const String bundledSherlockArchiveAsset =
+      'tools/runtime-artifacts/osint/universal/sherlock.tar.gz';
+  static const String sherlockProjectManifestPath =
+      'tools/runtime-artifacts/osint/universal/manifest.json';
+  static const String sherlockProjectArchivePath =
+      'tools/runtime-artifacts/osint/universal/sherlock.tar.gz';
+
   /// Whether v0.64 declares the reviewed Git artifact in Flutter assets.
   bool bundledGitArtifactExists() => true;
 
@@ -119,6 +128,9 @@ class RuntimeArtifactRegistryService {
 
   /// Whether v0.77 declares the reviewed pip artifact in Flutter assets.
   bool bundledPipArtifactExists() => true;
+
+  /// Whether v0.78 declares the reviewed Sherlock OSINT artifact in Flutter assets.
+  bool bundledSherlockArtifactExists() => true;
 
   Future<Map<String, dynamic>?> bundledPipManifest() async {
     try {
@@ -153,6 +165,40 @@ class RuntimeArtifactRegistryService {
 
   Map<String, dynamic>? readProjectPipManifest() =>
       _readJsonMap(pipProjectManifestPath);
+
+  Future<Map<String, dynamic>?> bundledSherlockManifest() async {
+    try {
+      final decoded = jsonDecode(
+        await rootBundle.loadString(bundledSherlockManifestAsset),
+      );
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      final fallback = File(sherlockProjectManifestPath);
+      if (fallback.existsSync()) {
+        try {
+          final decoded = jsonDecode(fallback.readAsStringSync());
+          return decoded is Map<String, dynamic> ? decoded : null;
+        } catch (_) {}
+      }
+      return null;
+    }
+  }
+
+  Future<List<int>?> readBundledSherlockArchive() async {
+    try {
+      final data = await rootBundle.load(bundledSherlockArchiveAsset);
+      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    } catch (_) {
+      final fallback = File(sherlockProjectArchivePath);
+      if (fallback.existsSync()) {
+        return fallback.readAsBytesSync();
+      }
+      return null;
+    }
+  }
+
+  Map<String, dynamic>? readProjectSherlockManifest() =>
+      _readJsonMap(sherlockProjectManifestPath);
 
   Future<Map<String, dynamic>?> bundledNpmManifest() async {
     try {

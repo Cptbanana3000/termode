@@ -2050,6 +2050,13 @@ class RuntimeBinaryPackageService {
     }
   }
 
+  /// Extracts a tar.gz archive to a destination directory.
+  Future<List<String>> extractTarGz(
+    List<int> archiveBytes,
+    String destinationDir,
+  ) =>
+      _extractTarGz(archiveBytes, destinationDir);
+
   Future<List<String>> _extractTarGz(
     List<int> archiveBytes,
     String destinationDir,

@@ -60,4 +60,5 @@ screenshot_*.png
 
 # Runtime build download caches
 tools/python-build/downloads/
+tools/python-build/scratch_osint/
 tools/node-build/downloads/

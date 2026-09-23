@@ -770,8 +770,10 @@ class MainActivity: FlutterActivity() {
                                 } catch (_: Exception) {}
                             }
 
-                            val isProbeOrEval = arguments.any { it == "--version" || it == "-V" || it == "-c" || it == "--help" || it == "-h" }
-                            val waitLimitMs = if (isProbeOrEval) timeoutMs else 2500L
+                            val isServer = arguments.any {
+                                it.contains("http.server") || it.contains("flask") || it.contains("uvicorn") || it.contains("runserver") || it.contains("gunicorn")
+                            }
+                            val waitLimitMs = if (isServer) 2500L else timeoutMs
 
                             val finished = process.waitFor(waitLimitMs, TimeUnit.MILLISECONDS)
 
@@ -788,10 +790,8 @@ class MainActivity: FlutterActivity() {
                             } else {
                                 stdoutStr = synchronized(stdoutBuilder) { stdoutBuilder.toString().trimEnd() }
                                 stderrStr = synchronized(stderrBuilder) { stderrBuilder.toString().trimEnd() }
-                                if (isProbeOrEval) {
-                                    process.destroyForcibly()
-                                    throw java.util.concurrent.TimeoutException("Python command timed out after ${timeoutMs}ms")
-                                } else {
+                                val portMatch = Regex("""(?:https?://(?:localhost|0\.0\.0\.0|127\.0\.0\.1):|listening on (?:port )?|port[:\s]+)(\d{2,5})""", RegexOption.IGNORE_CASE).find(stdoutStr)
+                                if (isServer || portMatch != null) {
                                     val srvId = "py_srv_${System.currentTimeMillis()}"
                                     val pid = getProcessId(process)
                                     val entry = BackgroundServerEntry(
@@ -804,15 +804,14 @@ class MainActivity: FlutterActivity() {
                                         process = process,
                                         stdoutBuilder = stdoutBuilder,
                                         stderrBuilder = stderrBuilder,
-                                        detectedPort = null
+                                        detectedPort = portMatch?.groupValues?.get(1)?.toIntOrNull()
                                     )
-                                    val portMatch = Regex("""(?:https?://(?:localhost|0\.0\.0\.0|127\.0\.0\.1):|listening on (?:port )?|port[:\s]+)(\d{2,5})""", RegexOption.IGNORE_CASE).find(stdoutStr)
-                                    if (portMatch != null) {
-                                        entry.detectedPort = portMatch.groupValues[1].toIntOrNull()
-                                    }
                                     backgroundServers[srvId] = entry
                                     activeProcesses[srvId] = process
                                     exitCode = 0
+                                } else {
+                                    process.destroyForcibly()
+                                    throw java.util.concurrent.TimeoutException("Python command timed out after ${timeoutMs}ms")
                                 }
                             }
 

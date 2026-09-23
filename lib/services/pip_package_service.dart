@@ -428,4 +428,10 @@ class PipPackageService {
       output: out.isNotEmpty ? out : 'pip cache cleared',
     );
   }
+
+  /// Checks whether a specific package is installed in site-packages or user-site.
+  Future<bool> hasPackage(String packageName) async {
+    final pkg = await showPackage(packageName);
+    return pkg != null;
+  }
 }
