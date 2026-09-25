@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/terminal_session_service.dart';
@@ -6,8 +7,10 @@ import '../services/dev_server_service.dart';
 import '../services/command_catalog.dart';
 import '../widgets/terminal_view.dart';
 import '../widgets/extra_keyboard_row.dart';
+import '../widgets/file_explorer_drawer.dart';
 import 'settings_screen.dart';
 import 'help_screen.dart';
+import 'quick_editor_screen.dart';
 
 class TerminalScreen extends StatefulWidget {
   const TerminalScreen({super.key});
@@ -17,6 +20,7 @@ class TerminalScreen extends StatefulWidget {
 }
 
 class _TerminalScreenState extends State<TerminalScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TerminalSessionService _sessionService = TerminalSessionService();
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _textController = TextEditingController();
@@ -528,6 +532,50 @@ class _TerminalScreenState extends State<TerminalScreen> {
     );
   }
 
+  void _openQuickEditor(File file) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => QuickEditorScreen(
+          file: file,
+          onRunInTerminal: _handleRunInTerminal,
+        ),
+      ),
+    );
+  }
+
+  void _handleOpenTerminalHere(Directory dir) {
+    _scaffoldKey.currentState?.closeDrawer();
+    _sessionService.setPreferredWorkingDirectory(dir.path);
+    if (_sessionService.activeSession.isPtyInteractionActive) {
+      _sessionService.sendCdToRealPty(dir.path);
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Terminal cwd: ${dir.path.split(RegExp(r'[\\/]')).last}',
+          style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+        ),
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _handleRunInTerminal(String command, String workingDirectory) {
+    _scaffoldKey.currentState?.closeDrawer();
+    _sessionService.setPreferredWorkingDirectory(workingDirectory);
+    if (_sessionService.activeSession.isPtyInteractionActive) {
+      _sessionService.sendCdToRealPty(workingDirectory);
+      Future.delayed(const Duration(milliseconds: 150), () {
+        _sessionService.sendRawRealPtyInput('$command\n');
+      });
+    } else {
+      _sessionService.executeCommand(command);
+    }
+    _scrollToBottom();
+    _focusNode.requestFocus();
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = SettingsService();
@@ -536,10 +584,21 @@ class _TerminalScreenState extends State<TerminalScreen> {
       listenable: settings,
       builder: (context, _) {
         return Scaffold(
+          key: _scaffoldKey,
           backgroundColor: settings.backgroundColor,
+          drawer: FileExplorerDrawer(
+            onOpenFile: _openQuickEditor,
+            onOpenTerminalHere: _handleOpenTerminalHere,
+            onRunInTerminal: _handleRunInTerminal,
+          ),
           appBar: settings.immersiveMode
               ? null
               : AppBar(
+                  leading: IconButton(
+                    icon: const Icon(Icons.folder_outlined, color: Colors.white),
+                    tooltip: 'Files & Projects',
+                    onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                  ),
                   title: const Text(
                     'Termode',
                     style: TextStyle(

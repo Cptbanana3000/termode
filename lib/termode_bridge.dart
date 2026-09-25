@@ -17,6 +17,7 @@ import 'services/settings_service.dart';
 import 'services/terminal_session_service.dart';
 import 'services/virtual_filesystem.dart';
 import 'services/workspace_service.dart';
+import 'services/file_explorer_service.dart';
 
 /// Public, headless integration bridge for Termode.
 ///
@@ -60,6 +61,9 @@ class TermodeEngine {
 
   /// Direct access to runtime package queries (Git, Node, npm).
   RuntimeBinaryPackageService get packages => RuntimeBinaryPackageService();
+
+  /// Direct access to the visual file explorer and workspace file system.
+  FileExplorerService get files => FileExplorerService();
 
   /// Direct access to the terminal session manager.
   TerminalSessionService get sessions => TerminalSessionService();
@@ -208,7 +212,7 @@ class TermodeEngine {
 
     return {
       'milestone': 'v0.68',
-      'engineMilestone': 'v0.80',
+      'engineMilestone': 'v0.81',
       'engine': 'Termode In-Process Native Engine',
       'initialized': _initialized,
       'activeWorkingDirectory': cwd,

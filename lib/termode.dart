@@ -33,3 +33,9 @@ export 'services/settings_service.dart';
 export 'services/terminal_session_service.dart';
 export 'services/virtual_filesystem.dart';
 export 'services/workspace_service.dart';
+
+// File Explorer & In-App Editor
+export 'services/file_explorer_service.dart';
+export 'widgets/file_explorer_drawer.dart';
+export 'widgets/syntax_highlighting_controller.dart';
+export 'screens/quick_editor_screen.dart';

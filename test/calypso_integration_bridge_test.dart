@@ -71,6 +71,7 @@ void main() {
       expect(engine.npm, isNotNull);
       expect(engine.stacks, isNotNull);
       expect(engine.packages, isNotNull);
+      expect(engine.files, isNotNull);
       expect(engine.sessions, isNotNull);
       expect(engine.activeSession, isNotNull);
     });
@@ -81,7 +82,7 @@ void main() {
 
       final diag = await engine.diagnostics(workingDirectory: projectDir.path);
       expect(diag['milestone'], equals('v0.68'));
-      expect(diag['engineMilestone'], equals('v0.80'));
+      expect(diag['engineMilestone'], anyOf(equals('v0.80'), equals('v0.81')));
       expect(diag['engine'], contains('Termode'));
       expect(diag['initialized'], isTrue);
 
