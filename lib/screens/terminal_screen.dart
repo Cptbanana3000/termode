@@ -4,10 +4,12 @@ import 'package:flutter/services.dart';
 import '../services/terminal_session_service.dart';
 import '../services/settings_service.dart';
 import '../services/dev_server_service.dart';
+import '../services/port_monitor_service.dart';
 import '../services/command_catalog.dart';
 import '../widgets/terminal_view.dart';
 import '../widgets/extra_keyboard_row.dart';
 import '../widgets/file_explorer_drawer.dart';
+import '../widgets/dev_preview_sheet.dart';
 import 'settings_screen.dart';
 import 'help_screen.dart';
 import 'quick_editor_screen.dart';
@@ -35,6 +37,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
     _textController.addListener(_onTextChanged);
     _setupFocusNodeKeyListener();
     DevServerService().listServers();
+    PortMonitorService().startAutoScan();
   }
 
   void _showDevServersModal(BuildContext context, List<DevServerInfo> servers) {
@@ -128,6 +131,33 @@ class _TerminalScreenState extends State<TerminalScreen> {
                         const SizedBox(height: 12),
                         Row(
                           children: [
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                DevPreviewSheet.show(
+                                  context,
+                                  port: srv.detectedPort ?? 3000,
+                                );
+                              },
+                              icon: const Icon(Icons.preview, size: 16),
+                              label: const Text(
+                                'In-App Preview',
+                                style: TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF5AF78E),
+                                foregroundColor: Colors.black,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
                             OutlinedButton.icon(
                               onPressed: () {
                                 Navigator.pop(ctx);
@@ -198,6 +228,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
 
   @override
   void dispose() {
+    PortMonitorService().stopAutoScan();
     _sessionService.removeListener(_scrollToBottom);
     _textController.removeListener(_onTextChanged);
     _sessionService.dispose();
@@ -574,6 +605,207 @@ class _TerminalScreenState extends State<TerminalScreen> {
     }
     _scrollToBottom();
     _focusNode.requestFocus();
+    Future.delayed(const Duration(milliseconds: 600), () => PortMonitorService().triggerScan());
+    Future.delayed(const Duration(milliseconds: 1800), () => PortMonitorService().triggerScan());
+  }
+
+  Widget _buildLiveServerIndicator(BuildContext context) {
+    return StreamBuilder<List<int>>(
+      stream: PortMonitorService().activePortsStream,
+      initialData: PortMonitorService().activePorts,
+      builder: (context, portSnap) {
+        final activePorts = portSnap.data ?? [];
+        final devServers = DevServerService().lastKnownServers;
+        final hasPorts = activePorts.isNotEmpty;
+        final hasServers = devServers.isNotEmpty;
+
+        if (!hasPorts && !hasServers) return const SizedBox.shrink();
+
+        final primaryPort = hasPorts
+            ? activePorts.first
+            : (devServers.first.detectedPort ?? 3000);
+        final count = activePorts.length;
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          child: InkWell(
+            onTap: () {
+              if (activePorts.isEmpty && devServers.isNotEmpty) {
+                _showDevServersModal(context, devServers);
+              } else if (activePorts.length > 1) {
+                _showActivePortsMenu(context, activePorts);
+              } else {
+                DevPreviewSheet.show(context, port: primaryPort);
+              }
+            },
+            onLongPress: () {
+              if (devServers.isNotEmpty) {
+                _showDevServersModal(context, devServers);
+              } else if (activePorts.isNotEmpty) {
+                _showActivePortsMenu(context, activePorts);
+              }
+            },
+            borderRadius: BorderRadius.circular(4),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 2,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFF5AF78E).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: const Color(0xFF5AF78E),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF5AF78E),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    ':$primaryPort${count > 1 ? " ($count)" : ""} LIVE',
+                    style: const TextStyle(
+                      color: Color(0xFF5AF78E),
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showActivePortsMenu(BuildContext context, List<int> ports) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'ACTIVE LOCAL SERVERS',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                for (final port in ports)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF5AF78E).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(
+                        Icons.language,
+                        color: Color(0xFF5AF78E),
+                        size: 20,
+                      ),
+                    ),
+                    title: Text(
+                      'http://127.0.0.1:$port',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Port $port listening',
+                      style: const TextStyle(color: Colors.white54, fontSize: 11),
+                    ),
+                    trailing: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        DevPreviewSheet.show(context, port: port);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF5AF78E),
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                      ),
+                      child: const Text(
+                        'Preview',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                if (DevServerService().lastKnownServers.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  const Divider(color: Color(0xFF27272A)),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _showDevServersModal(
+                          context,
+                          DevServerService().lastKnownServers,
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.tune,
+                        size: 16,
+                        color: Color(0xFF5AF78E),
+                      ),
+                      label: const Text(
+                        'Manage Dev Server Daemons',
+                        style: TextStyle(
+                          color: Color(0xFF5AF78E),
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -610,64 +842,17 @@ class _TerminalScreenState extends State<TerminalScreen> {
                   backgroundColor: const Color(0xFF1E1E1E),
                   elevation: 0,
                   actions: [
-                    StreamBuilder<List<DevServerInfo>>(
-                      stream: DevServerService().activeServersStream,
-                      initialData: DevServerService().lastKnownServers,
-                      builder: (context, snapshot) {
-                        final servers = snapshot.data ?? [];
-                        if (servers.isEmpty) return const SizedBox.shrink();
-                        final firstPort = servers.first.detectedPort;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 10,
-                            horizontal: 4,
-                          ),
-                          child: InkWell(
-                            onTap: () => _showDevServersModal(context, servers),
-                            borderRadius: BorderRadius.circular(4),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF5AF78E,
-                                ).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(
-                                  color: const Color(0xFF5AF78E),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 6,
-                                    height: 6,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF5AF78E),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    ':${firstPort ?? "dev"}',
-                                    style: const TextStyle(
-                                      color: Color(0xFF5AF78E),
-                                      fontFamily: 'monospace',
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
+                    _buildLiveServerIndicator(context),
+                    IconButton(
+                      icon: const Icon(Icons.language, color: Colors.white),
+                      tooltip: 'In-App Web Preview',
+                      onPressed: () {
+                        final active = PortMonitorService().activePorts;
+                        final target = active.isNotEmpty ? active.first : 3000;
+                        DevPreviewSheet.show(context, port: target);
                       },
                     ),
+
                     IconButton(
                       icon: const Icon(Icons.help_outline, color: Colors.white),
                       onPressed: () {

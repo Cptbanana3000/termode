@@ -18,6 +18,7 @@ import 'services/terminal_session_service.dart';
 import 'services/virtual_filesystem.dart';
 import 'services/workspace_service.dart';
 import 'services/file_explorer_service.dart';
+import 'services/port_monitor_service.dart';
 
 /// Public, headless integration bridge for Termode.
 ///
@@ -64,6 +65,9 @@ class TermodeEngine {
 
   /// Direct access to the visual file explorer and workspace file system.
   FileExplorerService get files => FileExplorerService();
+
+  /// Direct access to the active port and dev server monitor.
+  PortMonitorService get portMonitor => PortMonitorService();
 
   /// Direct access to the terminal session manager.
   TerminalSessionService get sessions => TerminalSessionService();
@@ -212,7 +216,7 @@ class TermodeEngine {
 
     return {
       'milestone': 'v0.68',
-      'engineMilestone': 'v0.81',
+      'engineMilestone': 'v0.82',
       'engine': 'Termode In-Process Native Engine',
       'initialized': _initialized,
       'activeWorkingDirectory': cwd,

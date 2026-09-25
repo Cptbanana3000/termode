@@ -39,3 +39,8 @@ export 'services/file_explorer_service.dart';
 export 'widgets/file_explorer_drawer.dart';
 export 'widgets/syntax_highlighting_controller.dart';
 export 'screens/quick_editor_screen.dart';
+
+// Dev Server Live Preview & Web Inspector
+export 'services/port_monitor_service.dart';
+export 'widgets/dev_preview_sheet.dart';
+
