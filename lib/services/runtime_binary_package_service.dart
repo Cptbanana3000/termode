@@ -367,6 +367,12 @@ class RuntimeBinaryPackageService {
     List<String> arguments, {
     String? workingDirectory,
   }) async {
+    if (gitExecutorForTesting != null) {
+      return gitExecutorForTesting!(
+        arguments,
+        workingDirectory: workingDirectory,
+      );
+    }
     final pkg = await installedGitMetadata();
     if (pkg == null || pkg['execution_verified'] != true) {
       return NativeCommandResult(

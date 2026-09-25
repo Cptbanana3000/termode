@@ -1,25 +1,135 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/terminal_line.dart';
+import '../models/terminal_session.dart';
 import '../services/settings_service.dart';
 import '../services/terminal_session_service.dart';
 import 'extra_keyboard_row.dart';
 import 'terminal_view.dart';
+
+/// Styling configuration for [TermodeEmbeddableTerminal].
+class TerminalThemeData {
+  final Color? backgroundColor;
+  final Color? textColor;
+  final Color? primaryColor;
+  final Color? cursorColor;
+  final String fontFamily;
+  final double fontSize;
+  final EdgeInsetsGeometry padding;
+
+  const TerminalThemeData({
+    this.backgroundColor,
+    this.textColor,
+    this.primaryColor,
+    this.cursorColor,
+    this.fontFamily = 'monospace',
+    this.fontSize = 13.0,
+    this.padding = const EdgeInsets.all(8.0),
+  });
+}
+
+/// External programmatic controller for [TermodeEmbeddableTerminal].
+///
+/// Allows external host applications (such as Calypso IDE) to send commands,
+/// send raw keyboard input, manage working directories, and inspect session state.
+class TermodeTerminalController extends ChangeNotifier {
+  final TerminalSessionService _sessionService = TerminalSessionService();
+  _TermodeEmbeddableTerminalState? _state;
+
+  void _attach(_TermodeEmbeddableTerminalState state) {
+    _state = state;
+  }
+
+  void _detach() {
+    _state = null;
+  }
+
+  /// Requests keyboard focus on the embedded terminal.
+  void requestFocus() {
+    _state?._focusNode.requestFocus();
+  }
+
+  /// Active terminal session.
+  TerminalSession get activeSession => _sessionService.activeSession;
+
+  /// Active list of terminal output lines.
+  List<TerminalLine> get lines => _sessionService.lines;
+
+  /// Whether the real PTY interactive shell is currently active.
+  bool get isPtyActive => activeSession.isPtyInteractionActive;
+
+  /// Programmatically submits and executes a command string.
+  Future<void> execute(String command) async {
+    await _sessionService.executeCommand(command);
+    if (_state?.widget.onCommandExecuted != null) {
+      final active = _sessionService.activeSession;
+      final lastLine = active.lines.isNotEmpty ? active.lines.last.text : '';
+      _state!.widget.onCommandExecuted!(command, lastLine);
+    }
+    notifyListeners();
+  }
+
+  /// Programmatically sends raw input or escape sequences to the terminal.
+  Future<void> sendRawInput(String text) async {
+    if (activeSession.isPtyInteractionActive) {
+      await _sessionService.sendRawRealPtyInput(text);
+    } else {
+      await _sessionService.executeCommand(text);
+    }
+    notifyListeners();
+  }
+
+  /// Sends a SIGINT (Ctrl+C) to the running PTY process.
+  void sendCtrlC() {
+    _sessionService.sendRealPtyCtrlC();
+    notifyListeners();
+  }
+
+  /// Sends an EOF (Ctrl+D) to the running PTY process.
+  void sendCtrlD() {
+    _sessionService.sendRealPtyCtrlD();
+    notifyListeners();
+  }
+
+  /// Clears the active session transcript history.
+  void clear() {
+    _sessionService.clearActiveTranscript();
+    notifyListeners();
+  }
+
+  /// Updates the preferred working directory for the active session.
+  void setWorkingDirectory(String path) {
+    activeSession.preferredWorkingDirectory = path;
+    activeSession.lastKnownWorkingDirectory = path;
+    notifyListeners();
+  }
+
+  /// Switches the active session by index.
+  void setActiveSession(int index) {
+    _sessionService.setActiveSession(index);
+    notifyListeners();
+  }
+}
 
 /// An embeddable terminal component designed to be dropped directly into
 /// external IDEs (such as Calypso IDE) or multi-panel Flutter layouts.
 ///
 /// Features:
 /// - In-process execution: Zero intents, zero SSH keys, zero background daemons.
+/// - Full programmatic control via [TermodeTerminalController].
 /// - Configurable tabs: Host IDE can manage tabs externally or enable built-in tabs.
 /// - Soft accessory keyboard row for mobile terminal navigation (ESC, CTRL, TAB, arrow keys).
 /// - Dynamic working directory: binds directly to any project folder on disk.
+/// - Customizable styling via [TerminalThemeData].
 class TermodeEmbeddableTerminal extends StatefulWidget {
   final String? initialWorkingDirectory;
   final bool showTabs;
   final bool showExtraKeyboardRow;
   final void Function(String command, String output)? onCommandExecuted;
   final Color? backgroundColor;
+  final TerminalThemeData? theme;
+  final TermodeTerminalController? controller;
 
   const TermodeEmbeddableTerminal({
     super.key,
@@ -28,6 +138,8 @@ class TermodeEmbeddableTerminal extends StatefulWidget {
     this.showExtraKeyboardRow = true,
     this.onCommandExecuted,
     this.backgroundColor,
+    this.theme,
+    this.controller,
   });
 
   @override
@@ -41,12 +153,16 @@ class _TermodeEmbeddableTerminalState extends State<TermodeEmbeddableTerminal> {
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   bool _isCtrlActive = false;
+  Offset? _pointerDownPosition;
 
   @override
   void initState() {
     super.initState();
+    widget.controller?._attach(this);
     if (widget.initialWorkingDirectory != null) {
       _sessionService.activeSession.preferredWorkingDirectory =
+          widget.initialWorkingDirectory;
+      _sessionService.activeSession.lastKnownWorkingDirectory =
           widget.initialWorkingDirectory;
     }
     _sessionService.addListener(_scrollToBottom);
@@ -55,7 +171,24 @@ class _TermodeEmbeddableTerminalState extends State<TermodeEmbeddableTerminal> {
   }
 
   @override
+  void didUpdateWidget(TermodeEmbeddableTerminal oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?._detach();
+      widget.controller?._attach(this);
+    }
+    if (widget.initialWorkingDirectory != null &&
+        widget.initialWorkingDirectory != oldWidget.initialWorkingDirectory) {
+      _sessionService.activeSession.preferredWorkingDirectory =
+          widget.initialWorkingDirectory;
+      _sessionService.activeSession.lastKnownWorkingDirectory =
+          widget.initialWorkingDirectory;
+    }
+  }
+
+  @override
   void dispose() {
+    widget.controller?._detach();
     _sessionService.removeListener(_scrollToBottom);
     _textController.removeListener(_onTextChanged);
     _scrollController.dispose();
@@ -170,6 +303,10 @@ class _TermodeEmbeddableTerminalState extends State<TermodeEmbeddableTerminal> {
     }
     _textController.clear();
     _focusNode.requestFocus();
+    if (widget.onCommandExecuted != null) {
+      final lastLine = active.lines.isNotEmpty ? active.lines.last.text : '';
+      widget.onCommandExecuted!(text, lastLine);
+    }
   }
 
   @override
@@ -179,21 +316,58 @@ class _TermodeEmbeddableTerminalState extends State<TermodeEmbeddableTerminal> {
       builder: (context, _) {
         final session = _sessionService.activeSession;
         final settings = SettingsService();
+        final effectiveBg = widget.theme?.backgroundColor ??
+            widget.backgroundColor ??
+            settings.backgroundColor;
 
         return Container(
-          color: widget.backgroundColor ?? settings.backgroundColor,
+          color: effectiveBg,
+          padding: widget.theme?.padding ?? EdgeInsets.zero,
           child: Column(
             children: [
               if (widget.showTabs) _buildTabBar(settings),
               Expanded(
-                child: TerminalView(
-                  lines: session.lines,
-                  scrollController: _scrollController,
-                  showInput: !session.isPtyInteractionActive,
-                  textController: _textController,
-                  focusNode: _focusNode,
-                  prompt: _sessionService.currentPrompt,
-                  onSubmit: _handleCommandSubmit,
+                child: Listener(
+                  behavior: HitTestBehavior.translucent,
+                  onPointerDown: (event) {
+                    _pointerDownPosition = event.position;
+                  },
+                  onPointerMove: (event) {
+                    if (_pointerDownPosition != null) {
+                      final distance =
+                          (event.position - _pointerDownPosition!).distance;
+                      if (distance > 10.0) {
+                        _pointerDownPosition = null;
+                      }
+                    }
+                  },
+                  onPointerUp: (event) {
+                    if (_pointerDownPosition != null) {
+                      final difference =
+                          (event.position - _pointerDownPosition!).distance;
+                      if (difference < 10.0) {
+                        Future.delayed(
+                          const Duration(milliseconds: 50),
+                          () {
+                            _focusNode.requestFocus();
+                            SystemChannels.textInput.invokeMethod(
+                              'TextInput.show',
+                            );
+                          },
+                        );
+                      }
+                    }
+                    _pointerDownPosition = null;
+                  },
+                  child: TerminalView(
+                    lines: session.lines,
+                    scrollController: _scrollController,
+                    showInput: !session.isExecutingNativeCommand,
+                    textController: _textController,
+                    focusNode: _focusNode,
+                    prompt: _sessionService.currentPrompt,
+                    onSubmit: _handleCommandSubmit,
+                  ),
                 ),
               ),
               if (widget.showExtraKeyboardRow)
@@ -241,9 +415,12 @@ class _TermodeEmbeddableTerminalState extends State<TermodeEmbeddableTerminal> {
   }
 
   Widget _buildTabBar(SettingsService settings) {
+    final activeColor = widget.theme?.primaryColor ?? settings.primaryColor;
+    final textColor = widget.theme?.textColor ?? settings.textColor;
+
     return Container(
       height: 36,
-      color: settings.backgroundColor,
+      color: widget.theme?.backgroundColor ?? settings.backgroundColor,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: _sessionService.sessions.length,
@@ -257,7 +434,7 @@ class _TermodeEmbeddableTerminalState extends State<TermodeEmbeddableTerminal> {
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
-                    color: isActive ? settings.primaryColor : Colors.transparent,
+                    color: isActive ? activeColor : Colors.transparent,
                     width: 2,
                   ),
                 ),
@@ -265,8 +442,11 @@ class _TermodeEmbeddableTerminalState extends State<TermodeEmbeddableTerminal> {
               child: Text(
                 s.name,
                 style: TextStyle(
-                  color: isActive ? settings.textColor : Colors.grey,
-                  fontSize: 12,
+                  color: isActive ? textColor : Colors.grey,
+                  fontSize: widget.theme?.fontSize != null
+                      ? (widget.theme!.fontSize - 1)
+                      : 12,
+                  fontFamily: widget.theme?.fontFamily,
                 ),
               ),
             ),
