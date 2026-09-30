@@ -201,6 +201,52 @@ class TerminalSessionService extends ChangeNotifier {
     _touchSession(session);
   }
 
+  Future<String?> syncPtyCwd(TerminalSession session) async {
+    if (!session.isRealPtyActive && !session.isPtyInteractionActive) {
+      return session.preferredWorkingDirectory;
+    }
+    try {
+      final channel = const MethodChannel('com.termode/native_shell');
+      final res = await channel.invokeMethod('realPtyGetCwd', {
+        'sessionId': session.id,
+      });
+      if (res is String && res.isNotEmpty) {
+        session.preferredWorkingDirectory = res;
+        return res;
+      }
+    } catch (_) {}
+    return session.preferredWorkingDirectory;
+  }
+
+  void _trackPtyCd(TerminalSession session, String command) {
+    try {
+      final parts = command.split(RegExp(r'\s+'));
+      if (parts.length < 2) {
+        RuntimePrefixService().paths().then((paths) {
+          final home = paths['home'];
+          if (home != null) session.preferredWorkingDirectory = home;
+        });
+        return;
+      }
+      final target = parts[1].trim();
+      RuntimePrefixService().paths().then((paths) {
+        final home = paths['home'] ?? '';
+        final current = session.preferredWorkingDirectory ?? home;
+        if (target == '~' || target.isEmpty) {
+          session.preferredWorkingDirectory = home;
+        } else if (target == '..') {
+          session.preferredWorkingDirectory = Directory(current).parent.path;
+        } else if (target.startsWith('/')) {
+          session.preferredWorkingDirectory = target;
+        } else if (target.startsWith('~/')) {
+          session.preferredWorkingDirectory = '$home/${target.substring(2)}';
+        } else {
+          session.preferredWorkingDirectory = '$current/$target';
+        }
+      });
+    } catch (_) {}
+  }
+
   void addSession() {
     _createNewSession();
     _activeSessionIndex = _sessions.length - 1;
@@ -682,6 +728,8 @@ class TerminalSessionService extends ChangeNotifier {
         'git',
         'git-status',
         'git-info',
+        'termode-git',
+        'ssh-keygen',
         'node',
         'node-status',
         'node-info',
@@ -953,10 +1001,21 @@ class TerminalSessionService extends ChangeNotifier {
       try {
         _recordHistory(activeSession, command);
         _clearHelperReloadState(activeSession.id);
+
+        if (firstToken == 'cd') {
+          _trackPtyCd(activeSession, trimmed);
+        }
+
         await channel.invokeMethod('realPtySend', {
           'sessionId': activeSession.id,
           'text': command,
         });
+
+        if (firstToken == 'cd') {
+          Future.delayed(const Duration(milliseconds: 150), () {
+            syncPtyCwd(activeSession);
+          });
+        }
         saveState();
       } catch (e) {
         _appendSessionLine(

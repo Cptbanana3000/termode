@@ -375,17 +375,36 @@ class MainActivity: FlutterActivity() {
                         "--version", "-v", "--help", "-h", "help",
                         "init", "status", "add", "commit", "log", "diff",
                         "branch", "checkout", "switch", "config", "reset",
-                        "show", "rm", "mv", "restore", "clean", "tag", "merge", "stash"
+                        "show", "rm", "mv", "restore", "clean", "tag", "merge", "stash",
+                        // Plumbing commands for git transport and low-level workflows
+                        "index-pack", "pack-objects", "unpack-objects", "rev-parse",
+                        "cat-file", "hash-object", "write-tree", "commit-tree", "read-tree",
+                        "update-ref", "symbolic-ref", "ls-files", "ls-tree", "for-each-ref",
+                        "mktree", "var", "check-ref-format", "rev-list", "diff-index", "diff-tree",
+                        "checkout-index"
                     )
 
-                    val effectiveFirst = arguments.firstOrNull { !it.startsWith("-") }
-                        ?: arguments.firstOrNull()
-                        ?: "--version"
+                    val optionsWithArg = setOf("-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path")
+                    var idx = 0
+                    var effectiveFirst = "--version"
+                    while (idx < arguments.size) {
+                        val arg = arguments[idx]
+                        if (optionsWithArg.contains(arg)) {
+                            idx += 2
+                            continue
+                        }
+                        if (arg.startsWith("-")) {
+                            idx += 1
+                            continue
+                        }
+                        effectiveFirst = arg
+                        break
+                    }
 
                     if (networkSubcommands.contains(effectiveFirst)) {
                         result.error(
                             "DEFERRED_REMOTE_FEATURE",
-                            "Remote Git operations ($effectiveFirst) are deferred. v0.65 supports local Git workflows only.",
+                            "Remote Git network operations ($effectiveFirst) are orchestrated via Termode Git Remote Transport.",
                             null
                         )
                         return@setMethodCallHandler
@@ -394,7 +413,7 @@ class MainActivity: FlutterActivity() {
                     if (!allowedLocalSubcommands.contains(effectiveFirst)) {
                         result.error(
                             "UNSUPPORTED_GIT_COMMAND",
-                            "v0.65 supports local Git operations only (init, status, add, commit, log, diff, branch, checkout, switch, config, reset, show, rm, mv).",
+                            "Termode supports local and plumbing Git operations. Subcommand '$effectiveFirst' is not permitted.",
                             null
                         )
                         return@setMethodCallHandler
@@ -424,16 +443,28 @@ class MainActivity: FlutterActivity() {
                             val workingDir = if (requestedWorkingDir.isNullOrBlank()) {
                                 homeDir
                             } else {
-                                val candidate = java.io.File(requestedWorkingDir).canonicalFile
+                                val candidate = if (requestedWorkingDir.startsWith("/home")) {
+                                    java.io.File(filesDir, requestedWorkingDir.removePrefix("/")).canonicalFile
+                                } else if (requestedWorkingDir.startsWith(filesRoot.path)) {
+                                    java.io.File(requestedWorkingDir).canonicalFile
+                                } else if (requestedWorkingDir.startsWith("/")) {
+                                    java.io.File(requestedWorkingDir).canonicalFile
+                                } else {
+                                    java.io.File(homeDir, requestedWorkingDir).canonicalFile
+                                }
                                 val insideFiles = candidate.path == filesRoot.path ||
                                     candidate.path.startsWith(filesRoot.path + java.io.File.separator)
                                 if (!insideFiles || !candidate.isDirectory) {
-                                    throw SecurityException("Git working directory is outside Termode app storage")
+                                    throw SecurityException("Git working directory is outside Termode app storage: ${candidate.path}")
                                 }
                                 candidate
                             }
 
                             val command = mutableListOf(gitExecutable.absolutePath)
+                            if (!arguments.contains("-C")) {
+                                command.add("-C")
+                                command.add(workingDir.canonicalPath)
+                            }
                             command.addAll(arguments)
                             val process = ProcessBuilder(command).apply {
                                 directory(workingDir)
@@ -449,6 +480,8 @@ class MainActivity: FlutterActivity() {
                                     put("XDG_CONFIG_HOME", configDir.absolutePath)
                                     put("GIT_CONFIG_NOSYSTEM", "1")
                                     put("GIT_TEMPLATE_DIR", templateDir.absolutePath)
+                                    put("GIT_DISCOVERY_ACROSS_FILESYSTEM", "1")
+                                    put("PWD", workingDir.canonicalPath)
                                     put(
                                         "PATH",
                                         "${java.io.File(usrDir, "bin").absolutePath}:" +
@@ -2109,9 +2142,36 @@ class MainActivity: FlutterActivity() {
                     val masterFd = realPtyMasterFds[sessionId]
                     val pid = realPtyPids[sessionId]
                     if (masterFd != null && pid != null) {
-                        result.success(mapOf("running" to true, "pid" to pid))
+                        val cwd = try {
+                            android.system.Os.readlink("/proc/$pid/cwd")
+                        } catch (e: Exception) {
+                            try {
+                                java.io.File("/proc/$pid/cwd").canonicalPath
+                            } catch (e2: Exception) {
+                                null
+                            }
+                        }
+                        result.success(mapOf("running" to true, "pid" to pid, "cwd" to cwd))
                     } else {
-                        result.success(mapOf("running" to false, "pid" to -1))
+                        result.success(mapOf("running" to false, "pid" to -1, "cwd" to null))
+                    }
+                }
+                "realPtyGetCwd" -> {
+                    val sessionId = call.argument<String>("sessionId")
+                    val pid = if (sessionId != null) realPtyPids[sessionId] else null
+                    if (pid != null && pid > 0) {
+                        val cwd = try {
+                            android.system.Os.readlink("/proc/$pid/cwd")
+                        } catch (e: Exception) {
+                            try {
+                                java.io.File("/proc/$pid/cwd").canonicalPath
+                            } catch (e2: Exception) {
+                                null
+                            }
+                        }
+                        result.success(cwd)
+                    } else {
+                        result.success(null)
                     }
                 }
                 "realPtyResize" -> {

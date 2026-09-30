@@ -73,6 +73,9 @@ void main() {
       expect(engine.packages, isNotNull);
       expect(engine.files, isNotNull);
       expect(engine.portMonitor, isNotNull);
+      expect(engine.gitRemote, isNotNull);
+      expect(engine.gitCredentials, isNotNull);
+      expect(engine.ssh, isNotNull);
       expect(engine.sessions, isNotNull);
       expect(engine.activeSession, isNotNull);
     });
@@ -83,7 +86,7 @@ void main() {
 
       final diag = await engine.diagnostics(workingDirectory: projectDir.path);
       expect(diag['milestone'], equals('v0.68'));
-      expect(diag['engineMilestone'], anyOf(equals('v0.80'), equals('v0.81'), equals('v0.82')));
+      expect(diag['engineMilestone'], anyOf(equals('v0.80'), equals('v0.81'), equals('v0.82'), equals('v0.83')));
       expect(diag['engine'], contains('Termode'));
       expect(diag['initialized'], isTrue);
 

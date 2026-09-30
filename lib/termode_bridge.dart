@@ -19,6 +19,9 @@ import 'services/virtual_filesystem.dart';
 import 'services/workspace_service.dart';
 import 'services/file_explorer_service.dart';
 import 'services/port_monitor_service.dart';
+import 'services/git_remote_transport_service.dart';
+import 'services/git_credential_service.dart';
+import 'services/git_ssh_service.dart';
 
 /// Public, headless integration bridge for Termode.
 ///
@@ -62,6 +65,15 @@ class TermodeEngine {
 
   /// Direct access to runtime package queries (Git, Node, npm).
   RuntimeBinaryPackageService get packages => RuntimeBinaryPackageService();
+
+  /// Direct access to authentic Git remote operations and transports.
+  GitRemoteTransportService get gitRemote => GitRemoteTransportService();
+
+  /// Direct access to Git credential storage (~/.git-credentials).
+  GitCredentialService get gitCredentials => GitCredentialService();
+
+  /// Direct access to Ed25519 SSH keypair generation and management.
+  GitSshService get ssh => GitSshService();
 
   /// Direct access to the visual file explorer and workspace file system.
   FileExplorerService get files => FileExplorerService();
@@ -216,17 +228,22 @@ class TermodeEngine {
 
     return {
       'milestone': 'v0.68',
-      'engineMilestone': 'v0.82',
+      'engineMilestone': 'v0.83',
       'engine': 'Termode In-Process Native Engine',
       'initialized': _initialized,
       'activeWorkingDirectory': cwd,
       'runtimes': {
-        'git': gitInstalled ? 'INSTALLED' : 'AVAILABLE (not installed)',
+        'git': gitInstalled ? 'INSTALLED (arm64-v8a + Smart-HTTP)' : 'AVAILABLE (not installed)',
         'node': nodeInstalled ? 'INSTALLED' : 'PROTOTYPE (v0.66)',
         'npm': npmInstalled ? 'INSTALLED' : 'PROTOTYPE (v0.67)',
         'python': pythonInstalled ? 'INSTALLED (3.14)' : 'NOT_INSTALLED',
         'pip': pipInstalled ? 'INSTALLED (26.2)' : 'NOT_INSTALLED',
         'osint': osintDoc.sherlockReady ? 'READY' : 'NEEDS_SETUP',
+      },
+      'git': {
+        'installed': gitInstalled,
+        'remoteTransport': 'Smart-HTTP side-band-64k',
+        'hasSshKey': await ssh.hasKeyPair(),
       },
       'servers': {
         'activeDevServers': activeServers.length,

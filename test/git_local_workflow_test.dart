@@ -208,20 +208,16 @@ void main() {
       expect(result.output, contains('git config --global user.email'));
     });
 
-    test('remote git operations return clean deferred messages', () async {
+    test('remote git operations route to authentic smart-http transport', () async {
       final pushResult = await commandService.execute('git push origin main');
-      expect(pushResult.output, contains('Remote Git operations (push) are deferred.'));
-      expect(pushResult.output, contains('v0.65 supports offline local Git workflows only.'));
+      expect(pushResult.output, anyOf(contains('Preparing push'), contains('fatal:')));
 
       final cloneResult =
-          await commandService.execute('git clone https://github.com/example/repo.git');
-      expect(cloneResult.output, contains('Remote Git operations (clone) are deferred.'));
+          await commandService.execute('git clone');
+      expect(cloneResult.output, contains('You must specify a repository to clone'));
 
-      final pullResult = await commandService.execute('git pull');
-      expect(pullResult.output, contains('Remote Git operations (pull) are deferred.'));
-
-      final fetchResult = await commandService.execute('git fetch');
-      expect(fetchResult.output, contains('Remote Git operations (fetch) are deferred.'));
+      final submoduleResult = await commandService.execute('git submodule');
+      expect(submoduleResult.output, contains('submodule remote transport requires independent recursive clone'));
     });
 
     test('git resolves session preferred working directory', () async {

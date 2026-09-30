@@ -10,6 +10,7 @@ import '../widgets/terminal_view.dart';
 import '../widgets/extra_keyboard_row.dart';
 import '../widgets/file_explorer_drawer.dart';
 import '../widgets/dev_preview_sheet.dart';
+import '../widgets/git_credentials_dialog.dart';
 import 'settings_screen.dart';
 import 'help_screen.dart';
 import 'quick_editor_screen.dart';
@@ -851,6 +852,11 @@ class _TerminalScreenState extends State<TerminalScreen> {
                         final target = active.isNotEmpty ? active.first : 3000;
                         DevPreviewSheet.show(context, port: target);
                       },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.vpn_key_outlined, color: Colors.white),
+                      tooltip: 'Git Credentials & SSH Keys',
+                      onPressed: () => GitCredentialsDialog.show(context),
                     ),
 
                     IconButton(

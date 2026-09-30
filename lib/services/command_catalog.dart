@@ -53,6 +53,8 @@ const List<String> kTermodeCommands = [
   'git',
   'git-status',
   'git-info',
+  'termode-git',
+  'ssh-keygen',
   'git-plan',
   'git-version',
   'git-doctor',
