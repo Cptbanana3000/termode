@@ -460,6 +460,10 @@ class MainActivity: FlutterActivity() {
                                 candidate
                             }
 
+                            val stdinText = call.argument<String>("stdin")
+                            val stdinBytes = call.argument<ByteArray>("stdinBytes")
+                            val binaryOutput = call.argument<Boolean>("binaryOutput") ?: false
+
                             val command = mutableListOf(gitExecutable.absolutePath)
                             if (!arguments.contains("-C")) {
                                 command.add("-C")
@@ -489,23 +493,39 @@ class MainActivity: FlutterActivity() {
                                     )
                                 }
                             }.start()
-                            val stdout = process.inputStream.bufferedReader().readText().trimEnd()
+
+                            if (stdinBytes != null) {
+                                process.outputStream.write(stdinBytes)
+                                process.outputStream.flush()
+                                process.outputStream.close()
+                            } else if (stdinText != null) {
+                                process.outputStream.write(stdinText.toByteArray(Charsets.UTF_8))
+                                process.outputStream.flush()
+                                process.outputStream.close()
+                            } else {
+                                process.outputStream.close()
+                            }
+
+                            val stdoutBytes = if (binaryOutput) process.inputStream.readBytes() else null
+                            val stdout = if (!binaryOutput) process.inputStream.bufferedReader().readText().trimEnd() else ""
                             val stderrText = process.errorStream.bufferedReader().readText().trimEnd()
-                            val finished = process.waitFor(10, TimeUnit.SECONDS)
+                            val finished = process.waitFor(20, TimeUnit.SECONDS)
                             if (!finished) {
                                 process.destroyForcibly()
                                 throw java.util.concurrent.TimeoutException("Git command timed out")
                             }
                             Handler(Looper.getMainLooper()).post {
-                                result.success(
-                                    mapOf(
-                                        "stdout" to stdout,
-                                        "stderr" to stderrText,
-                                        "exitCode" to process.exitValue(),
-                                        "executablePath" to gitExecutable.absolutePath,
-                                        "workingDirectory" to workingDir.absolutePath
-                                    )
+                                val resultMap = mutableMapOf<String, Any>(
+                                    "stdout" to stdout,
+                                    "stderr" to stderrText,
+                                    "exitCode" to process.exitValue(),
+                                    "executablePath" to gitExecutable.absolutePath,
+                                    "workingDirectory" to workingDir.absolutePath
                                 )
+                                if (stdoutBytes != null) {
+                                    resultMap["stdoutBytes"] = stdoutBytes
+                                }
+                                result.success(resultMap)
                             }
                         } catch (e: Exception) {
                             Handler(Looper.getMainLooper()).post {

@@ -80,13 +80,41 @@ class GitRemoteTransportService {
   // Test overrides
   static HttpClient Function()? httpClientFactoryForTesting;
   static Future<NativeCommandResult> Function(List<String> args, {String? workingDirectory})? gitExecutorForTesting;
+  static Future<NativeCommandResult> Function(
+    List<String> args, {
+    String? workingDirectory,
+    String? stdin,
+    Uint8List? stdinBytes,
+    bool? binaryOutput,
+  })? gitExecutorWithInputForTesting;
 
   /// Runs Git commands via RuntimeBinaryPackageService or test hook.
-  Future<NativeCommandResult> _runNativeGit(List<String> args, {String? workingDirectory}) async {
+  Future<NativeCommandResult> _runNativeGit(
+    List<String> args, {
+    String? workingDirectory,
+    String? stdin,
+    Uint8List? stdinBytes,
+    bool binaryOutput = false,
+  }) async {
+    if (gitExecutorWithInputForTesting != null) {
+      return await gitExecutorWithInputForTesting!(
+        args,
+        workingDirectory: workingDirectory,
+        stdin: stdin,
+        stdinBytes: stdinBytes,
+        binaryOutput: binaryOutput,
+      );
+    }
     if (gitExecutorForTesting != null) {
       return await gitExecutorForTesting!(args, workingDirectory: workingDirectory);
     }
-    return await RuntimeBinaryPackageService().runGit(args, workingDirectory: workingDirectory);
+    return await RuntimeBinaryPackageService().runGit(
+      args,
+      workingDirectory: workingDirectory,
+      stdin: stdin,
+      stdinBytes: stdinBytes,
+      binaryOutput: binaryOutput,
+    );
   }
 
   HttpClient _createHttpClient() {
@@ -452,8 +480,14 @@ class GitRemoteTransportService {
       );
 
       final oldSha = refs.branches[targetBranch] ?? '0000000000000000000000000000000000000000';
-      final localSha = await _getRefSha(workDir, targetBranch);
-      if (localSha == null) {
+
+      // Resolve local commit SHA
+      final localShaRes = await _runNativeGit(['rev-parse', targetBranch], workingDirectory: workDir);
+      final localSha = localShaRes.exitCode == 0 && localShaRes.stdout.trim().isNotEmpty
+          ? localShaRes.stdout.trim()
+          : (await _getRefSha(workDir, targetBranch));
+
+      if (localSha == null || localSha.isEmpty) {
         return GitRemoteResult.failure('fatal: Local branch \'$targetBranch\' has no commits to push.');
       }
 
@@ -461,17 +495,38 @@ class GitRemoteTransportService {
         return GitRemoteResult.successful('Everything up-to-date');
       }
 
-      // 2. Generate packfile using native git pack-objects
-      onProgress?.call('Generating packfile using native git pack-objects...');
-      final packDir = Directory('$workDir/.git/objects/pack');
-      await packDir.create(recursive: true);
-      final pushPackFile = File('${packDir.path}/push_payload.pack');
+      // 2. Determine objects to send and generate packfile
+      final revListArgs = <String>['rev-list', '--objects'];
+      if (oldSha == '0000000000000000000000000000000000000000') {
+        revListArgs.add(localSha);
+      } else {
+        revListArgs.addAll([localSha, '^$oldSha']);
+      }
 
-      // Run git rev-list / git pack-objects
-      final packObjectsRes = await _runNativeGit(
-        ['pack-objects', '--stdout', '--revs'],
-        workingDirectory: workDir,
-      );
+      final revListRes = await _runNativeGit(revListArgs, workingDirectory: workDir);
+      final objectShas = revListRes.stdout
+          .split('\n')
+          .map((l) => l.trim().split(' ').first)
+          .where((sha) => RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(sha))
+          .toSet()
+          .toList();
+
+      List<int> packBytes = [];
+      if (objectShas.isNotEmpty) {
+        onProgress?.call('Generating packfile for ${objectShas.length} objects...');
+        final packRes = await _runNativeGit(
+          ['pack-objects', '--stdout'],
+          workingDirectory: workDir,
+          stdin: '${objectShas.join('\n')}\n',
+          binaryOutput: true,
+        );
+
+        if (packRes.stdoutBytes != null && packRes.stdoutBytes!.isNotEmpty) {
+          packBytes = packRes.stdoutBytes!;
+        } else if (packRes.stdout.isNotEmpty) {
+          packBytes = utf8.encode(packRes.stdout);
+        }
+      }
 
       // 3. Send Smart-HTTP receive-pack POST request
       onProgress?.call('Transmitting objects to remote server...');
@@ -492,15 +547,19 @@ class GitRemoteTransportService {
           req.headers.set('Authorization', 'Basic $creds');
         }
 
-        // Build command line: <old_sha> <new_sha> refs/heads/<branch>\0 report-status
-        final cmdStr = '$oldSha $localSha refs/heads/$targetBranch\x00 report-status\n';
-        final cmdBytes = utf8.encode('${encodePktLine(cmdStr)}0000');
-        req.add(cmdBytes);
+        // Build command line: <old_sha> <new_sha> refs/heads/<branch>\0report-status\n
+        final cmdStr = '$oldSha $localSha refs/heads/$targetBranch\x00report-status\n';
+        final cmdBytes = utf8.encode(encodePktLine(cmdStr));
+        final flushBytes = utf8.encode('0000');
 
-        // Add pack payload bytes
-        if (packObjectsRes.stdout.isNotEmpty) {
-          req.add(utf8.encode(packObjectsRes.stdout));
+        final payloadBuilder = BytesBuilder();
+        payloadBuilder.add(cmdBytes);
+        payloadBuilder.add(flushBytes);
+        if (packBytes.isNotEmpty) {
+          payloadBuilder.add(packBytes);
         }
+
+        req.add(payloadBuilder.toBytes());
 
         final resp = await req.close();
         if (resp.statusCode == 401 || resp.statusCode == 403) {
@@ -508,9 +567,56 @@ class GitRemoteTransportService {
             'Authentication failed (HTTP ${resp.statusCode}). Check Personal Access Token with repo/write scope.',
           );
         }
+        if (resp.statusCode != 200) {
+          return GitRemoteResult.failure('Remote Git server returned HTTP ${resp.statusCode}: ${resp.reasonPhrase}');
+        }
 
         final respBytes = await resp.fold<List<int>>([], (acc, c) => acc..addAll(c));
+        final pktLines = decodePktLines(respBytes);
         final respStr = utf8.decode(respBytes, allowMalformed: true);
+
+        bool unpackOk = false;
+        bool refOk = false;
+        String? rejectReason;
+
+        for (final line in pktLines) {
+          final trimmed = line.trim();
+          if (trimmed == 'unpack ok') {
+            unpackOk = true;
+          } else if (trimmed.startsWith('unpack ')) {
+            rejectReason = trimmed;
+          } else if (trimmed == 'ok refs/heads/$targetBranch') {
+            refOk = true;
+          } else if (trimmed.startsWith('ng refs/heads/$targetBranch')) {
+            rejectReason = trimmed.substring('ng refs/heads/$targetBranch'.length).trim();
+          }
+        }
+
+        if (respStr.contains('ng refs/heads/$targetBranch') || respStr.contains('ng ')) {
+          final ngMatch = RegExp(r'ng refs/heads/[^\s]+\s*(.*)').firstMatch(respStr);
+          rejectReason = ngMatch?.group(1)?.trim() ?? 'rejected by remote';
+        }
+
+        if (rejectReason != null && rejectReason.isNotEmpty) {
+          return GitRemoteResult.failure('fatal: Remote rejected push: $rejectReason');
+        }
+
+        if (!unpackOk && respStr.contains('unpack ok')) {
+          unpackOk = true;
+        }
+        if (!refOk && (respStr.contains('ok refs/heads/$targetBranch') || unpackOk)) {
+          refOk = true;
+        }
+
+        if (rejectReason != null && rejectReason.isNotEmpty) {
+          return GitRemoteResult.failure('fatal: Remote rejected push: $rejectReason');
+        }
+
+        if (!unpackOk && !refOk && !respStr.contains('unpack ok')) {
+          return GitRemoteResult.failure(
+            'fatal: Push failed:\n$respStr',
+          );
+        }
 
         // Update local remote tracking ref
         final trackingRef = File('$workDir/.git/refs/remotes/$remoteName/$targetBranch');
@@ -518,14 +624,24 @@ class GitRemoteTransportService {
         await trackingRef.writeAsString('$localSha\n', flush: true);
 
         onProgress?.call('Push succeeded.');
+        final oldDisplay = oldSha == '0000000000000000000000000000000000000000'
+            ? '[new branch]'
+            : '${oldSha.substring(0, 7)}..${localSha.substring(0, 7)}';
         return GitRemoteResult.successful(
           'To $remoteUrl\n'
-          '   $oldSha..$localSha  $targetBranch -> $targetBranch\n'
-          '${respStr.contains("unpack ok") ? "Remote status: unpack ok." : ""}',
+          '   $oldDisplay  $targetBranch -> $targetBranch\n'
+          'Remote status: unpack ok.',
+          metadata: {
+            'remote': remoteName,
+            'branch': targetBranch,
+            'oldSha': oldSha,
+            'newSha': localSha,
+            'objects': objectShas.length,
+            'bytes': packBytes.length,
+          },
         );
       } finally {
         client.close();
-        if (await pushPackFile.exists()) await pushPackFile.delete();
       }
     } catch (e) {
       return GitRemoteResult.failure('git push failed: $e');

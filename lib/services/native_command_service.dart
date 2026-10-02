@@ -5,11 +5,13 @@ class NativeCommandResult {
   final String stdout;
   final String stderr;
   final int exitCode;
+  final Uint8List? stdoutBytes;
 
   NativeCommandResult({
     required this.stdout,
     required this.stderr,
     required this.exitCode,
+    this.stdoutBytes,
   });
 }
 
@@ -109,11 +111,20 @@ class NativeCommandService {
   Future<NativeCommandResult> executeBundledGit(
     List<String> arguments, {
     String? workingDirectory,
+    String? stdin,
+    Uint8List? stdinBytes,
+    bool binaryOutput = false,
   }) async {
     try {
       final Map<dynamic, dynamic>? result = await _channel.invokeMethod(
         'executeBundledGit',
-        {'arguments': arguments, 'workingDirectory': ?workingDirectory},
+        {
+          'arguments': arguments,
+          'workingDirectory': ?workingDirectory,
+          'stdin': ?stdin,
+          'stdinBytes': ?stdinBytes,
+          'binaryOutput': binaryOutput,
+        },
       );
       if (result == null) {
         throw PlatformException(
@@ -121,10 +132,17 @@ class NativeCommandService {
           message: 'Git bridge returned null',
         );
       }
+      Uint8List? bytes;
+      if (result['stdoutBytes'] is Uint8List) {
+        bytes = result['stdoutBytes'] as Uint8List;
+      } else if (result['stdoutBytes'] is List) {
+        bytes = Uint8List.fromList((result['stdoutBytes'] as List).cast<int>());
+      }
       return NativeCommandResult(
         stdout: result['stdout'] as String? ?? '',
         stderr: result['stderr'] as String? ?? '',
         exitCode: result['exitCode'] as int? ?? -1,
+        stdoutBytes: bytes,
       );
     } on PlatformException catch (e) {
       return NativeCommandResult(

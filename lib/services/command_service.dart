@@ -1100,8 +1100,13 @@ class CommandService {
           'Termode supports native Git commands: init, status, add, commit, log, diff, branch, checkout, switch, config, reset, show, rm, mv, restore, clean, tag, merge, stash, clone, fetch, pull, push, remote.';
     }
 
+    final runArgs = List<String>.from(effectiveArgs);
+    if (sub == 'diff' && !runArgs.any((a) => a.startsWith('--color') || a == '--no-color')) {
+      runArgs.insert(1, '--color=always');
+    }
+
     final result = await pkg.runGit(
-      effectiveArgs,
+      runArgs,
       workingDirectory: workDir.isNotEmpty ? workDir : null,
     );
     final output = result.stdout.trim().isNotEmpty

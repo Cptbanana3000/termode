@@ -22,6 +22,12 @@ import 'services/port_monitor_service.dart';
 import 'services/git_remote_transport_service.dart';
 import 'services/git_credential_service.dart';
 import 'services/git_ssh_service.dart';
+import 'services/termode_git_service.dart';
+
+export 'services/termode_git_service.dart';
+export 'services/git_remote_transport_service.dart' show GitRemoteResult, GitRemoteRefAdvertisement;
+export 'services/git_credential_service.dart' show GitCredential;
+export 'services/git_ssh_service.dart' show SshKeyPair;
 
 /// Public, headless integration bridge for Termode.
 ///
@@ -65,6 +71,9 @@ class TermodeEngine {
 
   /// Direct access to runtime package queries (Git, Node, npm).
   RuntimeBinaryPackageService get packages => RuntimeBinaryPackageService();
+
+  /// Direct access to structured Git service (status, diff, staging, commits, branches).
+  TermodeGitService get git => TermodeGitService();
 
   /// Direct access to authentic Git remote operations and transports.
   GitRemoteTransportService get gitRemote => GitRemoteTransportService();
@@ -187,6 +196,90 @@ class TermodeEngine {
       workingDirectory: workingDirectory,
     );
   }
+
+  /// Programmatically queries structured Git status for a repository.
+  Future<TermodeGitStatusSnapshot> getGitStatus({String? workingDirectory}) =>
+      git.getStatus(workingDirectory: workingDirectory);
+
+  /// Programmatically queries file diff (working tree vs HEAD or staged).
+  Future<TermodeGitDiffResult> getGitDiff({
+    required String relativePath,
+    String? workingDirectory,
+    String? commitSha,
+    bool staged = false,
+  }) => git.getDiff(
+        relativePath: relativePath,
+        workingDirectory: workingDirectory,
+        commitSha: commitSha,
+        staged: staged,
+      );
+
+  /// Programmatically stages files (`git add`).
+  Future<NativeCommandResult> gitStage(List<String> paths, {String? workingDirectory}) =>
+      git.stage(paths, workingDirectory: workingDirectory);
+
+  /// Programmatically unstages files (`git restore --staged`).
+  Future<NativeCommandResult> gitUnstage(List<String> paths, {String? workingDirectory}) =>
+      git.unstage(paths, workingDirectory: workingDirectory);
+
+  /// Programmatically commits staged changes.
+  Future<NativeCommandResult> gitCommit(
+    String message, {
+    String? workingDirectory,
+    String? author,
+  }) => git.commit(message, workingDirectory: workingDirectory, author: author);
+
+  /// Programmatically pushes local commits via Smart-HTTP.
+  Future<GitRemoteResult> gitPush({
+    String remote = 'origin',
+    String? branch,
+    bool force = false,
+    String? workingDirectory,
+    void Function(String message)? onProgress,
+  }) => git.push(
+        remote: remote,
+        branch: branch,
+        force: force,
+        workingDirectory: workingDirectory,
+        onProgress: onProgress,
+      );
+
+  /// Programmatically pulls remote commits.
+  Future<GitRemoteResult> gitPull({
+    String remote = 'origin',
+    String? branch,
+    String? workingDirectory,
+    void Function(String message)? onProgress,
+  }) => git.pull(
+        remote: remote,
+        branch: branch,
+        workingDirectory: workingDirectory,
+        onProgress: onProgress,
+      );
+
+  /// Programmatically fetches remote commits.
+  Future<GitRemoteResult> gitFetch({
+    String remote = 'origin',
+    String? branch,
+    String? workingDirectory,
+    void Function(String message)? onProgress,
+  }) => git.fetch(
+        remote: remote,
+        branch: branch,
+        workingDirectory: workingDirectory,
+        onProgress: onProgress,
+      );
+
+  /// Programmatically lists local branches.
+  Future<List<TermodeGitBranch>> getGitBranches({String? workingDirectory}) =>
+      git.getBranches(workingDirectory: workingDirectory);
+
+  /// Programmatically checks out a branch.
+  Future<NativeCommandResult> gitCheckout(
+    String branch, {
+    bool create = false,
+    String? workingDirectory,
+  }) => git.checkout(branch, create: create, workingDirectory: workingDirectory);
 
   /// Direct headless execution of npm commands.
   Future<NativeCommandResult> runNpm(

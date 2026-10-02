@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 
@@ -47,6 +48,13 @@ class RuntimeBinaryPackageService {
     List<String> arguments, {
     String? workingDirectory,
   })? gitExecutorForTesting;
+  static Future<NativeCommandResult> Function(
+    List<String> arguments, {
+    String? workingDirectory,
+    String? stdin,
+    Uint8List? stdinBytes,
+    bool? binaryOutput,
+  })? gitExecutorWithInputForTesting;
   static Future<NativeCommandResult> Function(
     List<String> arguments, {
     String? workingDirectory,
@@ -366,7 +374,19 @@ class RuntimeBinaryPackageService {
   Future<NativeCommandResult> runGit(
     List<String> arguments, {
     String? workingDirectory,
+    String? stdin,
+    Uint8List? stdinBytes,
+    bool binaryOutput = false,
   }) async {
+    if (gitExecutorWithInputForTesting != null) {
+      return gitExecutorWithInputForTesting!(
+        arguments,
+        workingDirectory: workingDirectory,
+        stdin: stdin,
+        stdinBytes: stdinBytes,
+        binaryOutput: binaryOutput,
+      );
+    }
     if (gitExecutorForTesting != null) {
       return gitExecutorForTesting!(
         arguments,
@@ -386,6 +406,9 @@ class RuntimeBinaryPackageService {
       backingPath,
       arguments,
       workingDirectory: workingDirectory,
+      stdin: stdin,
+      stdinBytes: stdinBytes,
+      binaryOutput: binaryOutput,
     );
   }
 
@@ -2218,7 +2241,19 @@ class RuntimeBinaryPackageService {
     String gitPath,
     List<String> arguments, {
     String? workingDirectory,
+    String? stdin,
+    Uint8List? stdinBytes,
+    bool binaryOutput = false,
   }) async {
+    if (gitExecutorWithInputForTesting != null) {
+      return gitExecutorWithInputForTesting!(
+        arguments,
+        workingDirectory: workingDirectory,
+        stdin: stdin,
+        stdinBytes: stdinBytes,
+        binaryOutput: binaryOutput,
+      );
+    }
     if (gitExecutorForTesting != null) {
       return gitExecutorForTesting!(
         arguments,
@@ -2229,18 +2264,44 @@ class RuntimeBinaryPackageService {
       return NativeCommandService().executeBundledGit(
         arguments,
         workingDirectory: workingDirectory,
+        stdin: stdin,
+        stdinBytes: stdinBytes,
+        binaryOutput: binaryOutput,
       );
     }
     try {
-      final result = await Process.run(
+      final process = await Process.start(
         gitPath,
         arguments,
         workingDirectory: workingDirectory,
-      ).timeout(const Duration(seconds: 10));
+      );
+      if (stdinBytes != null) {
+        process.stdin.add(stdinBytes);
+        await process.stdin.flush();
+        await process.stdin.close();
+      } else if (stdin != null) {
+        process.stdin.write(stdin);
+        await process.stdin.flush();
+        await process.stdin.close();
+      } else {
+        await process.stdin.close();
+      }
+
+      final stdoutBytesBuilder = BytesBuilder();
+      final stderrSb = StringBuffer();
+
+      final outFuture = process.stdout.forEach((chunk) => stdoutBytesBuilder.add(chunk));
+      final errFuture = process.stderr.transform(utf8.decoder).forEach((chunk) => stderrSb.write(chunk));
+
+      await Future.wait([outFuture, errFuture]);
+      final exitCode = await process.exitCode;
+      final outBytes = stdoutBytesBuilder.toBytes();
+
       return NativeCommandResult(
-        stdout: result.stdout.toString(),
-        stderr: result.stderr.toString(),
-        exitCode: result.exitCode,
+        stdout: binaryOutput ? '' : utf8.decode(outBytes, allowMalformed: true),
+        stderr: stderrSb.toString(),
+        exitCode: exitCode,
+        stdoutBytes: outBytes,
       );
     } catch (e) {
       return NativeCommandResult(stdout: '', stderr: e.toString(), exitCode: 1);

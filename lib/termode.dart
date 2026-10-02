@@ -44,10 +44,11 @@ export 'screens/quick_editor_screen.dart';
 export 'services/port_monitor_service.dart';
 export 'widgets/dev_preview_sheet.dart';
 
-// Git Remote Transports & Authenticated Workflows (v0.83)
+// Git Remote Transports & Authenticated Workflows (v0.83 - v0.84)
 export 'services/git_remote_transport_service.dart';
 export 'services/git_credential_service.dart';
 export 'services/git_ssh_service.dart';
+export 'services/termode_git_service.dart';
 export 'widgets/git_credentials_dialog.dart';
 
 
