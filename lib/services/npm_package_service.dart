@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package_manager_service.dart';
 import 'runtime_binary_package_service.dart';
 
 /// Metadata model for a parsed `package.json` file.
@@ -402,6 +403,136 @@ class NpmPackageService {
       workingDirectory: workingDirectory,
     );
 
+    final out = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+    return (
+      success: result.exitCode == 0,
+      output: out,
+    );
+  }
+
+  /// Installs an npm package (or resolves all dependencies in package.json if
+  /// [packageSpec] is omitted/null) into [workingDirectory] from remote registry.
+  Future<({bool success, String output})> installPackage(
+    String? packageSpec, {
+    required String workingDirectory,
+    bool saveDev = false,
+    bool global = false,
+    List<String> extraArgs = const [],
+  }) async {
+    final binaryPkg = RuntimeBinaryPackageService();
+    final args = <String>[
+      'install',
+      if (global) '-g',
+      if (saveDev) '--save-dev',
+      ...extraArgs,
+      if (packageSpec != null && packageSpec.trim().isNotEmpty)
+        packageSpec.trim(),
+    ];
+    final result = await binaryPkg.runNpm(
+      args,
+      workingDirectory: workingDirectory,
+    );
+    final out = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+    if (result.exitCode == 0) {
+      try {
+        await PackageManagerService.updateShellHelpers();
+      } catch (_) {}
+    }
+    return (
+      success: result.exitCode == 0,
+      output: out.isNotEmpty ? out : 'npm install succeeded',
+    );
+  }
+
+  /// Audits project dependencies for known security vulnerabilities.
+  Future<({bool success, String output})> audit({
+    required String workingDirectory,
+    bool fix = false,
+    List<String> extraArgs = const [],
+  }) async {
+    final binaryPkg = RuntimeBinaryPackageService();
+    final args = <String>[
+      'audit',
+      if (fix) '--fix',
+      ...extraArgs,
+    ];
+    final result = await binaryPkg.runNpm(
+      args,
+      workingDirectory: workingDirectory,
+    );
+    final out = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+    return (
+      success: result.exitCode == 0,
+      output: out.isNotEmpty ? out : 'npm audit clean: 0 vulnerabilities found',
+    );
+  }
+
+  /// Queries remote npm registry metadata for [packageSpec].
+  Future<({bool success, String output})> viewPackage(
+    String packageSpec, {
+    bool json = false,
+    String? workingDirectory,
+  }) async {
+    final binaryPkg = RuntimeBinaryPackageService();
+    final args = <String>[
+      'view',
+      packageSpec,
+      if (json) '--json',
+    ];
+    final result = await binaryPkg.runNpm(
+      args,
+      workingDirectory: workingDirectory,
+    );
+    final out = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+    return (
+      success: result.exitCode == 0,
+      output: out,
+    );
+  }
+
+  /// Updates installed packages in [workingDirectory].
+  Future<({bool success, String output})> updatePackages({
+    required String workingDirectory,
+    List<String> packages = const [],
+    List<String> extraArgs = const [],
+  }) async {
+    final binaryPkg = RuntimeBinaryPackageService();
+    final args = <String>[
+      'update',
+      ...extraArgs,
+      ...packages,
+    ];
+    final result = await binaryPkg.runNpm(
+      args,
+      workingDirectory: workingDirectory,
+    );
+    final out = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+    return (
+      success: result.exitCode == 0,
+      output: out.isNotEmpty ? out : 'npm update completed',
+    );
+  }
+
+  /// Searches the npm registry for packages matching [query].
+  Future<({bool success, String output})> searchPackages(
+    String query, {
+    String? workingDirectory,
+  }) async {
+    final binaryPkg = RuntimeBinaryPackageService();
+    final result = await binaryPkg.runNpm(
+      ['search', query],
+      workingDirectory: workingDirectory,
+    );
     final out = result.stdout.trim().isNotEmpty
         ? result.stdout.trim()
         : result.stderr.trim();

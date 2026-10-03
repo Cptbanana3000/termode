@@ -36,6 +36,7 @@ import 'dev_stack_service.dart';
 import 'dev_server_service.dart';
 import 'python_environment_service.dart';
 import 'pip_package_service.dart';
+import 'package_registry_service.dart';
 import 'osint_service.dart';
 
 class CommandResult {
@@ -2035,6 +2036,87 @@ class CommandService {
             : 'pip finished with exit code ${result.exitCode}');
   }
 
+  Future<String> _registryDoctorOutput() async {
+    final report = await PackageRegistryService().doctor();
+    return report.formatText();
+  }
+
+  Future<String> _npmInstallOutput(List<String> args) async {
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final pkg = RuntimeBinaryPackageService();
+    final result = await pkg.runNpm(['install', ...args], workingDirectory: workDir);
+    return result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : (result.stderr.trim().isNotEmpty ? result.stderr.trim() : 'npm install completed');
+  }
+
+  Future<String> _npmAuditOutput(List<String> args) async {
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final pkg = RuntimeBinaryPackageService();
+    final result = await pkg.runNpm(['audit', ...args], workingDirectory: workDir);
+    return result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : (result.stderr.trim().isNotEmpty ? result.stderr.trim() : 'npm audit completed');
+  }
+
+  Future<String> _npmViewOutput(List<String> args) async {
+    if (args.isEmpty) {
+      return 'Usage: npm-view <package-name> [field]';
+    }
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final pkg = RuntimeBinaryPackageService();
+    final result = await pkg.runNpm(['view', ...args], workingDirectory: workDir);
+    return result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : (result.stderr.trim().isNotEmpty ? result.stderr.trim() : 'npm view finished');
+  }
+
+  Future<String> _npmUpdateOutput(List<String> args) async {
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory ?? 'app-home';
+    final pkg = RuntimeBinaryPackageService();
+    final result = await pkg.runNpm(['update', ...args], workingDirectory: workDir);
+    return result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : (result.stderr.trim().isNotEmpty ? result.stderr.trim() : 'npm update completed');
+  }
+
+  Future<String> _pipFreezeOutput(List<String> args) async {
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory;
+    final res = await PipPackageService().freeze(
+      userOnly: args.contains('--user'),
+      workingDirectory: (workDir == null || workDir == 'app-home') ? null : workDir,
+    );
+    return res.output;
+  }
+
+  Future<String> _pipUpgradeOutput(List<String> args) async {
+    if (args.isEmpty) {
+      return 'Usage: pip-upgrade <package-name> [extra-args...]';
+    }
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory;
+    final res = await PipPackageService().upgradePackage(
+      args.first,
+      extraArgs: args.skip(1).toList(),
+      workingDirectory: (workDir == null || workDir == 'app-home') ? null : workDir,
+    );
+    return res.output;
+  }
+
+  Future<String> _pipOutdatedOutput(List<String> args) async {
+    final session = TerminalSessionService().activeSession;
+    final workDir = session.preferredWorkingDirectory;
+    final res = await PipPackageService().checkOutdated(
+      workingDirectory: (workDir == null || workDir == 'app-home') ? null : workDir,
+    );
+    return res.output;
+  }
+
   // --- v0.78 OSINT CLI Tool Verification (Sherlock & Maigret) -----------------
 
   Future<String> _osintDoctorOutput() async {
@@ -2826,9 +2908,11 @@ class CommandService {
         'Getting started:\n'
         '  welcome, guide, getting-started, examples, glossary\n'
         'Python & pip:\n'
-        '  python, python3, pip, pip-install, pip-uninstall, pip-list, pip-show, pip-doctor\n'
+        '  python, python3, pip, pip-install, pip-uninstall, pip-list, pip-show, pip-freeze, pip-upgrade, pip-doctor\n'
         'Node.js & npm:\n'
-        '  node, npm, npx, node-doctor, npm-doctor, npm-init, npm-run\n'
+        '  node, npm, npx, npm-install, npm-audit, npm-view, npm-update, node-doctor, npm-doctor, npm-init, npm-run\n'
+        'Registries:\n'
+        '  registry-doctor, pkg-doctor\n'
         'Dev server & preview:\n'
         '  dev-server start, dev-server list, dev-server stop, dev-server logs, preview\n'
         'OSINT CLI tools:\n'
@@ -4679,7 +4763,61 @@ class CommandService {
         return CommandResult(output: await _nodeArtifactOutput(args));
 
       case 'npm':
-        return CommandResult(output: await _npmBareOutput(args));
+        final isNpmMutating = args.contains('install') ||
+            args.contains('i') ||
+            args.contains('uninstall') ||
+            args.contains('update');
+        final npmResultOut = await _npmBareOutput(args);
+        if (isNpmMutating) {
+          try {
+            await PackageManagerService.updateShellHelpers();
+          } catch (_) {}
+        }
+        return CommandResult(
+          output: npmResultOut,
+          shouldReloadShellHelpers: isNpmMutating,
+          helperReloadSuccessMessage: isNpmMutating ? 'Shell helpers updated.' : null,
+        );
+
+      case 'npm-install':
+      case 'npm-i':
+        final npmInstallOut = await _npmInstallOutput(args);
+        try {
+          await PackageManagerService.updateShellHelpers();
+        } catch (_) {}
+        return CommandResult(
+          output: npmInstallOut,
+          shouldReloadShellHelpers: true,
+          helperReloadSuccessMessage: 'Shell helpers updated.',
+        );
+
+      case 'npm-audit':
+        final isAuditFix = args.contains('fix') || args.contains('--fix');
+        final npmAuditOut = await _npmAuditOutput(args);
+        if (isAuditFix) {
+          try {
+            await PackageManagerService.updateShellHelpers();
+          } catch (_) {}
+        }
+        return CommandResult(
+          output: npmAuditOut,
+          shouldReloadShellHelpers: isAuditFix,
+          helperReloadSuccessMessage: isAuditFix ? 'Shell helpers updated.' : null,
+        );
+
+      case 'npm-view':
+        return CommandResult(output: await _npmViewOutput(args));
+
+      case 'npm-update':
+        final npmUpdateOut = await _npmUpdateOutput(args);
+        try {
+          await PackageManagerService.updateShellHelpers();
+        } catch (_) {}
+        return CommandResult(
+          output: npmUpdateOut,
+          shouldReloadShellHelpers: true,
+          helperReloadSuccessMessage: 'Shell helpers updated.',
+        );
 
       case 'npm-status':
         return CommandResult(output: await _npmStatusOutput());
@@ -4765,6 +4903,27 @@ class CommandService {
           shouldReloadShellHelpers: uninstallOk,
           helperReloadSuccessMessage: uninstallOk ? 'Shell helpers updated.' : null,
         );
+
+      case 'pip-freeze':
+        return CommandResult(output: await _pipFreezeOutput(args));
+
+      case 'pip-upgrade':
+        final pipUpgradeOut = await _pipUpgradeOutput(args);
+        try {
+          await PackageManagerService.updateShellHelpers();
+        } catch (_) {}
+        return CommandResult(
+          output: pipUpgradeOut,
+          shouldReloadShellHelpers: true,
+          helperReloadSuccessMessage: 'Shell helpers updated.',
+        );
+
+      case 'pip-outdated':
+        return CommandResult(output: await _pipOutdatedOutput(args));
+
+      case 'registry-doctor':
+      case 'pkg-doctor':
+        return CommandResult(output: await _registryDoctorOutput());
 
       case 'osint-doctor':
         return CommandResult(output: await _osintDoctorOutput());

@@ -440,9 +440,112 @@ class PipPackageService {
     );
   }
 
+  /// Upgrades an installed package via pip.
+  Future<({bool success, String output})> upgradePackage(
+    String packageSpec, {
+    bool userSite = true,
+    List<String> extraArgs = const [],
+    String? workingDirectory,
+  }) async {
+    return installPackage(
+      packageSpec,
+      userSite: userSite,
+      extraArgs: ['--upgrade', ...extraArgs],
+      workingDirectory: workingDirectory,
+    );
+  }
+
+  /// Lists installed packages in requirements.txt (freeze) format.
+  Future<({bool success, String output})> freeze({
+    bool userOnly = false,
+    String? workingDirectory,
+  }) async {
+    final result = await _binaryPkg.runPip(
+      ['list', '--format=freeze', if (userOnly) '--user'],
+      workingDirectory: workingDirectory,
+    );
+    final out = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+
+    if (result.exitCode == 0 && out.isNotEmpty) {
+      return (success: true, output: out);
+    }
+
+    // Fallback to parsing local dist-info metadata if pip subprocess fails
+    final pkgs = await listPackages(userOnly: userOnly);
+    final lines = pkgs.map((p) => '${p.name}==${p.version}').join('\n');
+    return (success: true, output: lines);
+  }
+
+  /// Installs dependencies defined in a requirements.txt file.
+  Future<({bool success, String output})> installRequirements(
+    String requirementsFile, {
+    bool userSite = true,
+    List<String> extraArgs = const [],
+    String? workingDirectory,
+  }) async {
+    final args = <String>[
+      'install',
+      if (userSite) '--user',
+      '-r',
+      requirementsFile,
+      ...extraArgs,
+    ];
+    final result = await _binaryPkg.runPip(args, workingDirectory: workingDirectory);
+    final out = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+    if (result.exitCode == 0) {
+      try {
+        await PackageManagerService.updateShellHelpers();
+      } catch (_) {}
+    }
+    return (
+      success: result.exitCode == 0,
+      output: out,
+    );
+  }
+
+  /// Lists outdated installed packages comparing with remote PyPI index.
+  Future<({bool success, String output})> checkOutdated({
+    String? workingDirectory,
+  }) async {
+    final result = await _binaryPkg.runPip(
+      ['list', '--outdated'],
+      workingDirectory: workingDirectory,
+    );
+    final out = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+    return (
+      success: result.exitCode == 0,
+      output: out,
+    );
+  }
+
+  /// Shows package details from local installation using pip show.
+  Future<({bool success, String output})> viewPackage(
+    String packageName, {
+    String? workingDirectory,
+  }) async {
+    final result = await _binaryPkg.runPip(
+      ['show', packageName],
+      workingDirectory: workingDirectory,
+    );
+    final out = result.stdout.trim().isNotEmpty
+        ? result.stdout.trim()
+        : result.stderr.trim();
+    return (
+      success: result.exitCode == 0,
+      output: out,
+    );
+  }
+
   /// Checks whether a specific package is installed in site-packages or user-site.
   Future<bool> hasPackage(String packageName) async {
     final pkg = await showPackage(packageName);
     return pkg != null;
   }
 }
+

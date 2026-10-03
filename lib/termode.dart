@@ -24,6 +24,7 @@ export 'services/dev_stack_service.dart';
 export 'services/localhost_service.dart';
 export 'services/native_command_service.dart';
 export 'services/npm_package_service.dart';
+export 'services/package_registry_service.dart';
 export 'services/osint_service.dart';
 export 'services/pip_package_service.dart';
 export 'services/python_environment_service.dart';

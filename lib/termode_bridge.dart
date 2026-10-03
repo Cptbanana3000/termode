@@ -23,8 +23,10 @@ import 'services/git_remote_transport_service.dart';
 import 'services/git_credential_service.dart';
 import 'services/git_ssh_service.dart';
 import 'services/termode_git_service.dart';
+import 'services/package_registry_service.dart';
 
 export 'services/termode_git_service.dart';
+export 'services/package_registry_service.dart';
 export 'services/git_remote_transport_service.dart' show GitRemoteResult, GitRemoteRefAdvertisement;
 export 'services/git_credential_service.dart' show GitCredential;
 export 'services/git_ssh_service.dart' show SshKeyPair;
@@ -56,6 +58,9 @@ class TermodeEngine {
 
   /// Direct access to pip package management and wheel operations.
   PipPackageService get pip => PipPackageService();
+
+  /// Direct access to package registry health probes and diagnostics (npm & PyPI).
+  PackageRegistryService get registry => PackageRegistryService();
 
   /// Direct access to OSINT tools (Sherlock / Maigret).
   OsintService get osint => OsintService();

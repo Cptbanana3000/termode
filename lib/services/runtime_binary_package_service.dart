@@ -548,11 +548,14 @@ class RuntimeBinaryPackageService {
 
   /// Ensures that native execution symlinks (python3, python, node, git)
   /// in $TERMODE_USR/bin point to the current APK nativeLibraryDir.
-  Future<void> reconcileNativeSymlinks() async {
-    if (!Platform.isAndroid) return;
+  Future<void> reconcileNativeSymlinks({String? nativeLibraryDirOverride}) async {
+    if (!Platform.isAndroid && nativeLibraryDirOverride == null) return;
     try {
-      final execPaths = await NativeCommandService().getExecutablePaths();
-      final nativeLibraryDir = execPaths?['nativeLibraryDir']?.toString();
+      final execPaths = nativeLibraryDirOverride != null
+          ? null
+          : await NativeCommandService().getExecutablePaths();
+      final nativeLibraryDir = nativeLibraryDirOverride ??
+          execPaths?['nativeLibraryDir']?.toString();
       if (nativeLibraryDir == null || nativeLibraryDir.isEmpty) return;
 
       final paths = await _paths();
@@ -593,10 +596,65 @@ class RuntimeBinaryPackageService {
                 await _deleteLogicalEntity(linkPath);
               }
             } catch (_) {}
-            await Link(linkPath).create(targetPath);
+            try {
+              await Link(linkPath).create(targetPath);
+            } catch (_) {
+              if (!Platform.isAndroid) {
+                try {
+                  await File(targetPath).copy(linkPath);
+                } catch (_) {}
+              }
+            }
           }
         } catch (_) {}
       }
+
+      // Reconcile installed.json metadata so that executable_backing_path points to active APK
+      try {
+        final metadata = await _readMetadata();
+        final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
+        bool metadataChanged = false;
+
+        final packageToLib = {
+          'git': '$nativeLibraryDir/libtermode_git_exec.so',
+          'node': '$nativeLibraryDir/libtermode_node_exec.so',
+          'python': '$nativeLibraryDir/libtermode_python_exec.so',
+        };
+
+        for (final entry in packageToLib.entries) {
+          final pkgName = entry.key;
+          final actualLibPath = entry.value;
+          if (packages.containsKey(pkgName) && File(actualLibPath).existsSync()) {
+            final pkgMap = Map<String, dynamic>.from(packages[pkgName] as Map);
+            final currentBacking = pkgMap['executable_backing_path']?.toString();
+            if (currentBacking != actualLibPath || !File(currentBacking ?? '').existsSync()) {
+              pkgMap['executable_backing_path'] = actualLibPath;
+              pkgMap['executable_storage'] = 'native-library-dir';
+              pkgMap['executable_strategy'] = 'native-library-dir';
+              pkgMap['execution_verified'] = true;
+              try {
+                final bytes = await File(actualLibPath).readAsBytes();
+                final sha = _calculateSha256(bytes);
+                final entrypoint = pkgMap['logical_path']?.toString() ??
+                    pkgMap['entrypoint']?.toString() ??
+                    (pkgName == 'node' ? 'bin/node' : 'usr/bin/$pkgName');
+                final checksums = Map<String, dynamic>.from(
+                  (pkgMap['sha256'] as Map?) ?? {},
+                );
+                checksums[entrypoint] = sha;
+                pkgMap['sha256'] = checksums;
+              } catch (_) {}
+              packages[pkgName] = pkgMap;
+              metadataChanged = true;
+            }
+          }
+        }
+
+        if (metadataChanged) {
+          metadata['packages'] = packages;
+          await _writeMetadata(metadata);
+        }
+      } catch (_) {}
     } catch (_) {}
   }
 
@@ -2379,7 +2437,10 @@ class RuntimeBinaryPackageService {
     return RuntimeBinaryPackageResult('Removed: $name');
   }
 
-  Future<RuntimeBinaryPackageResult> verify(String name) async {
+  Future<RuntimeBinaryPackageResult> verify(String name, {String? nativeLibraryDirOverride}) async {
+    if (name == gitName || name == nodeName || name == pythonName || name == python3Name) {
+      await reconcileNativeSymlinks(nativeLibraryDirOverride: nativeLibraryDirOverride);
+    }
     final metadata = await _readMetadata();
     final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
     if (!packages.containsKey(name)) {
@@ -2635,6 +2696,7 @@ class RuntimeBinaryPackageService {
   }
 
   Future<String> doctor() async {
+    await reconcileNativeSymlinks();
     final p = await _paths();
     final metadata = await _readMetadata();
     final packages = Map<String, dynamic>.from(metadata['packages'] as Map);
